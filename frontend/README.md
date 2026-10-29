@@ -42,7 +42,6 @@ src/
   App.jsx               rutas
   main.jsx              tema, estilos y BrowserRouter
 scripts/                reservado para el Bloque 3
-public/                 recursos estáticos
 ```
 
 ## Configuración institucional
