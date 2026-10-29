@@ -1,0 +1,93 @@
+/* Distribuye el layout y reserva espacio para la navegación móvil fija. */
+.ct-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.ct-layout main {
+  flex: 1;
+}
+
+.ct-cabecera,
+.ct-pie,
+.ct-navegacion-inferior {
+  background-color: var(--ct-superficie);
+}
+
+.ct-cabecera {
+  border-bottom: 1px solid var(--ct-borde);
+}
+
+.ct-nombre-app {
+  color: var(--ct-primario);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.ct-enlace {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  min-height: 44px;
+  padding: 0.35rem;
+  color: var(--ct-texto-secundario);
+  text-align: center;
+  text-decoration: none;
+}
+
+.ct-enlace:hover,
+.ct-enlace-activo {
+  color: var(--ct-primario);
+}
+
+.ct-enlace-activo {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.ct-navegacion-superior {
+  gap: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.ct-navegacion-inferior {
+  position: fixed;
+  z-index: 1030;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 64px;
+  border-top: 1px solid var(--ct-borde);
+}
+
+.ct-navegacion-inferior .ct-enlace {
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  padding: 4px 2px;
+  font-size: 12px;
+  line-height: 1.15;
+}
+
+.ct-navegacion-inferior .bi {
+  font-size: 20px;
+}
+
+.ct-pie {
+  border-top: 1px solid var(--ct-borde);
+  color: var(--ct-texto-secundario);
+  font-size: 0.875rem;
+}
+
+.ct-pie a {
+  color: var(--ct-primario);
+}
+
+@media (max-width: 767.98px) {
+  .ct-layout {
+    padding-bottom: 64px;
+  }
+}

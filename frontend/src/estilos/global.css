@@ -1,0 +1,47 @@
+/* Estilos generales y botones basados en el tema institucional. */
+body {
+  margin: 0;
+  background-color: var(--ct-fondo);
+  color: var(--ct-texto);
+  font-family: var(--ct-fuente);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ct-primario);
+  outline-offset: 3px;
+}
+
+.btn-ct-primario,
+.btn-ct-secundario {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--ct-primario);
+  border-radius: 0.375rem;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn-ct-primario {
+  background-color: var(--ct-primario);
+  color: var(--ct-superficie);
+}
+
+.btn-ct-primario:hover {
+  border-color: var(--ct-primario-claro);
+  background-color: var(--ct-primario-claro);
+  color: var(--ct-superficie);
+}
+
+.btn-ct-secundario {
+  background-color: var(--ct-superficie);
+  color: var(--ct-primario);
+}
+
+.btn-ct-secundario:hover {
+  background-color: var(--ct-fondo);
+  color: var(--ct-primario);
+}
