@@ -1,19 +1,41 @@
 // Muestra los mismos enlaces en la barra superior o inferior según el ancho.
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { INSTITUCION } from '../../config/institucion.js'
+import { useAutenticacion } from '../../contexto/useAutenticacion.js'
+import { RolUsuario } from '../../modelo/enums.js'
+
+const INVITADO = 'INVITADO'
 
 const enlaces = [
-  { ruta: '/', etiqueta: 'Inicio', icono: 'bi-house' },
-  { ruta: '/tutores', etiqueta: 'Buscar', icono: 'bi-search' },
-  { ruta: '/sesiones', etiqueta: 'Mis sesiones', icono: 'bi-calendar-event' },
-  { ruta: '/perfil', etiqueta: 'Perfil', icono: 'bi-person' },
-  { ruta: '/admin/verificacion', etiqueta: 'Admin', icono: 'bi-shield-check' },
-  { ruta: '/ingresar', etiqueta: 'Ingresar', icono: 'bi-box-arrow-in-right' },
+  { ruta: '/', etiqueta: 'Inicio', icono: 'bi-house', roles: INVITADO },
+  { ruta: '/tutores', etiqueta: 'Buscar', icono: 'bi-search', roles: [RolUsuario.ESTUDIANTE] },
+  { ruta: '/sesiones', etiqueta: 'Mis sesiones', icono: 'bi-calendar-event', roles: [RolUsuario.ESTUDIANTE] },
+  { ruta: '/perfil', etiqueta: 'Perfil', icono: 'bi-person', roles: [RolUsuario.ESTUDIANTE] },
+  { ruta: '/admin/verificacion', etiqueta: 'Coordinación', icono: 'bi-shield-check', roles: [RolUsuario.ADMINISTRADOR] },
+  { ruta: '/ingresar', etiqueta: 'Ingresar', icono: 'bi-box-arrow-in-right', roles: INVITADO },
+  { ruta: '/registro', etiqueta: 'Registrarse', icono: 'bi-person-plus', roles: INVITADO },
+  { ruta: null, etiqueta: 'Salir', icono: 'bi-box-arrow-right', roles: [RolUsuario.ESTUDIANTE, RolUsuario.ADMINISTRADOR] },
 ]
 
 function BarraNavegacion() {
+  const { usuario, cargando, cerrarSesion } = useAutenticacion()
+  const navigate = useNavigate()
+  const enlacesVisibles = enlaces.filter(({ roles }) => usuario
+    ? Array.isArray(roles) && roles.includes(usuario.getRol())
+    : roles === INVITADO)
+
+  function salir() {
+    cerrarSesion()
+    navigate('/')
+  }
+
   function renderizarEnlaces() {
-    return enlaces.map(({ ruta, etiqueta, icono }) => (
+    return enlacesVisibles.map(({ ruta, etiqueta, icono }) => ruta === null ? (
+      <button type="button" className="ct-enlace" key={etiqueta} onClick={salir}>
+        <i className={`bi ${icono}`} aria-hidden="true" />
+        <span>{etiqueta}</span>
+      </button>
+    ) : (
       <NavLink
         key={ruta}
         to={ruta}
@@ -39,14 +61,19 @@ function BarraNavegacion() {
             />
             <span className="ct-nombre-app">{INSTITUCION.nombreApp}</span>
           </div>
-          <nav className="ct-navegacion-superior d-none d-md-flex" aria-label="Navegación principal">
-            {renderizarEnlaces()}
-          </nav>
+          {!cargando && (
+            <nav className="ct-navegacion-superior d-none d-md-flex" aria-label="Navegación principal">
+              {usuario && <span className="ct-usuario-navegacion">{usuario.getNombre()}</span>}
+              {renderizarEnlaces()}
+            </nav>
+          )}
         </div>
       </header>
-      <nav className="ct-navegacion-inferior d-flex d-md-none" aria-label="Navegación móvil">
-        {renderizarEnlaces()}
-      </nav>
+      {!cargando && (
+        <nav className="ct-navegacion-inferior d-flex d-md-none" aria-label="Navegación móvil">
+          {renderizarEnlaces()}
+        </nav>
+      )}
     </>
   )
 }

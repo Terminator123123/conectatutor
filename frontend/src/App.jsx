@@ -1,6 +1,9 @@
-// Define las rutas públicas del bloque base dentro del layout compartido.
+// Define las rutas y sus permisos dentro del layout compartido.
 import { Route, Routes } from 'react-router-dom'
 import Layout from './componentes/layout/Layout.jsx'
+import RutaProtegida from './componentes/layout/RutaProtegida.jsx'
+import RutaSoloInvitados from './componentes/layout/RutaSoloInvitados.jsx'
+import { RolUsuario } from './modelo/enums.js'
 import Inicio from './paginas/Inicio.jsx'
 import Registro from './paginas/Registro.jsx'
 import Ingreso from './paginas/Ingreso.jsx'
@@ -18,14 +21,14 @@ function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<Inicio />} />
-        <Route path="/registro" element={<Registro />} />
-        <Route path="/ingresar" element={<Ingreso />} />
-        <Route path="/tutores" element={<BusquedaTutores />} />
-        <Route path="/tutores/:id" element={<DetalleTutor />} />
-        <Route path="/tutores/:id/solicitar" element={<SolicitudSesion />} />
-        <Route path="/sesiones" element={<MisSesiones />} />
-        <Route path="/perfil" element={<MiPerfil />} />
-        <Route path="/admin/verificacion" element={<VerificacionTutores />} />
+        <Route path="/registro" element={<RutaSoloInvitados><Registro /></RutaSoloInvitados>} />
+        <Route path="/ingresar" element={<RutaSoloInvitados><Ingreso /></RutaSoloInvitados>} />
+        <Route path="/tutores" element={<RutaProtegida roles={[RolUsuario.ESTUDIANTE]}><BusquedaTutores /></RutaProtegida>} />
+        <Route path="/tutores/:id" element={<RutaProtegida roles={[RolUsuario.ESTUDIANTE]}><DetalleTutor /></RutaProtegida>} />
+        <Route path="/tutores/:id/solicitar" element={<RutaProtegida roles={[RolUsuario.ESTUDIANTE]}><SolicitudSesion /></RutaProtegida>} />
+        <Route path="/sesiones" element={<RutaProtegida roles={[RolUsuario.ESTUDIANTE]}><MisSesiones /></RutaProtegida>} />
+        <Route path="/perfil" element={<RutaProtegida roles={[RolUsuario.ESTUDIANTE]}><MiPerfil /></RutaProtegida>} />
+        <Route path="/admin/verificacion" element={<RutaProtegida roles={[RolUsuario.ADMINISTRADOR]}><VerificacionTutores /></RutaProtegida>} />
         <Route path="/componentes" element={<CatalogoComponentes />} />
         <Route path="*" element={<NoEncontrada />} />
       </Route>

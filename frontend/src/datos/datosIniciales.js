@@ -62,17 +62,18 @@ export async function crearDatosIniciales(dominioCorreo) {
   ].map((datos) => new Materia(datos))
 
   const estudiantes = [
-    { nombre: 'Andrea Salcedo', correo: 'andrea.salcedo', semestre: 6, programa: programas[0] },
-    { nombre: 'Bruno Valdés', correo: 'bruno.valdes', semestre: 5, programa: programas[1] },
-    { nombre: 'Carolina Rueda', correo: 'carolina.rueda', semestre: 7, programa: programas[2] },
-    { nombre: 'Diego Manrique', correo: 'diego.manrique', semestre: 4, programa: programas[3] },
-    { nombre: 'Elena Lozano', correo: 'elena.lozano', semestre: 2, programa: programas[0] },
-    { nombre: 'Felipe Castaño', correo: 'felipe.castano', semestre: 3, programa: programas[1] },
-  ].map(({ nombre, correo, semestre, programa }) => new Estudiante({
+    { nombre: 'Andrea Salcedo', correo: 'andrea.salcedo', semestre: 6, programa: programas[0], sede: INSTITUCION.sedes[0] },
+    { nombre: 'Bruno Valdés', correo: 'bruno.valdes', semestre: 5, programa: programas[1], sede: INSTITUCION.sedes[1] },
+    { nombre: 'Carolina Rueda', correo: 'carolina.rueda', semestre: 7, programa: programas[2], sede: INSTITUCION.sedes[0] },
+    { nombre: 'Diego Manrique', correo: 'diego.manrique', semestre: 4, programa: programas[3], sede: INSTITUCION.sedes[2] },
+    { nombre: 'Elena Lozano', correo: 'elena.lozano', semestre: 2, programa: programas[0], sede: INSTITUCION.sedes[0] },
+    { nombre: 'Felipe Castaño', correo: 'felipe.castano', semestre: 3, programa: programas[1], sede: INSTITUCION.sedes[3] },
+  ].map(({ nombre, correo, semestre, programa, sede }) => new Estudiante({
     nombre,
     correoInstitucional: `${correo}@${dominio}`,
     semestre,
     programa,
+    sede,
   }))
 
   const administrador = new Administrador({

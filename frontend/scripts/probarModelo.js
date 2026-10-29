@@ -43,11 +43,11 @@ function crearEscenario() {
   const otraMateria = new Materia({ codigo: 'PRU2', nombre: 'Materia no ofrecida', programa })
   const solicitante = new Estudiante({
     nombre: 'Solicitante de prueba', correoInstitucional: `solicitante@${dominioPrueba}`,
-    semestre: 2, programa,
+    semestre: 2, programa, sede: 'Sede de prueba',
   })
   const estudianteTutor = new Estudiante({
     nombre: 'Tutor de prueba', correoInstitucional: `tutor@${dominioPrueba}`,
-    semestre: 6, programa,
+    semestre: 6, programa, sede: 'Sede de prueba',
   })
   const administrador = new Administrador({
     nombre: 'Administrador de prueba', correoInstitucional: `admin@${dominioPrueba}`,
@@ -280,12 +280,31 @@ async function ejecutar() {
     const servicio = new ServicioAutenticacion(repositorio, dominioPrueba)
     const registrado = await servicio.registrar({
       nombre: 'Cuenta de prueba', correoInstitucional: `  NUEVA@${dominioPrueba.toUpperCase()}  `,
-      clave: 'Demo1234', semestre: 1, programa,
+      clave: 'Demo1234', semestre: 1, programa, sede: 'Sede de prueba',
     })
     assert.ok(registrado instanceof Estudiante)
     assert.equal(registrado.getCorreo(), `nueva@${dominioPrueba}`)
     const acceso = await servicio.iniciarSesion(`NUEVA@${dominioPrueba}`, 'Demo1234')
     assert.equal(acceso.getId(), registrado.getId())
+  })
+  prueba('La sede del estudiante se conserva al guardar y releer', async () => {
+    const { almacen, repositorio, usuarios } = await prepararRepositorio()
+    const estudiante = usuarios.find((usuario) => usuario instanceof Estudiante)
+    await repositorio.guardarUsuario(estudiante)
+    const nuevoRepositorio = crearRepositorio(almacen, 0)
+    const releido = await nuevoRepositorio.buscarUsuarioPorCorreo(estudiante.getCorreo())
+    assert.ok(releido instanceof Estudiante)
+    assert.equal(releido.getSede(), estudiante.getSede())
+    assert.equal(releido.toJSON().sede, estudiante.getSede())
+  })
+  prueba('El registro rechaza con TypeError una sede fuera de la lista admitida', async () => {
+    const { repositorio } = await prepararRepositorio()
+    const [programa] = await repositorio.listarProgramas()
+    const servicio = new ServicioAutenticacion(repositorio, dominioPrueba, ['Sede admitida'])
+    await assert.rejects(() => servicio.registrar({
+      nombre: 'Cuenta de sede inválida', correoInstitucional: `sede.invalida@${dominioPrueba}`,
+      clave: 'Demo1234', semestre: 1, programa, sede: 'Sede fuera de la lista',
+    }), { name: 'TypeError', message: 'Selecciona una sede válida.' })
   })
   prueba('R8 inválido: el registro rechaza un correo de otro dominio con código R8', async () => {
     const servicio = new ServicioAutenticacion(iniciales.repositorio, dominioPrueba)

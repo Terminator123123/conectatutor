@@ -41,6 +41,10 @@
 }
 
 .ct-enlace {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -64,9 +68,18 @@
 }
 
 .ct-navegacion-superior {
+  align-items: center;
   flex-wrap: wrap;
   gap: 0.25rem;
   font-size: 0.875rem;
+}
+
+.ct-usuario-navegacion {
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.375rem;
+  background-color: var(--ct-superficie);
+  color: var(--ct-texto-secundario);
+  overflow-wrap: anywhere;
 }
 
 .ct-cabecera .ct-enlace {

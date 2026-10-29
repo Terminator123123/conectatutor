@@ -5,14 +5,17 @@ import Estudiante from '../modelo/Estudiante.js'
 export default class ServicioAutenticacion {
   #repositorio
   #dominioCorreo
+  /** @type {string[]|null} Sedes admitidas, si se restringe el registro. */
+  #sedes
 
   /**
    * Configura la persistencia y el dominio admitido para los correos.
    * @param {object} repositorio Repositorio de usuarios, credenciales y sesión actual.
    * @param {string} dominioCorreo Dominio institucional sin arroba.
+   * @param {string[]|null} [sedes=null] Lista opcional de sedes admitidas.
    * @throws {TypeError} Si el dominio está vacío o contiene espacios o arrobas.
    */
-  constructor(repositorio, dominioCorreo) {
+  constructor(repositorio, dominioCorreo, sedes = null) {
     if (
       typeof dominioCorreo !== 'string' ||
       dominioCorreo.trim() === '' ||
@@ -23,6 +26,7 @@ export default class ServicioAutenticacion {
 
     this.#repositorio = repositorio
     this.#dominioCorreo = dominioCorreo.trim().toLowerCase()
+    this.#sedes = sedes
   }
 
   /**
@@ -51,6 +55,7 @@ export default class ServicioAutenticacion {
    * @param {string} datos.correoInstitucional Correo institucional.
    * @param {string} datos.clave Contraseña de la cuenta.
    * @param {number} datos.semestre Semestre que cursa.
+   * @param {string} datos.sede Sede del estudiante.
    * @param {import('../modelo/Programa.js').default} datos.programa Programa académico.
    * @returns {Promise<Estudiante>} Estudiante guardado sin iniciar una sesión.
    * @throws {ErrorDeNegocio} Con código R8 si el correo no pertenece al dominio institucional.
@@ -62,10 +67,14 @@ export default class ServicioAutenticacion {
       throw new TypeError('Los datos de registro deben ser un objeto.')
     }
 
-    const { nombre, correoInstitucional, clave, semestre, programa } = datos
+    const { nombre, correoInstitucional, clave, semestre, programa, sede } = datos
 
     if (!this.validarCorreoInstitucional(correoInstitucional)) {
       throw new ErrorDeNegocio('R8', 'Usa un correo del dominio institucional para registrarte.')
+    }
+
+    if (this.#sedes !== null && !this.#sedes.includes(sede)) {
+      throw new TypeError('Selecciona una sede válida.')
     }
 
     const correoNormalizado = correoInstitucional.trim().toLowerCase()
@@ -81,6 +90,7 @@ export default class ServicioAutenticacion {
       correoInstitucional: correoNormalizado,
       semestre,
       programa,
+      sede,
     })
 
     await this.#repositorio.guardarUsuario(estudiante, claveHash)

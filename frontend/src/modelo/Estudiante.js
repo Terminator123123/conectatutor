@@ -7,6 +7,8 @@ import { RolUsuario } from './enums.js'
 /** Usuario que cursa un programa y puede activar un perfil de tutor propio. */
 export default class Estudiante extends Usuario {
   #semestre
+  /** @type {string} Sede registrada del estudiante. */
+  #sede
   #programa
   #perfilTutor
 
@@ -17,11 +19,17 @@ export default class Estudiante extends Usuario {
    * @param {string} datos.nombre Nombre del estudiante.
    * @param {string} datos.correoInstitucional Correo institucional.
    * @param {number} datos.semestre Semestre que cursa.
+   * @param {string} datos.sede Sede del estudiante, como texto no vacío.
    * @param {import('./Programa.js').default} datos.programa Programa académico.
+   * @throws {TypeError} Si la sede no es un texto no vacío.
    */
-  constructor({ id, nombre, correoInstitucional, semestre, programa }) {
+  constructor({ id, nombre, correoInstitucional, semestre, programa, sede }) {
     super({ id, nombre, correoInstitucional })
+    if (typeof sede !== 'string' || sede.trim() === '') {
+      throw new TypeError('La sede del estudiante es obligatoria.')
+    }
     this.#semestre = semestre
+    this.#sede = sede
     this.#programa = programa
     this.#perfilTutor = null
   }
@@ -40,6 +48,14 @@ export default class Estudiante extends Usuario {
    */
   getSemestre() {
     return this.#semestre
+  }
+
+  /**
+   * Obtiene la sede del estudiante.
+   * @returns {string} Sede registrada.
+   */
+  getSede() {
+    return this.#sede
   }
 
   /**
@@ -113,13 +129,14 @@ export default class Estudiante extends Usuario {
   /**
    * Serializa el estudiante y la referencia a su programa.
    * La pertenencia del perfil se guarda mediante estudianteId en perfilesTutor.
-   * @returns {{id: string, nombre: string, correoInstitucional: string, tipo: string, semestre: number, programaId: string}} Datos persistibles.
+   * @returns {{id: string, nombre: string, correoInstitucional: string, tipo: string, semestre: number, sede: string, programaId: string}} Datos persistibles.
    */
   toJSON() {
     return {
       ...super.toJSON(),
       tipo: RolUsuario.ESTUDIANTE,
       semestre: this.#semestre,
+      sede: this.#sede,
       programaId: this.#programa.getId(),
     }
   }
@@ -127,7 +144,7 @@ export default class Estudiante extends Usuario {
   /**
    * Reconstruye un estudiante antes de cargar la colección de perfiles de tutor.
    * PerfilTutor.desdeJSON restablece después la composición mediante activarPerfilTutor.
-   * @param {{id: string, nombre: string, correoInstitucional: string, semestre: number, programaId: string}} datos Datos persistidos.
+   * @param {{id: string, nombre: string, correoInstitucional: string, semestre: number, sede: string, programaId: string}} datos Datos persistidos.
    * @param {{buscarPrograma: function(string): import('./Programa.js').default}} contexto Resolución de programas.
    * @returns {Estudiante} Instancia reconstruida, todavía sin su perfil de tutor.
    */
@@ -137,6 +154,7 @@ export default class Estudiante extends Usuario {
       nombre: datos.nombre,
       correoInstitucional: datos.correoInstitucional,
       semestre: datos.semestre,
+      sede: datos.sede,
       programa: contexto.buscarPrograma(datos.programaId),
     })
   }

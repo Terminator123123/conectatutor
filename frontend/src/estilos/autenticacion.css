@@ -1,0 +1,71 @@
+/* Formularios de acceso y registro con los controles compartidos. */
+.ct-autenticacion {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.ct-autenticacion-logo {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: 96px;
+  object-fit: contain;
+  margin: 0 auto 1.5rem;
+}
+
+.ct-autenticacion-encabezado {
+  margin-bottom: 1.5rem;
+}
+
+.ct-autenticacion-app {
+  margin-bottom: 0.5rem;
+  color: var(--ct-texto-secundario);
+}
+
+.ct-autenticacion form {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.ct-autenticacion-pie {
+  margin: 1.5rem 0 0;
+  text-align: center;
+}
+
+.ct-autenticacion a {
+  color: var(--ct-primario);
+  font-weight: 600;
+}
+
+.ct-uso-opciones {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.ct-uso-opcion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 88px;
+  padding: 0.75rem;
+  border: 2px solid var(--ct-borde);
+  border-radius: 0.5rem;
+  background-color: var(--ct-superficie);
+  color: var(--ct-texto);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ct-uso-opcion[aria-pressed='true'] {
+  border-color: var(--ct-primario);
+  background-color: color-mix(in srgb, var(--ct-primario) 8%, var(--ct-superficie));
+}
+
+.ct-uso-opcion .bi {
+  color: var(--ct-primario);
+  font-size: 1.5rem;
+}

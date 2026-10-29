@@ -1,6 +1,7 @@
 /**
- * Datos institucionales. ÚNICA fuente de nombre, dominio, colores y logo.
- * Valores marcados TEMPORAL o PENDIENTE UNIGUAJIRA se reemplazan con la carpeta "2 Uniguajira".
+ * Datos institucionales oficiales (extraídos de uniguajira.edu.co el 2026-10-29).
+ * ÚNICA fuente de nombre, dominio, colores, logos y tipografía.
+ * Lo marcado PROPUESTA o PENDIENTE UNIGUAJIRA falta por confirmar.
  */
 export const INSTITUCION = Object.freeze({
   nombre: 'Universidad de La Guajira',
@@ -8,6 +9,12 @@ export const INSTITUCION = Object.freeze({
   nombreApp: 'ConectaTutor Uniguajira',
   dominioCorreo: 'uniguajira.edu.co',            // Oficial: uniguajira.edu.co/estudiantes → correo institucional
   sedes: Object.freeze(['Riohacha', 'Maicao', 'Villanueva', 'Fonseca']),
+  canalesPermanencia: Object.freeze({            // Oficial: "Agenda tu tutoría", 14/09/2026
+    Riohacha: 'areapermanencia@uniguajira.edu.co',
+    Maicao: 'permanenciamaicao@uniguajira.edu.co',
+    Villanueva: 'permanenciaygraduacion@uniguajira.edu.co',
+    Fonseca: 'permanenciaygraduacionfonseca@uniguajira.edu.co',
+  }),
   dependenciaVerificadora: 'Bienestar Social Universitario · Área de Permanencia y Graduación Exitosa', // PROPUESTA: confirmar (Reglamento, Acuerdo 026 de 2018, arts. 116 y 120)
   tutoriasGratuitas: null,                       // PENDIENTE UNIGUAJIRA: true | false
   urlTratamientoDatos: 'https://uniguajira.edu.co/actualidad/acuerdo-no-010-de-2018/',

@@ -8,13 +8,16 @@ import './estilos/global.css'
 import './componentes/ui/ui.css'
 import { aplicarTema } from './config/tema.js'
 import App from './App.jsx'
+import ProveedorAutenticacion from './contexto/ProveedorAutenticacion.jsx'
 
 aplicarTema()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <App />
+      <ProveedorAutenticacion>
+        <App />
+      </ProveedorAutenticacion>
     </BrowserRouter>
   </StrictMode>,
 )

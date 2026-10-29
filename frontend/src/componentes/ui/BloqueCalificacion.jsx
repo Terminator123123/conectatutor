@@ -52,12 +52,13 @@ export default function BloqueCalificacion({
   if (total === 0) return <span className="ct-tutor-nuevo">Tutor nuevo</span>
 
   const promedioFormateado = promedio.toFixed(1)
+  const textoTutorias = `${total} ${total === 1 ? 'tutoría' : 'tutorías'}`
 
   return (
     <div
       className="ct-calificacion-lectura"
       role="img"
-      aria-label={`Calificación ${promedioFormateado} de 5, ${total} tutorías`}
+      aria-label={`Calificación ${promedioFormateado} de 5, ${textoTutorias}`}
     >
       <span className="ct-calificacion-estrellas" aria-hidden="true">
         {puntajes.map((puntaje) => {
@@ -66,7 +67,7 @@ export default function BloqueCalificacion({
         })}
       </span>
       <span aria-hidden="true">{promedioFormateado}</span>
-      <span className="ct-calificacion-total" aria-hidden="true">({total} tutorías)</span>
+      <span className="ct-calificacion-total" aria-hidden="true">({textoTutorias})</span>
     </div>
   )
 }
