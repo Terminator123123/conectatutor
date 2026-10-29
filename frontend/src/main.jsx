@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom'
 import 'bootstrap/dist/css/bootstrap.min.css'
 import 'bootstrap-icons/font/bootstrap-icons.css'
 import './estilos/global.css'
+import './componentes/ui/ui.css'
 import { aplicarTema } from './config/tema.js'
 import App from './App.jsx'
 

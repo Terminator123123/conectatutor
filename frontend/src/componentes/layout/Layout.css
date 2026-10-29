@@ -9,20 +9,35 @@
   flex: 1;
 }
 
-.ct-cabecera,
 .ct-pie,
 .ct-navegacion-inferior {
   background-color: var(--ct-superficie);
 }
 
 .ct-cabecera {
-  border-bottom: 1px solid var(--ct-borde);
+  background-color: var(--ct-primario);
+  border-bottom: 0;
+}
+
+.ct-cabecera :focus-visible {
+  outline-color: var(--ct-superficie);
+}
+
+.ct-identidad {
+  min-width: 0;
+}
+
+.ct-logo-institucional {
+  width: auto;
+  flex-shrink: 0;
 }
 
 .ct-nombre-app {
-  color: var(--ct-primario);
+  color: var(--ct-superficie);
+  font-family: var(--ct-fuente-titulos);
   font-size: 1rem;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .ct-enlace {
@@ -49,8 +64,21 @@
 }
 
 .ct-navegacion-superior {
+  flex-wrap: wrap;
   gap: 0.25rem;
   font-size: 0.875rem;
+}
+
+.ct-cabecera .ct-enlace {
+  color: var(--ct-superficie);
+}
+
+.ct-cabecera .ct-enlace:hover,
+.ct-cabecera .ct-enlace-activo {
+  color: var(--ct-superficie);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .ct-navegacion-inferior {
@@ -89,5 +117,11 @@
 @media (max-width: 767.98px) {
   .ct-layout {
     padding-bottom: 64px;
+  }
+}
+
+@media (max-width: 399.98px) {
+  .ct-nombre-app {
+    font-size: 0.875rem;
   }
 }

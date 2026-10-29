@@ -9,7 +9,14 @@ export default defineConfig({
     {
       name: 'titulo-institucional',
       transformIndexHtml() {
-        return [{ tag: 'title', children: INSTITUCION.nombreApp, injectTo: 'head' }]
+        return [
+          { tag: 'title', children: INSTITUCION.nombreApp, injectTo: 'head' },
+          {
+            tag: 'link',
+            attrs: { rel: 'icon', type: 'image/png', href: INSTITUCION.logos.favicon },
+            injectTo: 'head',
+          },
+        ]
       },
     },
   ],

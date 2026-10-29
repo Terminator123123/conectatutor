@@ -34,9 +34,8 @@ src/
   servicios/            reservado para el Bloque 3
   datos/                reservado para el Bloque 3
   contexto/             reservado para el Bloque 5
-  componentes/
-    layout/             layout, navegación y pie de página
-    ui/                 reservado para el Bloque 4
+  componentes/layout/   layout, navegación y pie de página
+  componentes/ui/       UI kit reutilizable (ver /componentes)
   paginas/              once pantallas provisionales
   estilos/              global.css
   App.jsx               rutas
@@ -46,6 +45,6 @@ scripts/                reservado para el Bloque 3
 
 ## Configuración institucional
 
-`src/config/institucion.js` es la única fuente de nombres institucionales, dominio, logo, colores y tipografía. Sus valores TEMPORAL y PENDIENTE UNIGUAJIRA requieren confirmación institucional. `tema.js` genera las variables CSS `--ct-*`; Vite toma el título HTML de `INSTITUCION.nombreApp`.
+`src/config/institucion.js` es la única fuente de nombres institucionales, dominio, logo, colores y tipografía. Datos oficiales de Uniguajira extraídos de uniguajira.edu.co el 2026-10-29. Pendiente: si las tutorías son gratuitas y confirmar la dependencia verificadora. `tema.js` genera las variables CSS `--ct-*`; Vite toma el título HTML de `INSTITUCION.nombreApp`.
 
 Las rutas usan BrowserRouter. Al publicar, el servidor debe responder con `index.html` para las rutas del frontend. La ruta `/componentes` es provisional y las rutas de tutor reciben el identificador mediante `useParams`.

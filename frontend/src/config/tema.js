@@ -9,4 +9,13 @@ export function aplicarTema() {
     raiz.style.setProperty(`--ct-${nombreVariable}`, valor)
   })
   raiz.style.setProperty('--ct-fuente', INSTITUCION.tipografia)
+  raiz.style.setProperty('--ct-fuente-titulos', INSTITUCION.tipografiaTitulos)
+
+  if (!document.getElementById('ct-fuentes')) {
+    const fuentes = document.createElement('link')
+    fuentes.id = 'ct-fuentes'
+    fuentes.rel = 'stylesheet'
+    fuentes.href = INSTITUCION.urlFuentes
+    document.head.appendChild(fuentes)
+  }
 }

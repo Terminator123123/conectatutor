@@ -4,6 +4,16 @@ body {
   background-color: var(--ct-fondo);
   color: var(--ct-texto);
   font-family: var(--ct-fuente);
+  line-height: 1.6;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--ct-fuente-titulos);
 }
 
 :focus-visible {
@@ -31,8 +41,8 @@ body {
 }
 
 .btn-ct-primario:hover {
-  border-color: var(--ct-primario-claro);
-  background-color: var(--ct-primario-claro);
+  border-color: var(--ct-primario-oscuro);
+  background-color: var(--ct-primario-oscuro);
   color: var(--ct-superficie);
 }
 
@@ -42,6 +52,6 @@ body {
 }
 
 .btn-ct-secundario:hover {
-  background-color: var(--ct-fondo);
+  background-color: var(--ct-primario-suave);
   color: var(--ct-primario);
 }

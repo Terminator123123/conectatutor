@@ -29,8 +29,16 @@ function BarraNavegacion() {
   return (
     <>
       <header className="ct-cabecera">
-        <div className="container d-flex align-items-center justify-content-between gap-3 py-3">
-          <span className="ct-nombre-app">{INSTITUCION.nombreApp}</span>
+        <div className="container d-flex flex-wrap align-items-center justify-content-between gap-3 py-3">
+          <div className="ct-identidad d-flex align-items-center gap-2">
+            <img
+              className="ct-logo-institucional"
+              src={INSTITUCION.logos.horizontal}
+              alt={INSTITUCION.nombre}
+              height="36"
+            />
+            <span className="ct-nombre-app">{INSTITUCION.nombreApp}</span>
+          </div>
           <nav className="ct-navegacion-superior d-none d-md-flex" aria-label="Navegación principal">
             {renderizarEnlaces()}
           </nav>

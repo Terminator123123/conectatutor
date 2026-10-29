@@ -359,10 +359,10 @@ async function ejecutar() {
     }
   })
 
-  prueba('Los datos iniciales tienen 3 programas, 12 materias, 6 estudiantes, 1 administrador y 4 sesiones', async () => {
+  prueba('Los datos iniciales tienen 4 programas, 32 materias, 6 estudiantes, 1 administrador y 4 sesiones', async () => {
     const { almacen, repositorio, usuarios } = iniciales
-    assert.equal((await repositorio.listarProgramas()).length, 3)
-    assert.equal((await repositorio.listarMaterias()).length, 12)
+    assert.equal((await repositorio.listarProgramas()).length, 4)
+    assert.equal((await repositorio.listarMaterias()).length, 32)
     assert.equal(usuarios.filter((usuario) => usuario instanceof Estudiante).length, 6)
     assert.equal(usuarios.filter((usuario) => usuario instanceof Administrador).length, 1)
     assert.equal((await repositorio.listarTutoresVerificados()).length, 3)
@@ -493,7 +493,7 @@ async function ejecutar() {
       return true
     })
     assert.deepEqual(clavesRepositorio.map((clave) => almacen.getItem(clave)), anteriores)
-    assert.equal((await repositorio.listarProgramas()).length, 3)
+    assert.equal((await repositorio.listarProgramas()).length, 4)
   })
   prueba('M1: una sesión con perfil inexistente se rechaza y las sesiones guardadas siguen legibles', async () => {
     const { almacen, repositorio, usuarios } = await prepararRepositorio()
