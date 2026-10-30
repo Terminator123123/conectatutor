@@ -23,7 +23,7 @@ export const INSTITUCION = Object.freeze({
     vertical: '/logos/logo-vertical.webp',       // A todo color: sobre fondos claros
     favicon: '/favicon.png',
   }),
-  colores: Object.freeze({                       // Ver "3 Diseno (Claude)/Design system Uniguajira.md"
+  colores: Object.freeze({                       // Paleta del design system de Uniguajira (ver README, sección 9).
     primario: '#01616C',
     primarioOscuro: '#054F59',
     primarioSuave: '#E8F4F6',
