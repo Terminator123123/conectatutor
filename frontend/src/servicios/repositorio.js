@@ -207,18 +207,22 @@ export function crearRepositorio(almacen = globalThis.localStorage ?? almacenEnM
     },
 
     /**
-     * Lista los perfiles verificados que ofrecen una materia y pertenecen a un programa.
+     * Lista perfiles verificados por materia, programa, sede y día; ignora filtros vacíos.
      * @param {object} [filtros={}] Filtros opcionales.
      * @param {string} [filtros.materiaId] Materia ofrecida por el tutor.
      * @param {string} [filtros.programaId] Programa académico del dueño del perfil.
+     * @param {string} [filtros.sede] Sede del estudiante tutor.
+     * @param {string} [filtros.dia] Día con al menos una franja disponible.
      * @returns {Promise<PerfilTutor[]>} Perfiles verificados que cumplen los filtros.
      */
-    async listarTutoresVerificados({ materiaId, programaId } = {}) {
+    async listarTutoresVerificados({ materiaId, programaId, sede, dia } = {}) {
       await esperar()
       return [...reconstruir().perfilesTutor.values()].filter(
         (perfil) => perfil.estaVerificado()
-          && (materiaId == null || perfil.getMaterias().some((materia) => materia.getId() === materiaId))
-          && (programaId == null || perfil.getEstudiante().getPrograma().getId() === programaId),
+          && (!materiaId || perfil.getMaterias().some((materia) => materia.getId() === materiaId))
+          && (!programaId || perfil.getEstudiante().getPrograma().getId() === programaId)
+          && (!sede || perfil.getEstudiante().getSede() === sede)
+          && (!dia || perfil.getDisponibilidad().some((franja) => franja.getDia() === dia)),
       )
     },
 
@@ -296,6 +300,18 @@ export function crearRepositorio(almacen = globalThis.localStorage ?? almacenEnM
       return [...reconstruir().sesiones.values()].filter(
         (sesion) => sesion.getSolicitante().getId() === usuarioId
           || sesion.getTutor().getEstudiante().getId() === usuarioId,
+      )
+    },
+
+    /**
+     * Lista las sesiones atendidas por un perfil de tutor.
+     * @param {string} perfilTutorId Identificador del perfil del tutor.
+     * @returns {Promise<Sesion[]>} Sesiones de ese perfil.
+     */
+    async listarSesionesDelTutor(perfilTutorId) {
+      await esperar()
+      return [...reconstruir().sesiones.values()].filter(
+        (sesion) => sesion.getTutor().getId() === perfilTutorId,
       )
     },
 

@@ -1,0 +1,48 @@
+/* Composición adaptable del recorrido de acompañamiento. */
+.ct-solicitante { min-width: 0; }
+.ct-solicitante h1 { margin-bottom: 1rem; }
+.ct-solicitante h2 { font-size: 1.5rem; }
+.ct-solicitante a, .ct-solicitante p { overflow-wrap: anywhere; }
+.ct-acciones { display: flex; flex-wrap: wrap; gap: 1rem; }
+.ct-inicio section + section { margin-top: 3rem; }
+.ct-inicio-presentacion { max-width: 800px; padding-block: 1.5rem; }
+.ct-inicio-presentacion h1 { font-size: clamp(2rem, 4vw, 3rem); }
+.ct-pasos { display: grid; gap: 1.5rem; padding-left: 1.5rem; margin-top: 1.5rem; }
+.ct-pasos li { padding-left: .5rem; }
+.ct-pasos i { color: var(--ct-primario); font-size: 1.5rem; }
+.ct-pasos h3 { margin-top: .5rem; font-size: 1.2rem; }
+.ct-canales { padding-left: 1.25rem; }
+.ct-canales li { margin-block: .75rem; }
+.ct-canales a { display: inline-block; padding-block: .5rem; }
+.ct-filtros { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-block: 1.5rem; }
+.ct-filtros .ct-campo { min-width: 0; }
+.ct-rejilla-tutores { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+.ct-volver { display: inline-flex; align-items: center; min-height: 44px; margin-bottom: 1rem; }
+.ct-perfil-encabezado { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 1rem; margin-block: 1rem 2rem; }
+.ct-perfil-identidad { flex: 1; min-width: 0; }
+.ct-perfil-identidad h1 { font-size: clamp(1.65rem, 3vw, 2.25rem); }
+.ct-detalle section { margin-top: 2rem; }
+.ct-texto-secundario { color: var(--ct-texto-secundario); }
+.ct-resenas { list-style: none; padding: 0; }
+.ct-resenas li { padding-block: 1rem; border-bottom: 1px solid var(--ct-borde); }
+.ct-perfil-accion { position: fixed; left: 0; right: 0; bottom: 64px; z-index: 1020; padding: .75rem 1rem; background: var(--ct-superficie); border-top: 1px solid var(--ct-borde); }
+.ct-perfil-accion a { width: 100%; }
+.ct-detalle-con-accion { padding-bottom: 80px; }
+.ct-formulario-solicitud { max-width: 760px; margin-inline: auto; }
+.ct-formulario-solicitud form { display: grid; gap: 1.25rem; }
+.ct-selector-contenedor { padding: 0; margin: 0; border: 0; min-width: 0; }
+.ct-grupo-sesiones { margin-top: 2rem; }
+.ct-lista-sesiones { display: grid; gap: 1rem; }
+.ct-aviso { padding: 1rem; margin-block: 1rem; border-left: 4px solid var(--ct-exito); background: var(--ct-superficie); }
+.ct-apoyo { margin-top: 2rem; }
+.ct-apoyo a { display: inline-block; padding-block: .5rem; }
+@media (min-width: 768px) {
+  .ct-perfil-accion { position: static; padding: 0; border: 0; background: transparent; }
+  .ct-detalle-con-accion { padding-bottom: 0; }
+  .ct-pasos { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2rem; }
+  .ct-filtros { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ct-rejilla-tutores { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1280px) {
+  .ct-rejilla-tutores { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

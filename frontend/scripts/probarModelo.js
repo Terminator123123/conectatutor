@@ -12,6 +12,7 @@ import Usuario from '../src/modelo/Usuario.js'
 import { DiaSemana, EstadoSesion, EstadoVerificacion, RolUsuario } from '../src/modelo/enums.js'
 import ServicioAutenticacion from '../src/servicios/ServicioAutenticacion.js'
 import { almacenEnMemoria, crearRepositorio } from '../src/servicios/repositorio.js'
+import { proximasOcurrencias } from '../src/servicios/agenda.js'
 
 const dominioPrueba = 'conectatutor.test'
 const fechaPrueba = '2026-11-02T14:00:00.000Z'
@@ -378,7 +379,7 @@ async function ejecutar() {
     }
   })
 
-  prueba('Los datos iniciales tienen 4 programas, 32 materias, 6 estudiantes, 1 administrador y 4 sesiones', async () => {
+  prueba('Los datos iniciales tienen 4 programas, 32 materias, 6 estudiantes, 1 administrador y 5 sesiones', async () => {
     const { almacen, repositorio, usuarios } = iniciales
     assert.equal((await repositorio.listarProgramas()).length, 4)
     assert.equal((await repositorio.listarMaterias()).length, 32)
@@ -388,10 +389,39 @@ async function ejecutar() {
     assert.equal((await repositorio.listarPerfilesPendientes()).length, 1)
     assert.equal(JSON.parse(almacen.getItem('ct.perfilesTutor')).length, 4)
     const sesiones = JSON.parse(almacen.getItem('ct.sesiones'))
-    assert.equal(sesiones.length, 4)
+    assert.equal(sesiones.length, 5)
     assert.equal(new Set(sesiones.map((sesion) => sesion.estado)).size, 4)
     assert.equal(sesiones.filter((sesion) => sesion.estado === EstadoSesion.FINALIZADA && sesion.calificacion !== null).length, 1)
     assert.ok(usuarios.every((usuario) => usuario.getCorreo().endsWith(`@${dominioPrueba}`)))
+  })
+  prueba('Los filtros por sede y día cumplen las condiciones y los filtros vacíos no limitan', async () => {
+    const { repositorio } = iniciales
+    const todos = await repositorio.listarTutoresVerificados()
+    const sede = todos[0].getEstudiante().getSede()
+    const porSede = await repositorio.listarTutoresVerificados({ sede })
+    assert.deepEqual(porSede.map((perfil) => perfil.getId()), todos.filter((perfil) => perfil.getEstudiante().getSede() === sede).map((perfil) => perfil.getId()))
+    for (const dia of Object.values(DiaSemana)) {
+      const resultado = await repositorio.listarTutoresVerificados({ dia })
+      assert.deepEqual(resultado.map((perfil) => perfil.getId()), todos.filter((perfil) => perfil.getDisponibilidad().some((franja) => franja.getDia() === dia)).map((perfil) => perfil.getId()))
+    }
+    for (const vacio of ['', null, undefined]) {
+      assert.deepEqual((await repositorio.listarTutoresVerificados({ sede: vacio, dia: vacio, materiaId: vacio, programaId: vacio })).map((perfil) => perfil.getId()), todos.map((perfil) => perfil.getId()))
+    }
+  })
+  prueba('listarSesionesDelTutor devuelve solo las sesiones del perfil indicado', async () => {
+    const { repositorio, almacen } = iniciales
+    for (const perfil of await repositorio.listarTutoresVerificados()) {
+      const sesiones = await repositorio.listarSesionesDelTutor(perfil.getId())
+      assert.ok(sesiones.every((sesion) => sesion.getTutor().getId() === perfil.getId()))
+      assert.equal(sesiones.length, JSON.parse(almacen.getItem('ct.sesiones')).filter((sesion) => sesion.perfilTutorId === perfil.getId()).length)
+    }
+    assert.deepEqual(await repositorio.listarSesionesDelTutor('inexistente'), [])
+  })
+  prueba('La agenda encuentra los próximos lunes a las 09:00 en Colombia', () => {
+    const franja = new FranjaHoraria({ dia: DiaSemana.LUNES, horaInicio: '09:00', horaFin: '10:00' })
+    const resultado = proximasOcurrencias(franja, new Date('2026-10-29T12:00:00-05:00'))
+    assert.deepEqual(resultado.map(({ clave }) => clave), ['2026-11-02', '2026-11-09'])
+    assert.equal(resultado[0].fecha.toISOString(), '2026-11-02T14:00:00.000Z')
   })
   prueba('Las siete cuentas iniciales acceden con Demo1234 y hashes SHA-256', async () => {
     const servicio = new ServicioAutenticacion(iniciales.repositorio, dominioPrueba)

@@ -53,6 +53,8 @@ Las rutas usan BrowserRouter. Al publicar, el servidor debe responder con `index
 
 Las siete cuentas se cargan solas la primera vez. Todas usan la contraseña `Demo1234`. Los correos utilizan el dominio actual de `src/config/institucion.js`.
 
+Felipe Castaño tiene una tutoría finalizada sin calificar, para probar la calificación.
+
 | Nombre | Correo | Rol | Perfil de tutor |
 |---|---|---|---|
 | Andrea Salcedo | andrea.salcedo@uniguajira.edu.co | Estudiante | Verificado |
@@ -64,3 +66,11 @@ Las siete cuentas se cargan solas la primera vez. Todas usan la contraseña `Dem
 | Gabriela Montes | gabriela.montes@uniguajira.edu.co | Coordinación | No aplica |
 
 Para reiniciar los datos, borra las claves `ct.*` del `localStorage` del navegador y recarga la aplicación. La sesión se conserva al recargar y se elimina con **Salir**.
+
+## Recorrido del solicitante
+
+1. Ingresa con Elena Lozano y `Demo1234`. En **Buscar tutores**, la sede inicial es Riohacha; puedes combinar sede, programa, materia y día o buscar por nombre sin tildes.
+2. Abre el perfil de **Andrea Salcedo** y pulsa **Solicitar tutoría**. Elige una materia, una fecha y franja libre, y escribe un tema de 10 a 300 caracteres.
+3. Envía la solicitud: aparece el aviso de envío y la tutoría **Pendiente** en **Mis sesiones → Mis solicitudes → Próximas**. Al recargar permanece guardada. Puedes cancelarla indicando un motivo de al menos cinco caracteres.
+4. Sal e ingresa con **Felipe Castaño** y `Demo1234`. En **Mis sesiones → Historial**, pulsa **Calificar** en la tutoría finalizada con **Bruno Valdés**, elige las estrellas y, si quieres, escribe una reseña de hasta 300 caracteres.
+5. Envía la calificación y consulta el perfil de Bruno (en búsqueda, selecciona Maicao o Todas las sedes). El promedio y el total se actualizan; la reseña aparece sin identificar a quien la escribió.

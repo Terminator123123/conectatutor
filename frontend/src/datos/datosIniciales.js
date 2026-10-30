@@ -136,6 +136,13 @@ export async function crearDatosIniciales(dominioCorreo) {
   )
   cancelada.cancelar('El solicitante necesita cambiar la fecha.')
 
+  const sinCalificar = estudiantes[5].solicitarSesion(
+    perfilesTutor[1], materias[9], franjas[1],
+    new Date('2026-10-26T10:00:00-05:00'), 'Resolver dudas del taller de planeación',
+  )
+  sinCalificar.confirmar()
+  sinCalificar.finalizar()
+
   const usuarios = [...estudiantes, administrador]
   // Hash SHA-256 de Demo1234 para las cuentas de esta demo académica.
   const resumen = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('Demo1234'))
@@ -147,7 +154,7 @@ export async function crearDatosIniciales(dominioCorreo) {
     materias,
     usuarios,
     perfilesTutor,
-    sesiones: [pendiente, confirmada, finalizada, cancelada],
+    sesiones: [pendiente, confirmada, finalizada, cancelada, sinCalificar],
     clavesHash,
   }
 }
