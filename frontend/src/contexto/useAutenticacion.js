@@ -1,3 +1,4 @@
+// Obtiene de forma segura el contexto compartido de autenticación.
 import { useContext } from 'react'
 import { ContextoAutenticacion } from './ContextoAutenticacion.js'
 

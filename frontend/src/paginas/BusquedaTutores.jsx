@@ -1,4 +1,5 @@
 // Busca tutores verificados con filtros de sede, programa, materia y día.
+import { useTituloPagina } from '../hooks/useTituloPagina.js'
 import { useEffect, useState } from 'react'
 import { INSTITUCION } from '../config/institucion.js'
 import { useAutenticacion } from '../contexto/useAutenticacion.js'
@@ -16,6 +17,7 @@ const normalizar = (texto) => texto.normalize('NFD').replace(/[\u0300-\u036f]/g,
 
 /** @returns {import('react').ReactElement} Búsqueda de tutores verificados. */
 export default function BusquedaTutores() {
+  useTituloPagina('Buscar tutores')
   const { usuario } = useAutenticacion()
   const [filtros, setFiltros] = useState({ sede: usuario.getSede(), programaId: '', materiaId: '', dia: '' })
   const [busqueda, setBusqueda] = useState('')

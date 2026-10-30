@@ -1,4 +1,5 @@
 // Organiza solicitudes y tutorías ofrecidas con pestañas que conservan su URL.
+import { useTituloPagina } from '../hooks/useTituloPagina.js'
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { INSTITUCION } from '../config/institucion.js'
@@ -13,6 +14,7 @@ import '../estilos/tutor.css'
 
 /** @returns {import('react').ReactElement} Sesiones del estudiante en sus dos funciones. */
 export default function MisSesiones() {
+  useTituloPagina('Mis sesiones')
   const { usuario } = useAutenticacion()
   const usuarioId = usuario.getId()
   const location = useLocation()

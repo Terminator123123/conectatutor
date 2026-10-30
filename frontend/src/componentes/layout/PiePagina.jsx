@@ -3,6 +3,7 @@ import { INSTITUCION } from '../../config/institucion.js'
 
 const anioActual = new Date().getFullYear()
 
+/** @returns {import('react').ReactElement} Pie institucional y enlace al tratamiento de datos. */
 function PiePagina() {
   return (
     <footer className="ct-pie">

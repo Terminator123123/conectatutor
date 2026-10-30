@@ -1,4 +1,5 @@
 // Inicia sesión y recupera el destino solicitado cuando corresponde al rol.
+import { useTituloPagina } from '../hooks/useTituloPagina.js'
 import { useState } from 'react'
 import { Link, matchPath, useLocation, useNavigate } from 'react-router-dom'
 import { INSTITUCION } from '../config/institucion.js'
@@ -28,6 +29,7 @@ function destinoPermitido(destino, usuario) {
 
 /** @returns {import('react').ReactElement} Formulario de ingreso institucional. */
 export default function Ingreso() {
+  useTituloPagina('Bienvenido de vuelta')
   const [campos, setCampos] = useState({ correoInstitucional: '', clave: '' })
   const [tocados, setTocados] = useState({})
   const [enviando, setEnviando] = useState(false)

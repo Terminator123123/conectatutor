@@ -32,7 +32,7 @@ export default function TarjetaTutor({
         <Avatar nombre={nombre} />
         <div className="ct-tarjeta-identidad">
           <h3>{nombre}</h3>
-          <p>{programa} · {semestre}º semestre</p>
+          <p>{programa} · {semestre}.º semestre</p>
         </div>
       </div>
       <div className="ct-lista-chips">

@@ -1,4 +1,6 @@
 // Presenta la oferta, disponibilidad y reseñas anónimas de un tutor.
+import { useTituloPagina } from '../hooks/useTituloPagina.js'
+import Boton from '../componentes/ui/Boton.jsx'
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAutenticacion } from '../contexto/useAutenticacion.js'
@@ -18,6 +20,8 @@ export default function DetalleTutor() {
   const { id } = useParams()
   const { usuario } = useAutenticacion()
   const [datos, setDatos] = useState(null)
+  const [todasLasResenas, setTodasLasResenas] = useState(false)
+  useTituloPagina(datos?.perfil?.getEstudiante().getNombre() ?? 'Perfil del tutor')
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
   const [intento, setIntento] = useState(0)
@@ -26,6 +30,7 @@ export default function DetalleTutor() {
     async function cargar() {
       setCargando(true)
       setError('')
+      setTodasLasResenas(false)
       try {
         const [perfil, sesiones] = await Promise.all([
           repositorio.obtenerPerfilTutor(id), repositorio.listarSesionesDelTutor(id),
@@ -58,7 +63,7 @@ export default function DetalleTutor() {
         <Avatar nombre={estudiante.getNombre()} tamano={72} />
         <div className="ct-perfil-identidad">
           <h1>{estudiante.getNombre()}</h1>
-          <p>{estudiante.getPrograma().getNombre()} · {estudiante.getSemestre()}.º semestre · {estudiante.getSede()}</p>
+          <p>{estudiante.getPrograma().getNombre()} · {estudiante.getSemestre()}.º semestre · {estudiante.getSede()}</p>
           <BloqueCalificacion promedio={perfil.calcularPromedio(sesiones)} total={calificaciones.length} />
           <p className="ct-tarifa ct-tarifa-gratuita">Gratuita</p>
         </div>
@@ -69,9 +74,11 @@ export default function DetalleTutor() {
       <section><h2>Sobre mí</h2><p>{perfil.getBiografia()}</p></section>
       <section><h2>Materias</h2><div className="ct-lista-chips">{perfil.getMaterias().map((materia) => <ChipMateria key={materia.getId()} nombre={materia.getNombre()} />)}</div></section>
       <section><h2>Disponibilidad</h2>{franjas.length ? <ul>{franjas.map((franja, indice) => <li key={indice}>{formatearFranja(franja)}</li>)}</ul> : <p>Este tutor no tiene horarios disponibles.</p>}</section>
-      <section><h2>Reseñas</h2>{calificaciones.length ? <ul className="ct-resenas">{calificaciones.map((calificacion) => (
+      <section><h2>Reseñas</h2>{calificaciones.length ? <ul className="ct-resenas">{(todasLasResenas ? calificaciones : calificaciones.slice(0, 5)).map((calificacion) => (
         <li key={calificacion.getId()}><p><span aria-hidden="true">★ </span>{calificacion.getPuntaje()} de 5</p><p>{calificacion.getResena()}</p><p className="ct-texto-secundario">{formatearFecha(calificacion.getFecha())}</p></li>
-      ))}</ul> : <p>Todavía no tiene reseñas.</p>}</section>
+      ))}</ul> : <p>Todavía no tiene reseñas.</p>}
+        {!todasLasResenas && calificaciones.length > 5 && <Boton variante="secundario" alHacerClic={() => setTodasLasResenas(true)}>Ver todas las reseñas ({calificaciones.length})</Boton>}
+      </section>
     </article>
   )
 }

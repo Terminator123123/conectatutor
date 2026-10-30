@@ -1,4 +1,5 @@
 // Presenta el acompañamiento y los canales de Permanencia según el rol.
+import { useTituloPagina } from '../hooks/useTituloPagina.js'
 import { Link } from 'react-router-dom'
 import { INSTITUCION } from '../config/institucion.js'
 import { useAutenticacion } from '../contexto/useAutenticacion.js'
@@ -7,6 +8,7 @@ import '../estilos/solicitante.css'
 
 /** @returns {import('react').ReactElement} Presentación y canales oficiales. */
 export default function Inicio() {
+  useTituloPagina('')
   const { usuario, cargando } = useAutenticacion()
   return (
     <div className="ct-solicitante ct-inicio">

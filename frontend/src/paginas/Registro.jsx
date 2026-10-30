@@ -1,4 +1,5 @@
 // Registra estudiantes con validación en vivo y entrada automática.
+import { useTituloPagina } from '../hooks/useTituloPagina.js'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { INSTITUCION } from '../config/institucion.js'
@@ -13,6 +14,7 @@ import '../estilos/autenticacion.css'
 
 /** @returns {import('react').ReactElement} Formulario de creación de cuenta. */
 export default function Registro() {
+  useTituloPagina('Crea tu cuenta')
   const [campos, setCampos] = useState({
     nombre: '', correoInstitucional: '', clave: '', confirmacion: '', programa: '', semestre: '', sede: '',
   })

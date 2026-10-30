@@ -1,3 +1,4 @@
+// Persiste y reconstruye el dominio con una interfaz asíncrona y versión de datos.
 import { INSTITUCION } from '../config/institucion.js'
 import { crearDatosIniciales } from '../datos/datosIniciales.js'
 import Administrador from '../modelo/Administrador.js'
@@ -8,7 +9,11 @@ import Programa from '../modelo/Programa.js'
 import Sesion from '../modelo/Sesion.js'
 import { EstadoVerificacion, RolUsuario } from '../modelo/enums.js'
 
+// Súbela cuando cambie la forma de los datos guardados o los datos iniciales.
+export const VERSION_DATOS = 1
+
 const claves = Object.freeze({
+  version: 'ct.version',
   programas: 'ct.programas',
   materias: 'ct.materias',
   usuarios: 'ct.usuarios',
@@ -138,7 +143,7 @@ export function crearRepositorio(almacen = globalThis.localStorage ?? almacenEnM
       buscarEstudiante: (id) => {
         const usuario = buscarReferencia(usuarios, 'Estudiante', id)
 
-        if (!(usuario instanceof Estudiante)) {
+        if (usuario.getRol() !== RolUsuario.ESTUDIANTE) {
           throw new Error(`Referencia inexistente: Estudiante ${id}`)
         }
 
@@ -351,6 +356,20 @@ export function crearRepositorio(almacen = globalThis.localStorage ?? almacenEnM
     },
 
     /**
+     * Renueva los datos incompatibles antes de reconstruir instancias del dominio.
+     * @returns {Promise<boolean>} Verdadero si reinició las colecciones anteriores.
+     */
+    async asegurarVersion() {
+      await esperar()
+      const colecciones = ['programas', 'materias', 'usuarios', 'perfilesTutor', 'sesiones']
+      const tieneDatos = colecciones.some((coleccion) => leerColeccion(coleccion).length > 0)
+      const reiniciarDatos = tieneDatos && almacen.getItem(claves.version) !== String(VERSION_DATOS)
+      if (reiniciarDatos) await this.reiniciar()
+      almacen.setItem(claves.version, String(VERSION_DATOS))
+      return reiniciarDatos
+    },
+
+    /**
      * Carga ejemplos únicamente cuando las cinco colecciones están vacías.
      * @param {string} [dominioCorreo=INSTITUCION.dominioCorreo] Dominio utilizado para las cuentas de ejemplo.
      * @returns {Promise<boolean>} Verdadero si se cargaron los datos; falso si ya había registros.
@@ -376,7 +395,7 @@ export function crearRepositorio(almacen = globalThis.localStorage ?? almacenEnM
     },
 
     /**
-     * Elimina únicamente las seis claves del repositorio.
+     * Elimina únicamente las siete claves del repositorio.
      * @returns {Promise<void>} Finalización del reinicio.
      */
     async reiniciar() {

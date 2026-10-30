@@ -1,3 +1,4 @@
+// Registra y autentica cuentas institucionales con contraseñas resumidas.
 import ErrorDeNegocio from '../modelo/ErrorDeNegocio.js'
 import Estudiante from '../modelo/Estudiante.js'
 

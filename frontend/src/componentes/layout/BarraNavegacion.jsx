@@ -17,6 +17,7 @@ const enlaces = [
   { ruta: null, etiqueta: 'Salir', icono: 'bi-box-arrow-right', roles: [RolUsuario.ESTUDIANTE, RolUsuario.ADMINISTRADOR] },
 ]
 
+/** @returns {import('react').ReactElement} Navegación adaptable según el rol y el estado de autenticación. */
 function BarraNavegacion() {
   const { usuario, cargando, cerrarSesion } = useAutenticacion()
   const navigate = useNavigate()

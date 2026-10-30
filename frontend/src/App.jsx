@@ -16,6 +16,7 @@ import VerificacionTutores from './paginas/VerificacionTutores.jsx'
 import CatalogoComponentes from './paginas/CatalogoComponentes.jsx'
 import NoEncontrada from './paginas/NoEncontrada.jsx'
 
+/** @returns {import('react').ReactElement} Rutas públicas y protegidas de la aplicación. */
 function App() {
   return (
     <Routes>

@@ -138,3 +138,17 @@
     font-size: 0.875rem;
   }
 }
+
+.ct-saltar { position: fixed; left: 1rem; top: -100px; z-index: 1100; display: inline-flex; align-items: center; min-height: 44px; padding: .5rem 1rem; background: var(--ct-superficie); color: var(--ct-primario); }
+.ct-saltar:focus { top: 1rem; }
+.ct-usuario-navegacion { display: none; }
+@media (min-width: 992px) { .ct-usuario-navegacion { display: inline; } }
+@media (min-width: 768px) and (max-width: 991.98px) {
+  .ct-cabecera > .container { flex-wrap: nowrap !important; gap: .5rem !important; }
+  .ct-identidad { gap: .35rem !important; }
+  .ct-logo-institucional { max-width: 92px; height: auto; }
+  .ct-nombre-app { font-size: .875rem; }
+  .ct-navegacion-superior { flex-wrap: nowrap; gap: 0; font-size: .8125rem; flex-shrink: 0; }
+}
+
+.ct-pie a { display: inline-flex; align-items: center; min-height: 44px; }

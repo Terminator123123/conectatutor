@@ -1,4 +1,5 @@
 // Expone las variantes y las interacciones del kit reutilizable en una página interna.
+import { useTituloPagina } from '../hooks/useTituloPagina.js'
 import { useState } from 'react'
 import { EstadoSesion, EstadoVerificacion } from '../modelo/enums.js'
 import Avatar from '../componentes/ui/Avatar.jsx'
@@ -64,6 +65,7 @@ const mensajesErrorMuestra = ['No pudimos cargar esta información de muestra.',
  * @returns {import('react').ReactElement} Catálogo interno del kit de interfaz.
  */
 export default function CatalogoComponentes() {
+  useTituloPagina('Catálogo de componentes')
   const [campos, setCampos] = useState(camposMuestra)
   const [busqueda, setBusqueda] = useState('')
   const [ultimaBusqueda, setUltimaBusqueda] = useState(null)

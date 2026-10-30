@@ -1,3 +1,4 @@
+// Crea los programas, materias, cuentas y sesiones de la demostración.
 import Administrador from '../modelo/Administrador.js'
 import Estudiante from '../modelo/Estudiante.js'
 import FranjaHoraria from '../modelo/FranjaHoraria.js'

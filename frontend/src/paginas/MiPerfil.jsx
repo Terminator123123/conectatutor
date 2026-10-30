@@ -1,4 +1,5 @@
 // Administra la oferta del estudiante tutor y su revisión por Coordinación.
+import { useTituloPagina } from '../hooks/useTituloPagina.js'
 import { useEffect, useState } from 'react'
 import { INSTITUCION } from '../config/institucion.js'
 import { useAutenticacion } from '../contexto/useAutenticacion.js'
@@ -26,6 +27,7 @@ const ordenarFranjas = (a, b) => Object.keys(ETIQUETAS_DIA).indexOf(a.getDia()) 
 
 /** @returns {import('react').ReactElement} Datos personales y edición de la oferta propia. */
 export default function MiPerfil() {
+  useTituloPagina('Mi perfil')
   const { usuario } = useAutenticacion()
   const usuarioId = usuario.getId()
   const [datos, setDatos] = useState(null)
@@ -137,7 +139,7 @@ export default function MiPerfil() {
       <h2>Tus datos</h2>
       <dl className="ct-datos-personales">{[
         ['Nombre', estudiante.getNombre()], ['Correo institucional', estudiante.getCorreo()],
-        ['Programa', estudiante.getPrograma().getNombre()], ['Semestre', `${estudiante.getSemestre()}.º semestre`], ['Sede', estudiante.getSede()],
+        ['Programa', estudiante.getPrograma().getNombre()], ['Semestre', `${estudiante.getSemestre()}.º semestre`], ['Sede', estudiante.getSede()],
       ].map(([etiqueta, valor]) => <div key={etiqueta}><dt>{etiqueta}</dt><dd>{valor}</dd></div>)}</dl>
       <p className="ct-texto-secundario ct-apoyo">Para corregir estos datos, escribe al Área de Permanencia de tu sede: <a href={`mailto:${correo}`}>{correo}</a></p>
     </section>

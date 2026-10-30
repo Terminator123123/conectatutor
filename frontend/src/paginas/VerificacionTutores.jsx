@@ -1,4 +1,5 @@
 // Revisa perfiles de tutor y presenta cifras agregadas de Permanencia por sede.
+import { useTituloPagina } from '../hooks/useTituloPagina.js'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { INSTITUCION } from '../config/institucion.js'
@@ -29,6 +30,7 @@ const ordenarFranjas = (a, b) => Object.keys(ETIQUETAS_DIA).indexOf(a.getDia()) 
 
 /** @returns {import('react').ReactElement} Revisión institucional y panel sin datos individuales. */
 export default function VerificacionTutores() {
+  useTituloPagina('Coordinación')
   const { usuario } = useAutenticacion()
   const [parametros, setParametros] = useSearchParams()
   const vista = parametros.get('vista') === 'panel' ? 'panel' : 'perfiles'
@@ -139,7 +141,7 @@ export default function VerificacionTutores() {
         {cargando ? <Cargando texto="Cargando perfiles…" /> : errorCarga ? <MensajeError mensaje={errorCarga} alReintentar={() => setIntento((valor) => valor + 1)} /> : !filtrados.length ? <EstadoVacio icono="bi-shield-check" titulo="No hay perfiles por verificar" texto="Cuando un estudiante active su perfil de tutor, aparecerá aquí." /> : <div className="ct-lista-perfiles">{filtrados.map((perfil) => {
           const estudiante = perfil.getEstudiante()
           return <article key={perfil.getId()} className="ct-revision-perfil">
-            <header className="ct-perfil-encabezado"><Avatar nombre={estudiante.getNombre()} tamano={64} /><div className="ct-perfil-identidad"><h3>{estudiante.getNombre()}</h3><p>{estudiante.getCorreo()}</p><p className="ct-texto-secundario">{estudiante.getPrograma().getNombre()} · {estudiante.getSemestre()}.º semestre · {estudiante.getSede()}</p></div></header>
+            <header className="ct-perfil-encabezado"><Avatar nombre={estudiante.getNombre()} tamano={64} /><div className="ct-perfil-identidad"><h3>{estudiante.getNombre()}</h3><p>{estudiante.getCorreo()}</p><p className="ct-texto-secundario">{estudiante.getPrograma().getNombre()} · {estudiante.getSemestre()}.º semestre · {estudiante.getSede()}</p></div></header>
             <p>{perfil.getBiografia()}</p>
             <div className="ct-materias">{perfil.getMaterias().map((materia) => <ChipMateria key={materia.getId()} nombre={materia.getNombre()} />)}</div>
             <ul className="ct-horarios">{perfil.getDisponibilidad().sort(ordenarFranjas).map((franja) => <li key={franja.toString()}>{formatearFranja(franja)}</li>)}</ul>

@@ -1,3 +1,4 @@
+// Comprueba las reglas del dominio, la persistencia y la versión de los datos.
 import { calcularMetricas, metricasACsv, ENCABEZADO_CSV } from '../src/servicios/metricas.js'
 import assert from 'node:assert/strict'
 import Administrador from '../src/modelo/Administrador.js'
@@ -12,14 +13,14 @@ import Sesion from '../src/modelo/Sesion.js'
 import Usuario from '../src/modelo/Usuario.js'
 import { DiaSemana, EstadoSesion, EstadoVerificacion, RolUsuario } from '../src/modelo/enums.js'
 import ServicioAutenticacion from '../src/servicios/ServicioAutenticacion.js'
-import { almacenEnMemoria, crearRepositorio } from '../src/servicios/repositorio.js'
+import { almacenEnMemoria, crearRepositorio, VERSION_DATOS } from '../src/servicios/repositorio.js'
 import { estaOcupada, fechaEnColombia, proximasOcurrencias } from '../src/servicios/agenda.js'
 
 const dominioPrueba = 'conectatutor.test'
 const fechaPrueba = '2026-11-02T14:00:00.000Z'
 const clavesRepositorio = [
   'ct.programas', 'ct.materias', 'ct.usuarios',
-  'ct.perfilesTutor', 'ct.sesiones', 'ct.sesionActual',
+  'ct.perfilesTutor', 'ct.sesiones', 'ct.sesionActual', 'ct.version',
 ]
 
 /**
@@ -488,7 +489,7 @@ async function ejecutar() {
     assert.equal(almacen.getItem('ct.usuarios'), null)
     assert.equal((await repositorio.listarProgramas()).length, 1)
   })
-  prueba('Reiniciar elimina solo las seis claves propias del repositorio', async () => {
+  prueba('Reiniciar elimina solo las siete claves propias del repositorio', async () => {
     const { almacen, repositorio, usuarios } = await prepararRepositorio()
     almacen.setItem('otra.aplicacion', 'conservar')
     repositorio.guardarSesionActual(usuarios[0].getId())
@@ -665,24 +666,42 @@ async function ejecutar() {
     assert.ok(lineas[5].endsWith(';4,5'))
   })
 
+  prueba('B8: datos sin versión se reinician y vuelven a cargar cinco sesiones', async () => {
+    const { almacen, repositorio } = await prepararRepositorio()
+    assert.equal(almacen.getItem('ct.version'), null)
+    assert.equal(await repositorio.asegurarVersion(), true)
+    for (const clave of clavesRepositorio.filter((clave) => clave !== 'ct.version')) assert.equal(almacen.getItem(clave), null)
+    assert.equal(almacen.getItem('ct.version'), String(VERSION_DATOS))
+    assert.equal(await repositorio.cargarDatosIniciales(), true)
+    assert.equal((await repositorio.listarSesiones()).length, 5)
+  })
+  prueba('B8: la versión correcta conserva todas las colecciones', async () => {
+    const { almacen, repositorio } = await prepararRepositorio()
+    almacen.setItem('ct.version', String(VERSION_DATOS))
+    const anteriores = clavesRepositorio.map((clave) => almacen.getItem(clave))
+    assert.equal(await repositorio.asegurarVersion(), false)
+    assert.deepEqual(clavesRepositorio.map((clave) => almacen.getItem(clave)), anteriores)
+    assert.equal((await repositorio.listarSesiones()).length, 5)
+  })
+
   let correctas = 0
   for (const { descripcion, comprobar } of pruebas) {
     try {
       await comprobar()
       correctas += 1
-      console.log(`✔ ${descripcion}`)
+      process.stdout.write(`✔ ${descripcion}\n`)
     } catch (error) {
-      console.error(`✘ ${descripcion}: ${String(error?.message ?? error).replace(/\s+/g, ' ')}`)
+      process.stderr.write(`✘ ${descripcion}: ${String(error?.message ?? error).replace(/\s+/g, ' ')}\n`)
     }
   }
 
   const fallidas = pruebas.length - correctas
-  console.log(`Total: ${pruebas.length} pruebas; ${correctas} correctas; ${fallidas} fallidas.`)
+  process.stdout.write(`Total: ${pruebas.length} pruebas; ${correctas} correctas; ${fallidas} fallidas.\n`)
   if (fallidas > 0) process.exitCode = 1
 }
 
 ejecutar().catch((error) => {
-  console.error(`✘ Preparación global: ${String(error?.message ?? error).replace(/\s+/g, ' ')}`)
-  console.log('Total: preparación fallida; no se pudieron ejecutar todas las pruebas.')
+  process.stderr.write(`✘ Preparación global: ${String(error?.message ?? error).replace(/\s+/g, ' ')}\n`)
+  process.stdout.write('Total: preparación fallida; no se pudieron ejecutar todas las pruebas.\n')
   process.exitCode = 1
 })

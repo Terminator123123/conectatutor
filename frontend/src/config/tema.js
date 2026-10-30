@@ -1,6 +1,7 @@
 // Aplica los colores y la tipografía institucionales como variables CSS.
 import { INSTITUCION } from './institucion.js'
 
+/** @returns {void} Variables CSS y enlace de las fuentes institucionales aplicados al documento. */
 export function aplicarTema() {
   const raiz = document.documentElement
 

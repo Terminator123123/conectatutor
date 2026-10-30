@@ -1,4 +1,7 @@
 /* Estilos generales y botones basados en el tema institucional. */
+a { color: var(--ct-primario); }
+a:hover { color: var(--ct-primario-oscuro); }
+
 body {
   margin: 0;
   background-color: var(--ct-fondo);

@@ -20,6 +20,7 @@ export default function ProveedorAutenticacion({ children }) {
 
     async function restaurarSesion() {
       try {
+        await repositorio.asegurarVersion()
         await repositorio.cargarDatosIniciales()
         const usuarioRestaurado = await repositorio.obtenerSesionActual()
         if (activo) setUsuario(usuarioRestaurado)

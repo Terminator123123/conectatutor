@@ -1,4 +1,5 @@
 // Solicita tutorías en las franjas disponibles del tutor.
+import { useTituloPagina } from '../hooks/useTituloPagina.js'
 import { useEffect, useId, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAutenticacion } from '../contexto/useAutenticacion.js'
@@ -14,6 +15,7 @@ import '../estilos/solicitante.css'
 
 /** @returns {import('react').ReactElement} Formulario de solicitud al modelo de dominio. */
 export default function SolicitudSesion() {
+  useTituloPagina('Solicitar tutoría')
   const { id } = useParams()
   const { usuario } = useAutenticacion()
   const navigate = useNavigate()

@@ -1,3 +1,4 @@
+// Resuelve la pantalla inicial de cada rol y de los invitados.
 import { RolUsuario } from '../modelo/enums.js'
 
 /**

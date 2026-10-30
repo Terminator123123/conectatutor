@@ -69,3 +69,5 @@
   color: var(--ct-primario);
   font-size: 1.5rem;
 }
+
+.ct-autenticacion-pie a { display: inline-flex; align-items: center; min-height: 44px; }

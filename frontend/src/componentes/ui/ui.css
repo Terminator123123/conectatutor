@@ -582,3 +582,7 @@ textarea.ct-campo-control {
     animation: none;
   }
 }
+
+@media (max-width: 767.98px) {
+  .ct-tarjeta-enlace { width: 100%; }
+}
