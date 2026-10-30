@@ -1,3 +1,4 @@
+import { calcularMetricas, metricasACsv, ENCABEZADO_CSV } from '../src/servicios/metricas.js'
 import assert from 'node:assert/strict'
 import Administrador from '../src/modelo/Administrador.js'
 import Calificacion from '../src/modelo/Calificacion.js'
@@ -12,7 +13,7 @@ import Usuario from '../src/modelo/Usuario.js'
 import { DiaSemana, EstadoSesion, EstadoVerificacion, RolUsuario } from '../src/modelo/enums.js'
 import ServicioAutenticacion from '../src/servicios/ServicioAutenticacion.js'
 import { almacenEnMemoria, crearRepositorio } from '../src/servicios/repositorio.js'
-import { proximasOcurrencias } from '../src/servicios/agenda.js'
+import { estaOcupada, fechaEnColombia, proximasOcurrencias } from '../src/servicios/agenda.js'
 
 const dominioPrueba = 'conectatutor.test'
 const fechaPrueba = '2026-11-02T14:00:00.000Z'
@@ -573,6 +574,95 @@ async function ejecutar() {
     assert.throws(() => new Sesion({
       solicitante, tutor: perfil, materia, franja, fecha: 'no-es-fecha', tema: 'Tema de prueba',
     }), { name: 'TypeError', message: 'La fecha de la sesión no es válida.' })
+  })
+
+  prueba('B7: quitarFranja retira solo la igual y permite agregarla otra vez', () => {
+    const { perfil, franja } = crearEscenario()
+    const otra = new FranjaHoraria({ dia: DiaSemana.MARTES, horaInicio: '09:00', horaFin: '10:00' })
+    perfil.agregarFranja(otra)
+    perfil.quitarFranja(FranjaHoraria.desdeJSON(franja.toJSON()))
+    assert.deepEqual(perfil.getDisponibilidad(), [otra])
+    perfil.quitarFranja(franja)
+    perfil.agregarFranja(franja)
+    assert.equal(perfil.getDisponibilidad().length, 2)
+  })
+  prueba('B7: el motivo de rechazo persiste y verificarlo lo borra', async () => {
+    const { repositorio } = await prepararRepositorio()
+    const [perfil] = await repositorio.listarTutoresVerificados()
+    perfil.marcarRechazado('  Completa tu presentación  ')
+    assert.equal(perfil.getMotivoRechazo(), 'Completa tu presentación')
+    await repositorio.guardarPerfilTutor(perfil)
+    const guardado = await repositorio.obtenerPerfilTutor(perfil.getId())
+    assert.equal(guardado.getMotivoRechazo(), 'Completa tu presentación')
+    guardado.marcarVerificado()
+    assert.equal(guardado.getMotivoRechazo(), null)
+  })
+  prueba('B7: un motivo inválido no cambia el estado del perfil', () => {
+    const { perfil } = crearEscenario()
+    for (const motivo of ['', '  ab ']) assert.throws(() => perfil.marcarRechazado(motivo), TypeError)
+    assert.equal(perfil.getEstadoVerificacion(), EstadoVerificacion.VERIFICADO)
+    assert.equal(perfil.getMotivoRechazo(), null)
+  })
+  prueba('B7: nueva revisión solo desde rechazado y sin conservar el motivo', () => {
+    const { perfil } = crearEscenario()
+    assert.throws(() => perfil.solicitarNuevaRevision(), Error)
+    perfil.marcarRechazado('Completa tu perfil')
+    perfil.solicitarNuevaRevision()
+    assert.equal(perfil.getEstadoVerificacion(), EstadoVerificacion.PENDIENTE)
+    assert.equal(perfil.getMotivoRechazo(), null)
+    assert.throws(() => perfil.solicitarNuevaRevision(), Error)
+  })
+  prueba('B7: cambiarBiografia valida longitud y quita espacios exteriores', () => {
+    const { perfil } = crearEscenario()
+    assert.throws(() => perfil.cambiarBiografia('  Muy corta  '), TypeError)
+    perfil.cambiarBiografia('  Acompaño a estudiantes con ejercicios prácticos.  ')
+    assert.equal(perfil.getBiografia(), 'Acompaño a estudiantes con ejercicios prácticos.')
+  })
+
+  prueba('B7: listarSesiones y listarPerfilesTutor incluyen todos los estados', async () => {
+    const { repositorio } = await prepararRepositorio()
+    assert.equal((await repositorio.listarSesiones()).length, 5)
+    assert.equal((await repositorio.listarPerfilesTutor()).length, 4)
+  })
+  prueba('B7: estaOcupada distingue estado, día y sesión excluida', () => {
+    const sesion = crearSesion()
+    const clave = fechaEnColombia(sesion.getFecha())
+    assert.equal(estaOcupada([sesion], sesion.getFranja(), clave), true)
+    assert.equal(estaOcupada([sesion], sesion.getFranja(), '2026-11-03'), false)
+    assert.equal(estaOcupada([sesion], sesion.getFranja(), clave, sesion.getId()), false)
+    sesion.confirmar()
+    assert.equal(estaOcupada([sesion], sesion.getFranja(), clave), true)
+    sesion.cancelar('Ya no puedo asistir')
+    assert.equal(estaOcupada([sesion], sesion.getFranja(), clave), false)
+  })
+  prueba('B7: métricas iniciales y estudiantes únicos por sede y total', async () => {
+    const { repositorio } = await prepararRepositorio()
+    const sesiones = await repositorio.listarSesiones()
+    const perfiles = await repositorio.listarPerfilesTutor()
+    const sedes = ['Riohacha', 'Maicao', 'Villanueva', 'Fonseca']
+    const metricas = calcularMetricas(sesiones, perfiles, sedes)
+    assert.deepEqual([metricas.total.solicitudes, metricas.total.finalizadas, metricas.total.estudiantesAtendidos,
+      metricas.total.tutoresVerificados, metricas.total.tutoresPendientes], [5, 2, 2, 3, 1])
+    assert.equal(calcularMetricas(sesiones, perfiles, [...sedes, 'Sin actividad']).porSede['Sin actividad'].solicitudes, 0)
+    const finalizada = sesiones.find((sesion) => sesion.getEstado() === EstadoSesion.FINALIZADA)
+    assert.equal(calcularMetricas([...sesiones, finalizada], perfiles, sedes).total.estudiantesAtendidos, 2)
+    const sinSedes = calcularMetricas(sesiones, perfiles, [])
+    assert.deepEqual(sinSedes.total, metricas.total)
+    assert.deepEqual(sinSedes.porSede, {})
+  })
+  prueba('B7: CSV con BOM, encabezado exacto, cuatro sedes y total, y coma decimal', async () => {
+    const { repositorio } = await prepararRepositorio()
+    const sedes = ['Riohacha', 'Maicao', 'Villanueva', 'Fonseca']
+    const metricas = calcularMetricas(await repositorio.listarSesiones(), await repositorio.listarPerfilesTutor(), sedes)
+    metricas.total.calificacionPromedio = 4.5
+    const csv = metricasACsv(metricas, sedes)
+    assert.ok(csv.startsWith('\uFEFF' + ENCABEZADO_CSV + '\r\n'))
+    assert.equal(ENCABEZADO_CSV, 'Sede;Solicitudes;Pendientes;Confirmadas;Finalizadas;Rechazadas;Canceladas;Estudiantes atendidos;Tutores verificados;Tutores pendientes;Calificación promedio')
+    const lineas = csv.slice(1).split('\r\n')
+    assert.equal(lineas.length, 6)
+    assert.deepEqual(lineas.slice(1, 5).map((linea) => linea.split(';')[0]), sedes)
+    assert.ok(lineas[5].startsWith('Total;'))
+    assert.ok(lineas[5].endsWith(';4,5'))
   })
 
   let correctas = 0

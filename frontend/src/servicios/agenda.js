@@ -1,4 +1,5 @@
-import { DiaSemana } from '../modelo/enums.js'
+// Convierte fechas colombianas y organiza la disponibilidad de tutorías.
+import { DiaSemana, EstadoSesion } from '../modelo/enums.js'
 
 // Colombia no tiene horario de verano; el desfase permanece en UTC−05:00.
 export const ZONA_HORARIA = 'America/Bogota'
@@ -51,4 +52,18 @@ export function proximasOcurrencias(franja, desde = new Date(), dias = 14) {
     }
   }
   return ocurrencias
+}
+
+/**
+ * Consulta ocupación por franja exacta y día colombiano.
+ * @param {import('../modelo/Sesion.js').default[]} sesiones Sesiones del tutor.
+ * @param {import('../modelo/FranjaHoraria.js').default} franja Franja elegida.
+ * @param {string} clave Día colombiano AAAA-MM-DD.
+ * @param {string|null} [excluirId=null] Sesión que no se considera.
+ * @returns {boolean} Si existe una solicitud pendiente o confirmada en esa fecha.
+ */
+export function estaOcupada(sesiones, franja, clave, excluirId = null) {
+  return sesiones.some((sesion) => sesion.getId() !== excluirId
+    && [EstadoSesion.PENDIENTE, EstadoSesion.CONFIRMADA].includes(sesion.getEstado())
+    && sesion.getFranja().esIgualA(franja) && fechaEnColombia(sesion.getFecha()) === clave)
 }

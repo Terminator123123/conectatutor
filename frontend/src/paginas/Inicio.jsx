@@ -1,3 +1,4 @@
+// Presenta el acompañamiento y los canales de Permanencia según el rol.
 import { Link } from 'react-router-dom'
 import { INSTITUCION } from '../config/institucion.js'
 import { useAutenticacion } from '../contexto/useAutenticacion.js'

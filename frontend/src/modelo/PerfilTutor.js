@@ -11,6 +11,8 @@ export default class PerfilTutor {
   #estadoVerificacion
   #materias
   #disponibilidad
+  /** @type {string|null} Motivo del rechazo comunicado por Coordinación. */
+  #motivoRechazo
 
   /**
    * Crea el perfil desde la activación realizada por su estudiante.
@@ -26,6 +28,7 @@ export default class PerfilTutor {
     this.#estadoVerificacion = EstadoVerificacion.PENDIENTE
     this.#materias = []
     this.#disponibilidad = []
+    this.#motivoRechazo = null
   }
 
   /**
@@ -66,6 +69,11 @@ export default class PerfilTutor {
    */
   getEstadoVerificacion() {
     return this.#estadoVerificacion
+  }
+
+  /** @returns {string|null} Motivo comunicado por Coordinación, o null. */
+  getMotivoRechazo() {
+    return this.#motivoRechazo
   }
 
   /**
@@ -128,6 +136,28 @@ export default class PerfilTutor {
   }
 
   /**
+   * Retira solo la franja igual a la recibida; ignora las que no existen.
+   * @param {FranjaHoraria} franja Franja que se retira.
+   * @returns {void}
+   */
+  quitarFranja(franja) {
+    this.#disponibilidad = this.#disponibilidad.filter((existente) => !existente.esIgualA(franja))
+  }
+
+  /**
+   * Guarda una presentación sin espacios exteriores.
+   * @param {string} texto Nueva biografía.
+   * @returns {void}
+   * @throws {TypeError} Si no tiene al menos 20 caracteres.
+   */
+  cambiarBiografia(texto) {
+    if (typeof texto !== 'string' || texto.trim().length < 20) {
+      throw new TypeError('La biografía debe tener al menos 20 caracteres.')
+    }
+    this.#biografia = texto.trim()
+  }
+
+  /**
    * Comprueba si la franja solicitada coincide con una franja disponible.
    * @param {FranjaHoraria} franja Franja consultada.
    * @returns {boolean} Verdadero si coinciden el día y las dos horas.
@@ -168,15 +198,34 @@ export default class PerfilTutor {
    */
   marcarVerificado() {
     this.#estadoVerificacion = EstadoVerificacion.VERIFICADO
+    this.#motivoRechazo = null
   }
 
   /**
    * Marca el perfil como rechazado por la administración.
-   * @param {string} _motivo Motivo recibido; el modelo no define un atributo para persistirlo.
+   * @param {string} motivo Motivo del rechazo, con al menos cinco caracteres.
+   * @throws {TypeError} Si el motivo no es válido.
    * @returns {void}
    */
-  marcarRechazado(_motivo) {
+  marcarRechazado(motivo) {
+    if (typeof motivo !== 'string' || motivo.trim().length < 5) {
+      throw new TypeError('Escribe el motivo del rechazo (al menos 5 caracteres).')
+    }
+    this.#motivoRechazo = motivo.trim()
     this.#estadoVerificacion = EstadoVerificacion.RECHAZADO
+  }
+
+  /**
+   * Envía nuevamente a Coordinación un perfil rechazado y corregido.
+   * @returns {void}
+   * @throws {Error} Si el perfil no está rechazado.
+   */
+  solicitarNuevaRevision() {
+    if (this.#estadoVerificacion !== EstadoVerificacion.RECHAZADO) {
+      throw new Error('Solo un perfil rechazado puede pedir una nueva revisión.')
+    }
+    this.#estadoVerificacion = EstadoVerificacion.PENDIENTE
+    this.#motivoRechazo = null
   }
 
   /**
@@ -190,6 +239,7 @@ export default class PerfilTutor {
       biografia: this.#biografia,
       tarifaHora: this.#tarifaHora,
       estadoVerificacion: this.#estadoVerificacion,
+      motivoRechazo: this.#motivoRechazo,
       materiaIds: this.#materias.map((materia) => materia.getId()),
       disponibilidad: this.#disponibilidad.map((franja) => franja.toJSON()),
     }
@@ -228,6 +278,7 @@ export default class PerfilTutor {
     perfil.#id = datos.id
     perfil.#biografia = datos.biografia
     perfil.#tarifaHora = tarifaHora
+    perfil.#motivoRechazo = datos.motivoRechazo ?? null
     perfil.#estadoVerificacion = datos.estadoVerificacion
     perfil.#materias = []
     perfil.#disponibilidad = []

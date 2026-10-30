@@ -13,7 +13,7 @@
 .ct-pasos h3 { margin-top: .5rem; font-size: 1.2rem; }
 .ct-canales { padding-left: 1.25rem; }
 .ct-canales li { margin-block: .75rem; }
-.ct-canales a { display: inline-block; padding-block: .5rem; }
+.ct-canales a { display: inline-flex; align-items: center; min-height: 44px; }
 .ct-filtros { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-block: 1.5rem; }
 .ct-filtros .ct-campo { min-width: 0; }
 .ct-rejilla-tutores { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
@@ -35,7 +35,7 @@
 .ct-lista-sesiones { display: grid; gap: 1rem; }
 .ct-aviso { padding: 1rem; margin-block: 1rem; border-left: 4px solid var(--ct-exito); background: var(--ct-superficie); }
 .ct-apoyo { margin-top: 2rem; }
-.ct-apoyo a { display: inline-block; padding-block: .5rem; }
+.ct-apoyo a { display: inline-flex; align-items: center; min-height: 44px; }
 @media (min-width: 768px) {
   .ct-perfil-accion { position: static; padding: 0; border: 0; background: transparent; }
   .ct-detalle-con-accion { padding-bottom: 0; }

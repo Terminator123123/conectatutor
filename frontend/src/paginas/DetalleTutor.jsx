@@ -1,3 +1,4 @@
+// Presenta la oferta, disponibilidad y reseñas anónimas de un tutor.
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAutenticacion } from '../contexto/useAutenticacion.js'

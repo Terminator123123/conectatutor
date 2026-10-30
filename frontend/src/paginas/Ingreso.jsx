@@ -19,10 +19,11 @@ import '../estilos/autenticacion.css'
  */
 function destinoPermitido(destino, usuario) {
   if (typeof destino !== 'string') return false
-  if (usuario.getRol() === RolUsuario.ADMINISTRADOR) return destino === '/admin/verificacion'
+  const rutaDestino = destino.split('?')[0]
+  if (usuario.getRol() === RolUsuario.ADMINISTRADOR) return rutaDestino === '/admin/verificacion'
   if (usuario.getRol() !== RolUsuario.ESTUDIANTE) return false
   return ['/tutores', '/tutores/:id', '/tutores/:id/solicitar', '/sesiones', '/perfil']
-    .some((ruta) => matchPath({ path: ruta, end: true }, destino))
+    .some((ruta) => matchPath({ path: ruta, end: true }, rutaDestino))
 }
 
 /** @returns {import('react').ReactElement} Formulario de ingreso institucional. */

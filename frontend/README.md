@@ -74,3 +74,16 @@ Para reiniciar los datos, borra las claves `ct.*` del `localStorage` del navegad
 3. Envía la solicitud: aparece el aviso de envío y la tutoría **Pendiente** en **Mis sesiones → Mis solicitudes → Próximas**. Al recargar permanece guardada. Puedes cancelarla indicando un motivo de al menos cinco caracteres.
 4. Sal e ingresa con **Felipe Castaño** y `Demo1234`. En **Mis sesiones → Historial**, pulsa **Calificar** en la tutoría finalizada con **Bruno Valdés**, elige las estrellas y, si quieres, escribe una reseña de hasta 300 caracteres.
 5. Envía la calificación y consulta el perfil de Bruno (en búsqueda, selecciona Maicao o Todas las sedes). El promedio y el total se actualizan; la reseña aparece sin identificar a quien la escribió.
+
+
+## Recorrido del tutor y de Coordinación
+
+1. Ingresa con **Elena Lozano**, abre **Mi perfil**, escribe una biografía de 20 a 500 caracteres y pulsa **Activar perfil de tutor**. Agrega una materia y un horario disponible.
+2. Sal e ingresa con **Gabriela Montes**. En **Coordinación → Perfiles por verificar**, revisa el perfil de Elena y pulsa **Verificar**. Puedes filtrar la lista por sede.
+3. Sal e ingresa con **Felipe Castaño**. En **Buscar tutores**, elige **Todas las sedes**, busca a Elena y solicita una tutoría en una franja libre.
+4. Sal e ingresa con Elena. En **Mis sesiones → Sesiones que doy**, pulsa **Aceptar**. Después, pulsa **Marcar como realizada** y confirma la realización.
+5. Sal e ingresa con Felipe. En **Mis sesiones → Historial**, califica esa tutoría. El promedio y el total de Elena cambian en la búsqueda y en su perfil público; Elena ve la calificación y la reseña en **Sesiones que doy → Historial**.
+6. Para probar un rechazo, Gabriela rechaza el perfil pendiente de **Diego Manrique** con un motivo de al menos cinco caracteres. Diego lo ve en **Mi perfil**, corrige su oferta y pulsa **Pedir nueva revisión**. Gabriela vuelve a verlo en los perfiles pendientes.
+7. En **Coordinación → Panel de permanencia**, consulta las cifras por sede y descarga el CSV. El panel muestra solo cifras agregadas, sin nombres ni datos individuales de estudiantes. Los estudiantes atendidos cuentan una sola vez si tienen varias tutorías realizadas.
+
+Todas las cuentas de prueba usan `Demo1234`. Las pestañas conservan la vista en la URL al recargar. Una franja ocupada se vuelve a comprobar al enviar la solicitud; el tutor tampoco puede aceptar otra tutoría en un horario ya confirmado.

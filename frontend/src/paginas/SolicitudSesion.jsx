@@ -1,9 +1,9 @@
+// Solicita tutorías en las franjas disponibles del tutor.
 import { useEffect, useId, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAutenticacion } from '../contexto/useAutenticacion.js'
-import { EstadoSesion } from '../modelo/enums.js'
 import { repositorio } from '../servicios/instancias.js'
-import { fechaEnColombia, formatearFecha, proximasOcurrencias } from '../servicios/agenda.js'
+import { estaOcupada, fechaEnColombia, formatearFecha, proximasOcurrencias } from '../servicios/agenda.js'
 import CampoFormulario from '../componentes/ui/CampoFormulario.jsx'
 import SelectorFranja from '../componentes/ui/SelectorFranja.jsx'
 import Boton from '../componentes/ui/Boton.jsx'
@@ -73,8 +73,7 @@ export default function SolicitudSesion() {
   const opciones = perfil.getDisponibilidad().flatMap((franja, indice) => proximasOcurrencias(franja).map(({ fecha, clave }) => ({
     id: `${indice}|${clave}`, fecha, franja,
     etiqueta: `${formatearFecha(fecha)} · ${franja.getHoraInicio()}–${franja.getHoraFin()}`,
-    ocupada: sesiones.some((sesion) => [EstadoSesion.PENDIENTE, EstadoSesion.CONFIRMADA].includes(sesion.getEstado())
-      && sesion.getFranja().esIgualA(franja) && fechaEnColombia(sesion.getFecha()) === clave),
+    ocupada: estaOcupada(sesiones, franja, clave),
   }))).sort((a, b) => a.fecha - b.fecha)
 
   async function enviar(evento) {
@@ -90,10 +89,24 @@ export default function SolicitudSesion() {
     }
     setEnviando(true)
     try {
-      const materia = perfil.getMaterias().find((item) => item.getId() === campos.materia)
-      const opcion = opciones.find((item) => item.id === campos.franja)
-      const sesion = usuario.solicitarSesion(perfil, materia, opcion.franja, opcion.fecha, campos.tema.trim())
-      await repositorio.guardarSesion(sesion)
+      const reservar = async () => {
+        const materia = perfil.getMaterias().find((item) => item.getId() === campos.materia)
+        const opcion = opciones.find((item) => item.id === campos.franja)
+        const actuales = await repositorio.listarSesionesDelTutor(id)
+        if (estaOcupada(actuales, opcion.franja, fechaEnColombia(opcion.fecha))) {
+          setDatos((anteriores) => ({ ...anteriores, sesiones: actuales }))
+          setCampos((anteriores) => ({ ...anteriores, franja: '' }))
+          setErrorServicio('Alguien acaba de reservar esa franja. Elige otra.')
+          return
+        }
+        const sesion = usuario.solicitarSesion(perfil, materia, opcion.franja, opcion.fecha, campos.tema.trim())
+        await repositorio.guardarSesion(sesion)
+        return true
+      }
+      // El bloqueo entre pestañas mantiene juntas la relectura y el guardado.
+      const reservada = navigator.locks?.request
+        ? await navigator.locks.request(`ct-agenda-${id}`, reservar) : await reservar()
+      if (!reservada) return
       navigate('/sesiones', { replace: true, state: { aviso: 'Solicitud enviada. Queda pendiente hasta que el tutor la acepte.' } })
     } catch (error) {
       setErrorServicio(error.message)

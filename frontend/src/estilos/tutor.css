@@ -1,0 +1,43 @@
+/* Oferta del tutor, pestañas y panel de Coordinación con el tema institucional. */
+.ct-tutor { min-width: 0; }
+.ct-tutor-seccion { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--ct-borde); }
+.ct-tutor-formulario { display: grid; gap: 1rem; max-width: 800px; }
+.ct-tutor-formulario > .ct-boton { justify-self: start; }
+.ct-datos-personales { display: grid; gap: 1rem; }
+.ct-datos-personales dd { margin-bottom: 0; overflow-wrap: anywhere; }
+.ct-campos-tutor { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+.ct-campos-tutor > * { min-width: 0; }
+.ct-materias { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+.ct-horarios { list-style: none; padding: 0; }
+.ct-horarios li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; padding-block: .5rem; border-bottom: 1px solid var(--ct-borde); }
+@media (min-width: 768px) {
+  .ct-datos-personales { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ct-campos-tutor { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ct-campos-horario { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.ct-pestanas { display: flex; gap: .5rem; border-bottom: 1px solid var(--ct-borde); margin-block: 1.5rem; }
+.ct-pestanas button { flex: 1; min-height: 44px; padding: .75rem .5rem; border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--ct-texto-secundario); font-weight: 600; }
+.ct-pestanas button[aria-selected="true"] { border-bottom-color: var(--ct-primario); color: var(--ct-primario); }
+.ct-pestanas button:focus-visible { outline: 3px solid var(--ct-primario); outline-offset: 2px; }
+
+.ct-filtro-sede { max-width: 360px; margin-block: 1rem 1.5rem; }
+.ct-lista-perfiles { display: grid; gap: 1.5rem; }
+.ct-revision-perfil { padding: 1.25rem; border: 1px solid var(--ct-borde); border-radius: .75rem; background: var(--ct-superficie); min-width: 0; }
+.ct-revision-perfil .ct-perfil-encabezado { margin-top: 0; }
+.ct-revision-perfil h3 { font-size: 1.35rem; }
+.ct-indicadores { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-block: 1.5rem; }
+.ct-indicador { display: flex; flex-direction: column; gap: .5rem; padding: 1rem; border: 1px solid var(--ct-borde); border-radius: .75rem; background: var(--ct-superficie); }
+.ct-indicador strong { color: var(--ct-primario); font-size: 2rem; }
+.ct-indicador span { overflow-wrap: anywhere; }
+.ct-tabla-sedes { overflow-x: auto; max-width: 100%; margin-block: 1.5rem; }
+.ct-tabla-sedes:focus-visible { outline: 3px solid var(--ct-primario); outline-offset: 2px; }
+.ct-tabla-sedes table { width: 100%; border-collapse: collapse; background: var(--ct-superficie); }
+.ct-tabla-sedes caption { caption-side: top; color: var(--ct-texto); font-size: 1.25rem; font-weight: 600; }
+.ct-tabla-sedes th, .ct-tabla-sedes td { padding: .75rem; border-bottom: 1px solid var(--ct-borde); text-align: right; }
+.ct-tabla-sedes th { min-width: 110px; }
+.ct-tabla-sedes th:first-child { text-align: left; }
+.ct-tabla-sedes tfoot { font-weight: 700; }
+@media (min-width: 768px) {
+  .ct-indicadores { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}

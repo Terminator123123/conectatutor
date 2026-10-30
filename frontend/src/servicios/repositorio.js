@@ -290,6 +290,18 @@ export function crearRepositorio(almacen = globalThis.localStorage ?? almacenEnM
       return reconstruir().perfilesTutor.get(perfil.getId())
     },
 
+    /** @returns {Promise<Sesion[]>} Todas las sesiones guardadas, reconstruidas. */
+    async listarSesiones() {
+      await esperar()
+      return [...reconstruir().sesiones.values()]
+    },
+
+    /** @returns {Promise<PerfilTutor[]>} Todos los perfiles, en cualquier estado. */
+    async listarPerfilesTutor() {
+      await esperar()
+      return [...reconstruir().perfilesTutor.values()]
+    },
+
     /**
      * Lista las sesiones que un usuario solicita o atiende mediante su perfil de tutor.
      * @param {string} usuarioId Identificador del usuario.

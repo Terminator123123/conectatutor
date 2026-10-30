@@ -1,3 +1,4 @@
+// Busca tutores verificados con filtros de sede, programa, materia y día.
 import { useEffect, useState } from 'react'
 import { INSTITUCION } from '../config/institucion.js'
 import { useAutenticacion } from '../contexto/useAutenticacion.js'
@@ -78,10 +79,10 @@ export default function BusquedaTutores() {
         <CampoFormulario etiqueta="Materia" tipo="select" valor={filtros.materiaId} alCambiar={(valor) => cambiar('materiaId', valor)} opciones={[{ valor: '', etiqueta: 'Todas las materias' }, ...datos.materias.map((materia) => ({ valor: materia.getId(), etiqueta: materia.getNombre() }))]} />
         <CampoFormulario etiqueta="Día" tipo="select" valor={filtros.dia} alCambiar={(valor) => cambiar('dia', valor)} opciones={[{ valor: '', etiqueta: 'Cualquier día' }, ...Object.entries(ETIQUETAS_DIA).map(([valor, etiqueta]) => ({ valor, etiqueta }))]} />
       </form>
+      <p aria-live="polite">{cargando || error ? '' : `${resultados.length} ${resultados.length === 1 ? 'tutor encontrado' : 'tutores encontrados'}`}</p>
       {cargando ? <Cargando texto="Cargando tutores…" /> : error ? (
         <MensajeError mensaje={error} alReintentar={() => setIntento((anterior) => anterior + 1)} />
       ) : <>
-        <p aria-live="polite">{resultados.length} {resultados.length === 1 ? 'tutor encontrado' : 'tutores encontrados'}</p>
         {resultados.length ? <div className="ct-rejilla-tutores">{resultados.map(({ id, ...tutor }) => <TarjetaTutor key={id} {...tutor} />)}</div> : (
           <EstadoVacio icono="bi-search" titulo="No hay tutores con esos filtros" texto={`Prueba con otra sede o escribe a Permanencia ${sede}: ${correo}`} accion={{ etiqueta: 'Quitar filtros', alHacerClic: quitarFiltros }} />
         )}
