@@ -58,3 +58,13 @@ h6 {
   background-color: var(--ct-primario-suave);
   color: var(--ct-primario);
 }
+
+/* Escala y medidas del UI Kit de alta fidelidad. */
+:root { --ct-radio-control:4px; --ct-radio-panel:8px; --ct-espacio-seccion:24px; }
+body { line-height:1.5; }
+h1,h2,h3,h4,h5,h6 { font-weight:600; }
+h1 { font-size:32px; line-height:40px; }
+h2 { font-size:24px; line-height:32px; }
+h3 { font-size:20px; line-height:28px; }
+.btn-ct-primario,.btn-ct-secundario { min-height:48px; border-radius:var(--ct-radio-control); font-weight:600; }
+html { scrollbar-width: none; } html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }

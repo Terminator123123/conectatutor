@@ -64,6 +64,19 @@ export default class PerfilTutor {
   }
 
   /**
+   * Cambia la tarifa informativa; null publica la tutoría como gratuita.
+   * @param {number|null} valor Importe finito mayor que cero o null.
+   * @returns {void}
+   * @throws {ErrorDeNegocio} Con R10 si el valor no es válido.
+   */
+  cambiarTarifa(valor) {
+    if (valor !== null && (typeof valor !== 'number' || !Number.isFinite(valor) || valor <= 0)) {
+      throw new ErrorDeNegocio('R10', 'La tarifa de una tutoría gratuita debe ser nula; una tarifa de pago debe ser un número mayor que cero.')
+    }
+    this.#tarifaHora = valor
+  }
+
+  /**
    * Consulta el estado de verificación del tutor.
    * @returns {string} Valor de EstadoVerificacion.
    */

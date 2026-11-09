@@ -91,8 +91,8 @@ export async function crearDatosIniciales(dominioCorreo) {
   ]
   const franjas = estudiantes.slice(0, 4).map((_, indice) => new FranjaHoraria({
     dia: DiaSemana.LUNES,
-    horaInicio: `${String(9 + indice).padStart(2, '0')}:00`,
-    horaFin: `${String(10 + indice).padStart(2, '0')}:00`,
+    horaInicio: ['08:00', '10:00', '14:00', '16:00'][indice],
+    horaFin: ['10:00', '12:00', '16:00', '18:00'][indice],
   }))
 
   const perfilesTutor = estudiantes.slice(0, 4).map((estudiante, indice) => {
@@ -105,6 +105,7 @@ export async function crearDatosIniciales(dominioCorreo) {
     }
 
     perfil.agregarFranja(franjas[indice])
+    if (indice === 0) perfil.cambiarTarifa(35000)
 
     if (indice < 3) {
       administrador.verificarTutor(perfil)
@@ -115,7 +116,7 @@ export async function crearDatosIniciales(dominioCorreo) {
 
   const pendiente = estudiantes[4].solicitarSesion(
     perfilesTutor[0], materias[3], franjas[0],
-    new Date('2026-11-02T09:00:00-05:00'), 'Repasar variables y estructuras de control',
+    new Date('2026-11-02T08:00:00-05:00'), 'Repasar variables y estructuras de control',
   )
   const confirmada = estudiantes[5].solicitarSesion(
     perfilesTutor[1], materias[9], franjas[1],
@@ -125,7 +126,7 @@ export async function crearDatosIniciales(dominioCorreo) {
 
   const finalizada = estudiantes[4].solicitarSesion(
     perfilesTutor[2], materias[20], franjas[2],
-    new Date('2026-11-16T11:00:00-05:00'), 'Comprender la estructura y función de las células',
+    new Date('2026-11-16T14:00:00-05:00'), 'Comprender la estructura y función de las células',
   )
   finalizada.confirmar()
   finalizada.finalizar()
@@ -133,7 +134,7 @@ export async function crearDatosIniciales(dominioCorreo) {
 
   const cancelada = estudiantes[5].solicitarSesion(
     perfilesTutor[0], materias[6], franjas[0],
-    new Date('2026-11-23T09:00:00-05:00'), 'Repasar funciones y estructuras de control',
+    new Date('2026-11-23T08:00:00-05:00'), 'Repasar funciones y estructuras de control',
   )
   cancelada.cancelar('El solicitante necesita cambiar la fecha.')
 

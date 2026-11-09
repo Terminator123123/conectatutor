@@ -41,3 +41,117 @@
 @media (min-width: 768px) {
   .ct-indicadores { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+
+/* Perfil, cuadrícula semanal y revisión con los paneles del prototipo. */
+.ct-mi-identidad { display:flex; align-items:center; gap:16px; margin-bottom:24px; }
+.ct-mi-identidad h1 { font-size:24px; line-height:32px; margin:0 0 4px; }
+.ct-mi-identidad p { color:var(--ct-texto-secundario); font-size:14px; margin:0 0 8px; }
+.ct-foto-perfil { border-radius:50%; object-fit:cover; flex-shrink:0; }
+.ct-tutor { max-width:100%; }
+.ct-tutor-seccion { padding:0; border:0; border-radius:0; background:transparent; margin-top:24px; }
+.ct-tutor-seccion h2 { font-size:20px; line-height:28px; }
+.ct-disponibilidad { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; }
+.ct-disponibilidad > strong { padding:4px 0; text-align:center; color:var(--ct-texto-secundario); font-size:14px; }
+.ct-disponibilidad button { min-width:0; min-height:44px; border:1px solid var(--ct-borde); border-radius:4px; background:var(--ct-superficie); color:var(--ct-texto-secundario); font-size:12px; }
+.ct-disponibilidad button[aria-pressed='true'] { background:var(--ct-primario-suave); color:var(--ct-primario); border-color:var(--ct-primario); }
+.ct-solicitudes-recibidas .ct-sesiones-titular { display:block; }
+.ct-solicitudes-recibidas .ct-sesiones-titular h1 { color:var(--ct-texto); font-size:32px; line-height:40px; }
+.ct-solicitudes-conteo { color:var(--ct-texto-secundario); margin:24px 0; font-size:14px; }
+.ct-solicitud-recibida { display:flex; flex-direction:column; gap:16px; padding:16px; border:1px solid var(--ct-borde); border-radius:8px; background:var(--ct-superficie); }
+.ct-solicitud-recibida > .ct-chip-estado { align-self:flex-start; padding:0 16px; }
+.ct-solicitud-recibida h3 { color:var(--ct-primario); font-size:20px; margin:0; }
+.ct-solicitud-recibida p { margin:0; }
+.ct-solicitud-recibida .ct-item-identidad p { color:var(--ct-texto-secundario); font-size:14px; margin:4px 0 0; }
+.ct-tema-solicitado { border-top:1px solid var(--ct-borde); padding-top:16px; }
+.ct-tema-solicitado strong { display:block; font-size:14px; margin-bottom:16px; }
+.ct-etiqueta-admin { display:inline-block; padding:4px 16px; border-radius:4px; background:var(--ct-primario-suave); color:var(--ct-primario); font-size:12px; margin:16px 0 24px; }
+.ct-herramientas-admin { display:grid; gap:24px; margin:24px 0; }
+.ct-revision-perfil { display:flex; flex-direction:column; gap:16px; padding:16px; border-radius:8px; box-shadow:none; }
+.ct-revision-perfil .ct-perfil-encabezado { margin:0; align-items:center; }
+.ct-revision-perfil .ct-perfil-identidad h3 { margin:0 0 4px; font-size:16px; }
+.ct-revision-perfil .ct-perfil-identidad p { margin:0; font-size:14px; }
+.ct-revision-perfil .ct-acciones { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.ct-gestion-materias { max-width:760px; margin:auto; display:grid; gap:24px; }
+.ct-catalogo-materias { display:grid; gap:16px; }
+.ct-tabs-estado button[aria-pressed='true'] { background:var(--ct-primario); color:var(--ct-superficie); }
+@media(min-width:768px) {
+  .ct-mi-identidad h1 { font-size:32px; line-height:40px; }
+  .ct-disponibilidad { gap:8px; }
+  .ct-disponibilidad button { min-height:48px; font-size:14px; }
+  .ct-tutor-seccion { margin-top:32px; }
+}
+
+.ct-tutor > .ct-boton,.ct-tutor > .ct-boton-completo { margin-top:16px; }
+.ct-biografia-propia .ct-campo-control { min-height:48px; height:48px; }
+.ct-oferta-propia h2 { font:600 14px/20px var(--ct-fuente); margin:0 0 4px; }
+.ct-materias-abrir { display:block; width:100%; min-height:48px; padding:11px 16px; border:1px solid var(--ct-borde); border-radius:4px; background:var(--ct-superficie); text-align:left; color:var(--ct-texto); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ct-oferta-propia:has([aria-expanded='false']) { margin-bottom:0; }
+
+.ct-editar-perfil { display:flex; flex-direction:column; gap:16px; max-width:704px; margin:auto; min-height:calc(100dvh - 160px); }
+.ct-editar-perfil h1 { font-size:24px; line-height:32px; margin:0; }
+.ct-editar-perfil > p { color:var(--ct-texto-secundario); margin:0; }
+.ct-editar-campos { display:grid; gap:24px; }
+.ct-editar-acciones { display:grid; gap:8px; margin-top:auto; padding-top:16px; }
+
+.ct-gestion-materias { display:flex; flex-direction:column; gap:16px; min-height:calc(100dvh - 160px); }
+.ct-gestion-materias h1 { font-size:24px; line-height:32px; margin:0; }
+.ct-gestion-materias > p { margin:0; }
+.ct-gestion-materias .ct-tutor-formulario { flex:1; display:flex; flex-direction:column; gap:16px; }
+.ct-gestion-materias textarea { height:48px; min-height:48px; }
+.ct-acciones-catalogo { display:grid; gap:8px; margin-top:auto; padding-top:16px; }
+.ct-gestion-materias > .ct-boton { margin-top:0; }
+
+.ct-confirmacion-etiqueta { padding:4px 16px; border-radius:4px; background:color-mix(in srgb,var(--ct-exito) 12%,var(--ct-superficie)); color:var(--ct-exito); font-size:12px; line-height:16px; text-align:center; }
+.ct-etiqueta-admin { margin:0 0 16px; }
+#coordinacion-panel-perfiles > h2 { font-size:32px; line-height:40px; }
+.ct-tutor [aria-label='Vistas de Coordinación'] { margin:0 0 24px; }
+.ct-tutor [aria-label='Vistas de Coordinación'] button { padding:8px 4px; min-height:44px; font-size:12px; line-height:16px; }
+.ct-materias-revision { color:var(--ct-primario); font-size:14px; line-height:20px; font-weight:600; margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ct-revision-perfil .ct-acciones .ct-boton { min-width:0; width:100%; }
+
+.ct-completar-perfil { display:flex; flex-direction:column; gap:24px; min-height:calc(100dvh - 160px); max-width:704px; margin:auto; }
+.ct-completar-perfil h1 { font-size:32px; line-height:40px; margin:0; }
+.ct-completar-perfil > p { margin:0; }
+.ct-completar-perfil .ct-etiqueta-admin { align-self:flex-start; margin:0; }
+.ct-completar-campos { display:grid; gap:40px; }
+.ct-completar-perfil > .ct-boton { margin-top:auto; }
+
+.ct-completar-extras { display:none; }
+.ct-completar-campos { gap:44px; }
+@media(min-width:768px) and (max-width:1099px) {
+ .ct-completar-perfil { min-height:0; }
+ .ct-completar-perfil > .ct-texto-secundario:last-of-type { margin-top:20px; font-size:14px; line-height:20px; }
+ .ct-completar-extras { display:grid; gap:24px; max-width:343px; }
+ .ct-completar-perfil > .ct-boton { max-width:343px; margin-top:0; }
+}
+
+@media(min-width:768px) and (max-width:1099px) { .ct-herramientas-admin { max-width:343px; } .ct-revision-perfil > .ct-boton,.ct-revision-perfil > .ct-acciones { max-width:311px; } }
+
+@media(min-width:768px) and (max-width:1099px) { .ct-solicitud-recibida > * { max-width:311px; } }
+
+.ct-tutor-seccion:has(.ct-disponibilidad) h2 { font-size:24px; line-height:32px; }
+.ct-resumen-disponibilidad { font-size:12px; line-height:16px; color:var(--ct-primario); font-weight:600; margin-top:16px; }
+.ct-resumen-disponibilidad p { margin:0 0 4px; }
+@media(min-width:768px) and (max-width:1099px) {
+ .ct-tutor > .ct-boton,.ct-tutor > .ct-boton-completo { max-width:343px; }
+ .ct-mi-identidad { margin-bottom:0; }
+ .ct-mi-identidad h1 { font-size:24px; line-height:32px; margin-bottom:0; }
+ .ct-mi-identidad p { margin-bottom:4px; }
+ .ct-disponibilidad { max-width:343px; gap:4px; }
+ .ct-disponibilidad button { min-height:44px; font-size:12px; }
+}
+
+.ct-solicitud-gestionada { margin:0; color:var(--ct-texto-secundario); font-size:14px; line-height:20px; }
+.ct-aviso.ct-aviso-error { color:var(--ct-error); background:color-mix(in srgb,var(--ct-error) 12%,var(--ct-superficie)); }
+.ct-rechazo-tutoria { display:flex; flex-direction:column; gap:24px; }
+.ct-rechazo-tutoria h1 { font-size:32px; line-height:40px; margin:0; }
+.ct-rechazo-tutoria > p { color:var(--ct-texto-secundario); font-size:14px; line-height:24px; margin:0; }
+.ct-rechazo-tutoria .ct-campo-etiqueta { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.ct-rechazo-tutoria textarea { height:58px; min-height:58px; border-radius:8px; }
+@media(max-width:767px) { .ct-modal-panel:has(.ct-rechazo-tutoria) { height:100dvh; max-height:100dvh; padding:16px; border-radius:0; background:var(--ct-fondo); } .ct-modal-panel:has(.ct-rechazo-tutoria) .ct-modal-cabecera { min-height:64px; padding:10px 16px; margin:-16px -16px 16px; background:var(--ct-superficie); } .ct-modal-panel:has(.ct-rechazo-tutoria) .ct-modal-cabecera h2 { font-size:20px; line-height:28px; } }
+
+.ct-estado-formulario > .ct-confirmacion-etiqueta:not(.ct-etiqueta-error),.ct-recuperar > .ct-confirmacion-etiqueta:not(.ct-etiqueta-error),.ct-cambio-confirmado > .ct-confirmacion-etiqueta:not(.ct-etiqueta-error) { color:color-mix(in srgb,var(--ct-exito) 85%,var(--ct-texto)); }
+.ct-aviso:not(.ct-aviso-error) { color:color-mix(in srgb,var(--ct-exito) 85%,var(--ct-texto)); }
+
+/* Los campos académicos de solo lectura no reservan mensajes de error. */
+.ct-completar-perfil .ct-completar-campos .ct-campo:has(input):not(:has(.ct-campo-ayuda,.ct-campo-error))::after { display:none; }

@@ -1,154 +1,59 @@
-/* Distribuye el layout y reserva espacio para la navegación móvil fija. */
-.ct-layout {
-  display: flex;
-  flex-direction: column;
-  min-height: 100dvh;
+/* Medidas del prototipo con identidad institucional y foco visible. */
+.ct-layout { display:flex; flex-direction:column; min-height:100dvh; padding-bottom:64px; }
+.ct-layout main { flex:1; width:100%; max-width:1440px; padding:16px !important; }
+.ct-cabecera { display:none; align-items:center; justify-content:space-between; gap:24px; min-height:96px; padding:24px 48px; background:var(--ct-superficie); }
+.ct-identidad { display:flex; align-items:center; gap:8px; color:var(--ct-primario); text-decoration:none; min-width:0; }
+.ct-simbolo { display:grid; place-items:center; width:32px; height:32px; flex-shrink:0; border-radius:8px; background:var(--ct-primario); }
+.ct-simbolo img { object-fit:contain; }
+.ct-nombre-app { font:600 20px/28px var(--ct-fuente-titulos); overflow-wrap:anywhere; }
+.ct-enlace { display:flex; align-items:center; justify-content:center; gap:8px; min-height:48px; padding:8px 16px; color:var(--ct-primario); text-decoration:none; font-size:14px; font-weight:600; }
+.ct-navegacion-superior { display:flex; gap:16px; }
+.ct-navegacion-superior .ct-enlace { border:1px solid var(--ct-primario); border-radius:4px; }
+.ct-navegacion-superior .bi { display:none; }
+.ct-cuenta { display:flex; align-items:center; gap:16px; color:var(--ct-texto); text-decoration:none; font-size:14px; font-weight:600; }
+.ct-navegacion-inferior { position:fixed; z-index:1030; bottom:0; left:0; right:0; height:64px; display:flex; border-top:1px solid var(--ct-borde); background:var(--ct-superficie); }
+.ct-navegacion-inferior .ct-enlace { flex:1; min-width:0; flex-direction:column; gap:4px; padding:8px 2px; color:var(--ct-texto-secundario); font-size:12px; line-height:16px; font-weight:400; }
+.ct-navegacion-inferior .bi { font-size:24px; line-height:24px; }
+.ct-navegacion-inferior .ct-enlace-activo { color:var(--ct-primario); background:var(--ct-primario-suave); }
+.ct-encabezado-pagina { display:grid; grid-template-columns:44px 1fr 44px; align-items:center; min-height:56px; background:var(--ct-superficie); border-bottom:1px solid var(--ct-borde); }
+.ct-encabezado-pagina button { border:0; width:44px; height:44px; background:transparent; color:var(--ct-texto); font-size:24px; }
+.ct-encabezado-pagina h1 { margin:0; text-align:center; font-size:20px; line-height:28px; font-weight:600; }
+.ct-volver-tablet { display:none; }
+.ct-pie { padding:16px; color:var(--ct-texto-secundario); font-size:14px; }
+.ct-pie a { display:inline-flex; min-height:44px; align-items:center; }
+.ct-saltar { position:fixed; left:16px; top:-100px; z-index:1100; display:inline-flex; align-items:center; min-height:44px; padding:8px 16px; background:var(--ct-superficie); color:var(--ct-primario); }
+.ct-saltar:focus { top:16px; }
+.ct-layout-acceso { padding-bottom:0; }
+.ct-layout-acceso .ct-pie { display:none; }
+@media(min-width:768px) {
+  .ct-layout { padding-bottom:0; }
+  .ct-layout main { padding:32px !important; }
+  .ct-cabecera { display:flex; padding:24px 32px; }
+  .ct-cabecera-acceso { display:none; }
+  .ct-encabezado-pagina,.ct-navegacion-inferior { display:none; }
+  .ct-navegacion-superior,.ct-cuenta { display:none; }
+  .ct-volver-tablet { display:inline-flex; min-width:160px; }
+}
+@media(min-width:1100px) {
+  .ct-layout main { padding:48px !important; }
+  .ct-cabecera { padding:24px 48px; }
+  .ct-navegacion-superior,.ct-cuenta { display:flex; }
+  .ct-volver-tablet { display:none; }
 }
 
-.ct-layout main {
-  flex: 1;
-}
 
-.ct-pie,
-.ct-navegacion-inferior {
-  background-color: var(--ct-superficie);
-}
+.ct-encabezado-pagina { min-height:64px; grid-template-columns:44px minmax(0,1fr); padding:10px 16px; gap:8px; }
+.ct-encabezado-pagina h1 { text-align:left; }
 
-.ct-cabecera {
-  background-color: var(--ct-primario);
-  border-bottom: 0;
-}
+.ct-identidad { min-height:44px; }
+@media(min-width:1100px) { .ct-estado-formulario,.ct-gestion-materias,.ct-editar-perfil,.ct-completar-perfil { min-height:calc(100dvh - 192px); } }
 
-.ct-cabecera :focus-visible {
-  outline-color: var(--ct-superficie);
+.ct-titulo-buscar-tablet { display:none; }
+@media(min-width:768px) and (max-width:1099px) {
+ .ct-titulo-buscar-tablet { display:block; }
+ .ct-layout:not(.ct-layout-acceso) .ct-encabezado-pagina { display:block; margin:32px 32px 0; padding:0; min-height:32px; border:0; background:transparent; }
+ .ct-layout:not(.ct-layout-acceso) .ct-encabezado-pagina button { display:none; }
+ .ct-layout:not(.ct-layout-acceso) .ct-encabezado-pagina h1 { font-size:28px; line-height:32px; }
+ .ct-layout:not(.ct-layout-acceso) main { padding-top:20px !important; }
+ .ct-tutor > h1.ct-solo-escritorio,.ct-formulario-solicitud > .ct-solo-escritorio,.ct-mis-sesiones:not(.ct-solicitudes-recibidas) > .ct-sesiones-titular { display:none; }
 }
-
-.ct-identidad {
-  min-width: 0;
-}
-
-.ct-logo-institucional {
-  width: auto;
-  flex-shrink: 0;
-}
-
-.ct-nombre-app {
-  color: var(--ct-superficie);
-  font-family: var(--ct-fuente-titulos);
-  font-size: 1rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.ct-enlace {
-  border: 0;
-  background: transparent;
-  font: inherit;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3rem;
-  min-height: 44px;
-  padding: 0.35rem;
-  color: var(--ct-texto-secundario);
-  text-align: center;
-  text-decoration: none;
-}
-
-.ct-enlace:hover,
-.ct-enlace-activo {
-  color: var(--ct-primario);
-}
-
-.ct-enlace-activo {
-  font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-
-.ct-navegacion-superior {
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-  font-size: 0.875rem;
-}
-
-.ct-usuario-navegacion {
-  padding: 0.35rem 0.65rem;
-  border-radius: 0.375rem;
-  background-color: var(--ct-superficie);
-  color: var(--ct-texto-secundario);
-  overflow-wrap: anywhere;
-}
-
-.ct-cabecera .ct-enlace {
-  color: var(--ct-superficie);
-}
-
-.ct-cabecera .ct-enlace:hover,
-.ct-cabecera .ct-enlace-activo {
-  color: var(--ct-superficie);
-  font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-
-.ct-navegacion-inferior {
-  position: fixed;
-  z-index: 1030;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 64px;
-  border-top: 1px solid var(--ct-borde);
-}
-
-.ct-navegacion-inferior .ct-enlace {
-  flex: 1;
-  flex-direction: column;
-  min-width: 0;
-  padding: 4px 2px;
-  font-size: 12px;
-  line-height: 1.15;
-}
-
-.ct-navegacion-inferior .bi {
-  font-size: 20px;
-}
-
-.ct-pie {
-  border-top: 1px solid var(--ct-borde);
-  color: var(--ct-texto-secundario);
-  font-size: 0.875rem;
-}
-
-.ct-pie a {
-  color: var(--ct-primario);
-}
-
-@media (max-width: 767.98px) {
-  .ct-layout {
-    padding-bottom: 64px;
-  }
-}
-
-@media (max-width: 399.98px) {
-  .ct-nombre-app {
-    font-size: 0.875rem;
-  }
-}
-
-.ct-saltar { position: fixed; left: 1rem; top: -100px; z-index: 1100; display: inline-flex; align-items: center; min-height: 44px; padding: .5rem 1rem; background: var(--ct-superficie); color: var(--ct-primario); }
-.ct-saltar:focus { top: 1rem; }
-.ct-usuario-navegacion { display: none; }
-@media (min-width: 992px) { .ct-usuario-navegacion { display: inline; } }
-@media (min-width: 768px) and (max-width: 991.98px) {
-  .ct-cabecera > .container { flex-wrap: nowrap !important; gap: .5rem !important; }
-  .ct-identidad { gap: .35rem !important; }
-  .ct-logo-institucional { max-width: 92px; height: auto; }
-  .ct-nombre-app { font-size: .875rem; }
-  .ct-navegacion-superior { flex-wrap: nowrap; gap: 0; font-size: .8125rem; flex-shrink: 0; }
-}
-
-.ct-pie a { display: inline-flex; align-items: center; min-height: 44px; }

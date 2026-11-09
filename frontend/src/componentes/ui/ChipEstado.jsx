@@ -7,7 +7,7 @@ const estados = {
   [EstadoSesion.FINALIZADA]: { etiqueta: 'Finalizada', color: 'var(--ct-texto-secundario)' },
   [EstadoSesion.CANCELADA]: { etiqueta: 'Cancelada', color: 'var(--ct-error)' },
   [EstadoSesion.RECHAZADA]: { etiqueta: 'Rechazada', color: 'var(--ct-error)' },
-  [EstadoVerificacion.VERIFICADO]: { etiqueta: 'Verificado', color: 'var(--ct-exito)' },
+  [EstadoVerificacion.VERIFICADO]: { etiqueta: 'Tutor verificado', color: 'var(--ct-exito)' },
   [EstadoVerificacion.RECHAZADO]: { etiqueta: 'Rechazado', color: 'var(--ct-error)' },
 }
 

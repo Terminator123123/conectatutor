@@ -61,10 +61,7 @@ export default function BloqueCalificacion({
       aria-label={`Calificación ${promedioFormateado} de 5, ${textoTutorias}`}
     >
       <span className="ct-calificacion-estrellas" aria-hidden="true">
-        {puntajes.map((puntaje) => {
-          const icono = promedio >= puntaje ? 'bi-star-fill' : promedio >= puntaje - 0.5 ? 'bi-star-half' : 'bi-star'
-          return <i className={`bi ${icono}`} key={puntaje} />
-        })}
+        <i className="bi bi-star" />
       </span>
       <span aria-hidden="true">{promedioFormateado}</span>
       <span className="ct-calificacion-total" aria-hidden="true">({textoTutorias})</span>

@@ -25,6 +25,17 @@ function contraste(texto, fondo) {
   return (valores[0] + 0.05) / (valores[1] + 0.05)
 }
 
+/** @param {string} primero Primer color de la configuración.
+ * @param {string} segundo Segundo color de la configuración.
+ * @param {number} proporcion Peso del primer color en sRGB.
+ * @returns {string} Mezcla para comprobar etiquetas sobre superficies reales. */
+function mezclar(primero, segundo, proporcion) {
+  const canales = (color) => color.slice(1).match(/.{2}/g).map((canal) => parseInt(canal, 16))
+  const a = canales(primero)
+  const b = canales(segundo)
+  return '#' + a.map((valor, indice) => Math.round(valor * proporcion + b[indice] * (1 - proporcion)).toString(16).padStart(2, '0')).join('')
+}
+
 const pares = [
   ['texto', 'fondo'], ['texto', 'superficie'], ['textoSecundario', 'fondo'], ['textoSecundario', 'superficie'],
   ['superficie', 'primario'], ['primario', 'fondo'], ['exito', 'superficie'], ['advertencia', 'superficie'],
@@ -39,5 +50,23 @@ for (const [texto, fondo, minimo = 4.5] of pares) {
   if (!cumple) fallidas += 1
   process.stdout.write(`${cumple ? '✔' : '✘'} ${texto}/${fondo}: ${relacion.toFixed(2)}:1 (mínimo ${minimo}:1)\n`)
 }
-process.stdout.write(`Contraste: ${pares.length - fallidas}/${pares.length} pares correctos.\n`)
+const colores = INSTITUCION.colores
+const mezclas = []
+for (const estado of ['exito', 'advertencia', 'error', 'textoSecundario']) {
+  for (const superficie of ['superficie', 'fondo']) mezclas.push([
+    `etiqueta ${estado}/${superficie}`,
+    mezclar(colores[estado], colores.texto, 0.85),
+    mezclar(colores[estado], colores[superficie], 0.12),
+  ])
+}
+mezclas.push(['aviso de error', colores.error, mezclar(colores.error, colores.superficie, 0.12)])
+mezclas.push(['paso/superficie', colores.advertencia, mezclar(colores.advertencia, colores.superficie, 0.12)])
+for (const [etiqueta, texto, fondo] of mezclas) {
+  const relacion = contraste(texto, fondo)
+  const cumple = relacion >= 4.5
+  if (!cumple) fallidas += 1
+  process.stdout.write(`${cumple ? '✔' : '✘'} ${etiqueta}: ${relacion.toFixed(2)}:1 (mínimo 4.5:1)\n`)
+}
+const total = pares.length + mezclas.length
+process.stdout.write(`Contraste: ${total - fallidas}/${total} pares correctos.\n`)
 if (fallidas) process.exitCode = 1

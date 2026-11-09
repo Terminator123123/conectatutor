@@ -11,6 +11,7 @@ export const ETIQUETAS_DIA = Object.freeze({
   [DiaSemana.JUEVES]: 'Jueves',
   [DiaSemana.VIERNES]: 'Viernes',
   [DiaSemana.SABADO]: 'Sábado',
+  [DiaSemana.DOMINGO]: 'Domingo',
 })
 
 /** @param {import('../modelo/FranjaHoraria.js').default} franja Franja del tutor.
@@ -42,7 +43,7 @@ export function fechaEnColombia(fecha) {
  */
 export function proximasOcurrencias(franja, desde = new Date(), dias = 14) {
   const diaBase = new Date(`${fechaEnColombia(desde)}T12:00:00${DESFASE_HORARIO}`)
-  const diasSemana = [null, ...Object.keys(ETIQUETAS_DIA)]
+  const diasSemana = [DiaSemana.DOMINGO, DiaSemana.LUNES, DiaSemana.MARTES, DiaSemana.MIERCOLES, DiaSemana.JUEVES, DiaSemana.VIERNES, DiaSemana.SABADO]
   const ocurrencias = []
   for (let desplazamiento = 1; desplazamiento <= dias; desplazamiento += 1) {
     const dia = new Date(diaBase.getTime() + desplazamiento * 86400000)

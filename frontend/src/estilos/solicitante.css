@@ -48,3 +48,419 @@
 }
 
 .ct-apoyo a, .ct-canales a { color: var(--ct-primario); }
+
+/* Búsqueda y perfil, con las composiciones móvil, tableta y escritorio. */
+.ct-buscar-saludo { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:16px; }
+.ct-buscar-saludo p { color:var(--ct-texto-secundario); margin:0 0 8px; font-size:14px; }
+.ct-buscar-saludo h1 { font-size:24px; line-height:32px; margin:0; }
+.ct-buscar-titular { display:none; margin-bottom:32px; }
+.ct-buscar-titular h1 { color:var(--ct-primario); margin-bottom:8px; }
+.ct-buscar-titular p { color:var(--ct-texto-secundario); margin:0; }
+.ct-buscar-composicion,.ct-buscar-resultados { min-width:0; }
+.ct-panel-filtros { display:none; padding:24px; background:var(--ct-superficie); border:1px solid var(--ct-borde); border-radius:8px; }
+.ct-panel-filtros-abierto { display:block; margin-bottom:24px; }
+.ct-panel-filtros h2 { margin:0 0 24px; }
+.ct-panel-filtros form { display:grid; gap:24px; }
+.ct-panel-filtros p { margin:0; color:var(--ct-texto-secundario); font-size:14px; line-height:20px; }
+.ct-filtros-rapidos { display:flex; gap:8px; overflow-x:auto; margin:16px 0; padding:2px 0; }
+.ct-filtro-chip { flex-shrink:0; min-height:48px; padding:8px 16px; border:1px solid var(--ct-primario); border-radius:4px; background:var(--ct-superficie); color:var(--ct-primario); font-weight:600; }
+.ct-filtro-chip-activo { background:var(--ct-primario); color:var(--ct-superficie); }
+.ct-conteo { margin:24px 0; font-size:14px; font-weight:600; }
+.ct-rejilla-tutores { gap:16px; }
+.ct-comunidad { display:none; gap:16px; padding:24px; margin-top:24px; border-radius:8px; background:var(--ct-primario-suave); color:var(--ct-primario); }
+.ct-comunidad > .bi { font-size:28px; }
+.ct-comunidad h2 { font-size:20px; line-height:28px; margin:0 0 8px; }
+.ct-comunidad p { margin:0; font-size:14px; }
+.ct-comunidad a,.ct-enlace-texto { display:inline-flex; align-items:center; min-height:44px; }
+.ct-migas { display:none; color:var(--ct-texto-secundario); font-size:14px; margin-bottom:32px; }
+.ct-migas a { color:inherit; display:inline-flex; min-height:44px; align-items:center; }
+.ct-ficha-identidad { display:flex; flex-direction:column; gap:24px; min-width:0; }
+.ct-ficha-nombre { display:flex; gap:16px; align-items:center; }
+.ct-ficha-nombre h1 { font-size:24px; line-height:32px; margin:0 0 4px; }
+.ct-ficha-nombre p { margin:0 0 8px; color:var(--ct-texto-secundario); font-size:14px; }
+.ct-ficha-valoracion { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; padding:16px; background:var(--ct-superficie); border:1px solid var(--ct-borde); border-radius:8px; }
+.ct-ficha-titular,.ct-ficha-accion-escritorio,.ct-materias-escritorio { display:none; }
+.ct-ficha-contenido section { margin-top:24px; }
+.ct-ficha-contenido h2 { font-size:20px; line-height:28px; margin:0 0 16px; }
+.ct-materias-lista { display:flex; flex-direction:column; }
+.ct-proximas { display:flex; flex-wrap:wrap; gap:8px; }
+.ct-proximas span { display:inline-block; border-radius:4px; padding:4px 8px; font-size:12px; color:var(--ct-primario); background:var(--ct-primario-suave); }
+.ct-proximas p { font-size:14px; color:var(--ct-texto-secundario); margin:8px 0 0; }
+.ct-resenas { display:grid; gap:24px; margin:0; }
+.ct-resenas li { padding:16px; border:1px solid var(--ct-borde); border-radius:8px; background:var(--ct-superficie); }
+.ct-resenas strong { font-size:14px; }
+.ct-resenas p { margin:16px 0 0; }
+.ct-ficha-tutor .ct-perfil-accion { padding:16px; }
+@media(min-width:768px) {
+  .ct-buscar-saludo h1 { font-size:32px; line-height:40px; }
+  .ct-ficha-tutor .ct-perfil-accion { margin-top:24px; max-width:343px; padding:0; }
+}
+@media(min-width:1100px) {
+  .ct-buscar-saludo { display:none; }
+  .ct-buscar-titular { display:block; }
+  .ct-buscar-composicion { display:grid; grid-template-columns:280px minmax(0,1fr); gap:32px; align-items:start; }
+  .ct-panel-filtros { display:block; }
+  .ct-filtros-rapidos { display:none; }
+  .ct-rejilla-tutores { grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; }
+  .ct-comunidad { display:flex; }
+  .ct-migas { display:block; }
+  .ct-ficha-composicion { display:grid; grid-template-columns: minmax(280px,400px) minmax(0,1fr); gap:48px; align-items:start; }
+  .ct-ficha-identidad { padding:32px; border:1px solid var(--ct-borde); border-radius:8px; background:var(--ct-superficie); }
+  .ct-ficha-nombre { flex-direction:column; align-items:flex-start; gap:24px; }
+  .ct-ficha-nombre h1 { font-size:32px; line-height:40px; margin-bottom:24px; }
+  .ct-ficha-nombre p { margin-bottom:24px; }
+  .ct-ficha-valoracion { padding:0; border:0; background:transparent; flex-direction:column; align-items:flex-start; gap:24px; }
+  .ct-ficha-valoracion .ct-tarifa { font-size:24px; }
+  .ct-ficha-titular,.ct-ficha-accion-escritorio { display:block; }
+  .ct-ficha-titular h1 { font-size:32px; margin:0 0 32px; }
+  .ct-ficha-titular p { margin:0 0 32px; }
+  .ct-ficha-biografia,.ct-ficha-tutor .ct-perfil-accion,.ct-materias-lista { display:none; }
+  .ct-ficha-materias { border-top:1px solid var(--ct-borde); padding-top:32px; }
+  .ct-materias-escritorio { display:flex; flex-wrap:wrap; gap:8px; }
+  .ct-ficha-contenido h2 { font-size:24px; line-height:32px; }
+  .ct-ficha-accion-escritorio p { color:var(--ct-texto-secundario); font-size:14px; margin:16px 0 0; }
+  .ct-resenas { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+
+/* Solicitud, listas de sesiones y pantalla de calificación. */
+.ct-solo-escritorio { display:none; }
+.ct-resumen-tutor { display:flex; align-items:center; gap:16px; margin-bottom:24px; }
+.ct-resumen-tutor strong { font-size:16px; }
+.ct-resumen-tutor p { margin:4px 0 0; color:var(--ct-texto-secundario); }
+.ct-formulario-solicitud { max-width:760px; padding-bottom:100px; }
+.ct-formulario-solicitud form { gap:24px; }
+.ct-formulario-solicitud h2 { font-size:20px; line-height:28px; margin:24px 0 12px; }
+.ct-mes-semana { display:flex; justify-content:space-between; align-items:center; color:var(--ct-texto-secundario); text-transform:capitalize; }
+.ct-mes-semana button { border:0; background:transparent; color:var(--ct-primario); min-width:44px; min-height:44px; }
+.ct-tira-fechas { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; margin-bottom:16px; }
+.ct-tira-fechas button { min-height:56px; min-width:0; border:1px solid var(--ct-borde); border-radius:8px; background:var(--ct-superficie); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:4px 0; color:var(--ct-texto); }
+.ct-tira-fechas button[aria-pressed='true'] { color:var(--ct-superficie); background:var(--ct-primario); border-color:var(--ct-primario); }
+.ct-tira-fechas button:disabled { color:var(--ct-texto-secundario); background:var(--ct-fondo); }
+.ct-tira-fechas small { font-size:12px; }
+.ct-tira-fechas strong { font-size:16px; }
+.ct-horas { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.ct-horas button { min-width:0; }
+.ct-horas button:disabled { color:var(--ct-texto-secundario); background:var(--ct-borde); border-color:var(--ct-borde); }
+.ct-envio-fijo { position:fixed; bottom:64px; left:0; right:0; z-index:1020; padding:16px; background:var(--ct-superficie); border-top:1px solid var(--ct-borde); }
+.ct-tabs-estado { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-bottom:24px; }
+.ct-tabs-estado button { min-height:44px; padding:8px 2px; border:1px solid var(--ct-borde); border-radius:4px; color:var(--ct-primario); background:var(--ct-superficie); font-size:14px; font-weight:600; }
+.ct-tabs-estado button[aria-selected='true'] { background:var(--ct-primario); color:var(--ct-superficie); border-color:var(--ct-primario); }
+.ct-sesiones-titular { display:none; }
+.ct-sesiones-escritorio { display:none; }
+.ct-sesiones-movil h2 { font-size:24px; line-height:32px; margin-bottom:24px; }
+.ct-item-sesion { display:flex; flex-direction:column; gap:16px; }
+.ct-item-sesion > .ct-chip-estado { align-self:flex-start; min-width:100px; justify-content:center; }
+.ct-item-identidad { display:flex; align-items:center; gap:16px; }
+.ct-item-identidad p { margin:0; }
+.ct-item-nombre { font-weight:600; }
+.ct-item-materia { color:var(--ct-texto-secundario); }
+.ct-item-fecha,.ct-item-hora { display:flex; align-items:center; gap:8px; margin:0; font-size:14px; color:var(--ct-texto); }
+.ct-item-fecha .bi,.ct-item-hora .bi { font-size:20px; color:var(--ct-primario); }
+.ct-item-acciones { display:grid; gap:8px; margin:0; }
+.ct-detalle-sesion,.ct-calificar-pagina { max-width:704px; margin:auto; display:grid; gap:24px; }
+.ct-detalle-sesion > h1 { display:none; }
+.ct-calificar-pagina h1 { font-size:32px; line-height:40px; margin:8px 0; }
+.ct-calificar-pagina > p,.ct-calificar-pagina form > p { color:var(--ct-texto-secundario); font-size:14px; }
+.ct-calificar-pagina form { display:grid; gap:24px; }
+.ct-calificar-pagina .ct-calificacion-editable { display:flex; justify-content:space-between; width:100%; }
+.ct-calificar-pagina .ct-campo-etiqueta { font-size:20px; line-height:28px; }
+.ct-puntaje { font-size:14px; color:var(--ct-primario); }
+.ct-tabla-contenedor { padding:24px; border:1px solid var(--ct-borde); border-radius:8px; background:var(--ct-superficie); overflow-x:auto; }
+.ct-tabla-sesiones { width:100%; font-size:14px; }
+.ct-tabla-sesiones th { font-weight:600; }
+.ct-tabla-sesiones thead { color:var(--ct-texto-secundario); }
+.ct-tabla-sesiones td,.ct-tabla-sesiones th { padding:16px 8px; border-bottom:1px solid var(--ct-borde); text-align:left; }
+.ct-tabla-sesiones a { display:inline-flex; align-items:center; min-height:44px; }
+.ct-tabla-sesiones .ct-boton { min-width:120px; }
+@media(min-width:768px) {
+  .ct-envio-fijo { position:static; border:0; padding:0; background:transparent; }
+  .ct-formulario-solicitud { padding-bottom:0; }
+  .ct-detalle-sesion > h1,.ct-sesiones-titular,.ct-solo-escritorio { display:block; }
+}
+@media(min-width:1100px) {
+  .ct-sesiones-movil { display:none; }
+  .ct-sesiones-escritorio { display:grid; gap:32px; }
+  .ct-sesiones-escritorio > p { margin:0; color:var(--ct-texto-secundario); font-size:14px; }
+  .ct-sesiones-escritorio > .ct-boton { justify-self:start; min-width:260px; }
+  .ct-sesiones-titular { margin-bottom:32px; }
+  .ct-sesiones-titular h1 { color:var(--ct-primario); margin-bottom:32px; }
+  .ct-sesiones-titular p { color:var(--ct-texto-secundario); }
+}
+
+.ct-filtros-rapidos .ct-filtro-chip:first-child { width:76px; padding-inline:4px; }
+.ct-filtros-rapidos .ct-filtro-chip:nth-child(2) { width:100px; padding-inline:4px; }
+.ct-filtros-rapidos .ct-filtro-chip:last-child { flex:1; padding-inline:8px; }
+.ct-buscar-saludo { margin-bottom:16px; }
+
+.ct-formulario-solicitud form > div:has(.ct-tira-fechas) > h2:first-child { margin-top:0; }
+.ct-formulario-solicitud .ct-campo:has(textarea) .ct-campo-etiqueta { font-size:20px; line-height:28px; }
+.ct-formulario-solicitud textarea { min-height:82px; height:82px; }
+.ct-tira-fechas button { min-width:44px; }
+
+.ct-elegir-materia { display:grid; gap:16px; max-width:704px; margin:auto; }
+.ct-elegir-materia h1 { margin:0; font-size:24px; line-height:32px; }
+.ct-elegir-materia p { margin:0; }
+
+.ct-estado-formulario { display:flex; flex-direction:column; gap:16px; min-height:calc(100dvh - 160px); max-width:704px; margin:auto; }
+.ct-estado-formulario h1 { font-size:24px; line-height:32px; margin:0; }
+.ct-estado-formulario > p { margin:0; }
+.ct-estado-formulario-acciones { display:grid; gap:8px; margin-top:auto; padding-top:16px; }
+.ct-etiqueta-error { color:var(--ct-error); background:color-mix(in srgb,var(--ct-error) 12%,var(--ct-superficie)); }
+
+.ct-cabecera-reporte { margin:-16px -16px 16px; }
+.ct-reporte-formulario textarea { height:48px; min-height:48px; }
+@media(min-width:768px) { .ct-cabecera-reporte { margin:0 0 24px; } }
+
+.ct-detalle-sesion > h1 { display:block; font-size:32px; line-height:40px; margin:0; }
+.ct-detalle-sesion > h2 { font-size:24px; line-height:32px; margin:0; }
+.ct-detalle-sesion > p { margin:0; }
+.ct-detalle-sesion > .ct-chip-estado { justify-self:start; }
+.ct-cancelar-pendiente { gap:24px; }
+.ct-cancelar-pendiente h1 { font-size:32px; line-height:40px; }
+.ct-cancelar-pendiente .ct-estado-formulario-acciones { margin-top:20px; gap:24px; }
+
+.ct-cambiar-horario > summary { min-height:44px; align-items:center; color:var(--ct-primario); cursor:pointer; }
+.ct-cambiar-horario > .ct-campo { margin-bottom:24px; }
+@media(max-width:1099px) { .ct-cambiar-horario > summary { display:none; } }
+@media(min-width:1100px) {
+ .ct-modal-panel:has(.ct-calificar-pagina),.ct-modal-panel:has(.ct-formulario-solicitud) { padding:32px; border-radius:8px; }
+ .ct-modal-panel:has(.ct-calificar-pagina) .ct-modal-cabecera h2,.ct-modal-panel:has(.ct-formulario-solicitud) .ct-modal-cabecera h2 { font-size:24px; line-height:32px; }
+ .ct-modal-panel .ct-calificar-pagina > .ct-avatar,.ct-modal-panel .ct-calificar-pagina > h1,.ct-modal-panel .ct-formulario-solicitud > .ct-solo-escritorio,.ct-modal-panel .ct-resumen-tutor { display:none; }
+ .ct-modal-panel .ct-calificar-pagina .ct-campo-etiqueta { font-size:14px; line-height:20px; }
+ .ct-modal-panel .ct-calificar-pagina textarea,.ct-modal-panel .ct-formulario-solicitud textarea { height:48px; min-height:48px; }
+ .ct-resumen-horario { display:grid; gap:24px; }
+ .ct-resumen-horario p { margin:0; }
+ .ct-cambiar-horario { font-size:14px; }
+}
+
+.ct-calificar-pagina .ct-calificacion-grande .bi { font-size:32px; }
+@media(min-width:768px) and (max-width:1099px) {
+ .ct-calificar-pagina h1 { margin:0; }
+ .ct-calificar-pagina .ct-calificacion-editable { max-width:343px; }
+ .ct-calificar-pagina form > .ct-boton { max-width:343px; }
+ .ct-formulario-solicitud .ct-envio-fijo { max-width:343px; }
+}
+
+.ct-buscar-tablet,.ct-busqueda-extra-tablet,.ct-sobre-resultado-tablet { display:none; }
+@media(min-width:768px) and (max-width:1099px) {
+ .ct-cabecera-buscar .ct-volver-tablet { display:none; }
+ .ct-layout:has(.ct-buscar) main { padding-top:32px !important; }
+ .ct-buscar-saludo { display:none; }
+ .ct-buscar-tablet { display:grid; gap:24px; margin-bottom:44px; }
+ .ct-buscar-tablet header { position:relative; }
+ .ct-buscar-tablet h1 { margin:0 0 24px; font-size:32px; line-height:40px; }
+ .ct-buscar-tablet p { margin:0; }
+ .ct-filtro-tablet { position:absolute; right:0; top:56px; min-height:44px; font-size:14px; }
+ .ct-busqueda-extra-tablet { display:block; margin-bottom:24px; }
+ .ct-buscar-resultados { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; align-items:start; }
+ .ct-buscar-resultados > .ct-busqueda,.ct-buscar-resultados > .ct-filtros-rapidos,.ct-buscar-resultados > .ct-conteo { display:none; }
+ .ct-buscar-resultados > .ct-rejilla-tutores { grid-column:1; grid-row:1; grid-template-columns:1fr; }
+ .ct-sobre-resultado-tablet { display:flex; grid-column:2; grid-row:1; margin-top:46px; }
+ .ct-buscar-resultados > .ct-enlace-texto { grid-column:1; }
+}
+
+@media(min-width:768px) and (max-width:1099px) {
+ .ct-layout:has(.ct-favoritos) main { padding-top:12px !important; }
+ .ct-favoritos { min-height:0; }
+ .ct-favoritos .ct-estado-formulario-acciones { margin-top:0; padding-top:0; }
+ .ct-estado-formulario-acciones > .ct-boton,.ct-estado-formulario-acciones > form { max-width:343px; }
+}
+
+@media(min-width:768px) and (max-width:1099px) { .ct-tabs-estado { max-width:343px; } .ct-item-acciones { max-width:311px; } }
+
+.ct-aviso { padding:16px; margin:24px 0; border:0; border-radius:8px; color:var(--ct-exito); background:color-mix(in srgb,var(--ct-exito) 12%,var(--ct-superficie)); font-size:14px; line-height:20px; }
+.ct-aviso > p { margin:8px 0 0; }
+.ct-sesiones-propias [role='tabpanel'] > h2 { margin-bottom:24px; font-size:24px; line-height:32px; }
+@media(min-width:768px) and (max-width:1099px) { .ct-sesiones-movil > .ct-boton { max-width:343px; } }
+
+@media(max-width:767px) { .ct-perfil-accion,.ct-envio-fijo { bottom:0; } .ct-layout:has(.ct-perfil-accion),.ct-layout:has(.ct-formulario-solicitud) { padding-bottom:0; } }
+
+.ct-mes-semana { text-transform:none; }
+.ct-tira-fechas small { text-transform:capitalize; }
+
+.ct-calificar-pagina > p,.ct-calificar-pagina form > p { margin:0; line-height:20px; }
+.ct-calificar-pagina .ct-calificacion-editable { justify-content:flex-start; gap:20px; width:300px; max-width:100%; }
+.ct-calificar-pagina .ct-campo { gap:20px; }
+.ct-calificar-pagina textarea { height:82px; min-height:82px; }
+@media(min-width:1100px) { .ct-modal-panel .ct-calificar-pagina .ct-campo { gap:4px; } }
+
+@media(max-width:767px) { .ct-layout:has(.ct-perfil-accion) .ct-navegacion-inferior { display:none; } }
+
+.ct-solicitud-cancelada { display:grid; gap:24px; max-width:704px; margin:auto; }
+.ct-solicitud-cancelada > .ct-chip-estado { justify-self:start; }
+.ct-solicitud-cancelada h1 { margin:0; font-size:32px; line-height:40px; }
+.ct-solicitud-cancelada p { margin:0; }
+.ct-solicitud-cancelada > .ct-texto-secundario { font-size:14px; }
+
+.ct-filtro-titular-movil,.ct-opciones-filtro-movil,.ct-filtro-ayuda-movil,.ct-filtro-limpiar-movil,.ct-materia-filtro-movil { display:none; }
+.ct-filtro-formulario,.ct-panel-filtros .ct-filtro-formulario,.ct-campos-filtro-escritorio { display:flex; flex-direction:column; gap:24px; }
+.ct-filtros-academicos[open] { display:flex; flex-direction:column; gap:24px; }
+.ct-filtros-academicos > summary { min-height:44px; padding:10px 12px; border:1px solid var(--ct-borde); border-radius:4px; color:var(--ct-primario); background:var(--ct-superficie); cursor:pointer; font-size:14px; }
+.ct-modal-con-regreso { justify-content:flex-start; gap:8px; }
+.ct-favoritos-busqueda { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:16px; }
+@media(max-width:767px) {
+ .ct-modal-panel:has(.ct-filtro-formulario) { height:100dvh; max-height:100dvh; padding:16px; border-radius:0; background:var(--ct-fondo); }
+ .ct-modal-panel:has(.ct-filtro-formulario) .ct-modal-cabecera { min-height:64px; padding:10px 16px; margin:-16px -16px 16px; background:var(--ct-superficie); }
+ .ct-modal-panel:has(.ct-filtro-formulario) .ct-modal-cabecera h2 { font-size:20px; line-height:28px; }
+ .ct-filtro-titular-movil,.ct-filtro-ayuda-movil,.ct-filtro-limpiar-movil,.ct-materia-filtro-movil { display:block; }
+ .ct-filtro-formulario h1 { font-size:24px; line-height:32px; margin:0; }
+ .ct-opciones-filtro-movil { display:grid; gap:24px; }
+ .ct-opciones-filtro-movil h2 { font-size:20px; line-height:28px; margin:0; }
+ .ct-campos-filtro-escritorio,.ct-filtro-nota-escritorio { display:none; }
+ .ct-filtros-academicos { order:6; }
+ .ct-filtro-formulario p { margin:0; color:var(--ct-texto-secundario); font-size:14px; line-height:20px; }
+}
+@media(min-width:1100px) { .ct-filtros-academicos > summary,.ct-filtros-academicos > .ct-enlace-texto,.ct-favoritos-busqueda { display:none; } }
+
+.ct-confirmacion-etiqueta.ct-etiqueta-error { color:var(--ct-error); background:color-mix(in srgb,var(--ct-error) 12%,var(--ct-superficie)); }
+
+.ct-confirmacion-solicitud-tablet { display:grid; gap:24px; }
+.ct-confirmacion-solicitud-tablet h1 { margin:0; font-size:32px; line-height:40px; }
+.ct-confirmacion-solicitud-tablet p { margin:0; }
+.ct-confirmacion-solicitud-tablet > .ct-chip-estado { width:180px; }
+.ct-confirmacion-solicitud-tablet > .ct-boton { max-width:343px; }
+@media(min-width:768px) and (max-width:1099px) {
+ .ct-layout:has(.ct-confirmacion-solicitud-tablet) > .ct-encabezado-pagina { display:none; }
+ .ct-layout:has(.ct-confirmacion-solicitud-tablet) main { padding-top:32px !important; }
+ .ct-layout:has(.ct-formulario-solicitud) > .ct-encabezado-pagina h1 { font-size:32px; line-height:40px; }
+ .ct-layout:has(.ct-formulario-solicitud) main { padding-top:24px !important; }
+ .ct-formulario-solicitud > .ct-resumen-tutor { display:none; }
+ .ct-resumen-tutor-tablet { margin:0 0 24px; }
+ .ct-resumen-fecha-tablet { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+ .ct-cambiar-horario { position:relative; }
+ .ct-cambiar-horario:not([open]) { height:0; }
+ .ct-cambiar-horario:not([open]) > summary { display:flex; position:absolute; right:0; top:-144px; font-size:12px; }
+ .ct-formulario-solicitud .ct-campo:has(textarea) .ct-campo-etiqueta { font-size:14px; line-height:20px; }
+ .ct-formulario-solicitud textarea { height:48px; min-height:48px; }
+ .ct-tarifa-resumen-tablet { margin-top:20px; }
+ .ct-material-solicitud { order:5; max-width:343px; }
+ .ct-informacion-solicitud { display:none; }
+}
+
+.ct-aviso-solicitud { margin:24px 0; font-size:14px; line-height:20px; }
+.ct-sesiones-titular .ct-calificacion-publicada { color:var(--ct-exito); }
+.ct-sesiones-escritorio > .ct-aviso { padding:0; margin:0; background:transparent; font-size:16px; line-height:24px; }
+
+.ct-sobre-resultado-tablet.ct-dato { display:none; }
+@media(min-width:768px) and (max-width:1099px) { .ct-sobre-resultado-tablet.ct-dato { display:flex; } }
+
+.ct-buscar-saludo { align-items:center; }
+.ct-buscar-saludo p { margin-bottom:4px; line-height:20px; }
+.ct-filtros-rapidos { padding:0; }
+.ct-conteo { margin:16px 0; }
+
+.ct-estado-formulario > .ct-promedio-aclaracion { font-size:12px; line-height:16px; color:var(--ct-texto-secundario); }
+@media(min-width:768px) and (max-width:1099px) { .ct-enlace-promedio { max-width:343px; } }
+
+@media(min-width:1100px) {
+ .ct-modal-panel:has(.ct-formulario-solicitud) .ct-modal-cerrar,.ct-modal-panel:has(.ct-calificar-pagina) .ct-modal-cerrar { display:none; }
+ .ct-modal-panel .ct-formulario-solicitud .ct-campo:has(textarea) .ct-campo-etiqueta { font-size:14px; line-height:20px; }
+ .ct-modal-panel .ct-cambiar-horario { position:relative; }
+ .ct-modal-panel .ct-cambiar-horario:not([open]) { height:0; margin-bottom:-24px; }
+ .ct-modal-panel .ct-cambiar-horario:not([open]) > summary { position:absolute; right:0; top:-60px; display:flex; min-height:44px; font-size:12px; }
+ .ct-costo-solicitud { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:12px; font-size:14px; line-height:20px; }
+ .ct-costo-solicitud .ct-material-solicitud { flex-shrink:0; }
+ .ct-costo-solicitud .ct-boton { min-height:44px; padding:8px; font-size:12px; }
+ .ct-modal-panel .ct-informacion-solicitud { margin:0; font-size:14px; line-height:20px; }
+}
+
+@media(min-width:768px) and (max-width:1099px) { .ct-cambiar-horario:not([open]) { margin-bottom:-24px; } }
+
+.ct-ficha-tutor-tablet { display:flex; flex-direction:column; gap:24px; }
+.ct-ficha-tutor-tablet h1 { font-size:32px; line-height:40px; margin:0; }
+.ct-ficha-tutor-tablet h2 { font-size:24px; line-height:32px; margin:0; }
+.ct-ficha-tutor-tablet > p { margin:0; }
+.ct-ficha-nombre-tablet { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+.ct-ficha-datos-tablet,.ct-acciones-perfil-tablet { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.ct-ficha-materias-tablet { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ct-informacion-perfil-tablet > summary { min-height:44px; display:flex; align-items:center; color:var(--ct-primario); cursor:pointer; }
+.ct-informacion-perfil-tablet h2 { margin:24px 0 16px; }
+@media(min-width:768px) and (max-width:1099px) { .ct-layout:has(.ct-ficha-tutor-tablet) > .ct-encabezado-pagina { display:none; } .ct-layout:has(.ct-ficha-tutor-tablet) main { padding-top:32px !important; } }
+
+.ct-resumen-perfil-extra { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.ct-resumen-perfil-extra .ct-boton { min-height:44px; padding:8px; font-size:12px; }
+
+/* Estados inicial y de gratuidad del prototipo. */
+.ct-primera-sesion { background:var(--ct-superficie); border-radius:8px; padding:24px; margin-top:0; }
+.ct-primera-sesion > i { color:var(--ct-primario); font-size:40px; }
+.ct-primera-sesion h1 { font-size:32px; line-height:1.25; margin:28px 0 32px; max-width:290px; }
+.ct-primera-sesion p { color:var(--ct-texto-secundario); margin-bottom:24px; }
+.ct-busqueda-gratuita h1 { font-size:32px; line-height:1.25; margin:0 0 24px; }
+.ct-busqueda-gratuita > .ct-conteo { margin:24px 0; }
+.ct-busqueda-gratuita > .ct-boton { margin-top:24px; }
+.ct-accesos-busqueda-movil { display:flex; margin-top:16px; }
+.ct-accesos-busqueda-movil > a { flex:1; }
+@media(min-width:768px) { .ct-accesos-busqueda-movil { display:none; } }
+
+@media(min-width:1100px) { .ct-tabla-sesiones tbody td,.ct-tabla-sesiones tbody th { padding-top:22px; padding-bottom:22px; } }
+
+.ct-detalle-sesion > .ct-tarifa-confirmada { font-size:24px; line-height:32px; }
+
+.ct-primera-sesion > i { display:block; line-height:1; }
+
+.ct-busqueda-gratuita > .ct-chip-materia { min-width:170px; justify-content:center; }
+
+@media(min-width:768px) and (max-width:1099px) {
+ .ct-formulario-solicitud .ct-resumen-fecha-tablet .ct-campo:has(input):not(:has(.ct-campo-ayuda,.ct-campo-error))::after { display:none; }
+}
+
+/* Corrección M1: composición del vacío de búsqueda. */
+.ct-busqueda-vacia { padding:24px; margin-top:16px; border-radius:8px; background:var(--ct-superficie); text-align:left; min-width:0; }
+.ct-busqueda-vacia > .bi { display:block; font-size:48px; line-height:48px; color:var(--ct-primario); }
+.ct-busqueda-vacia h2 { font-size:24px; line-height:32px; max-width:260px; margin:24px 0 16px; }
+.ct-busqueda-vacia > p { font-size:16px; line-height:24px; color:var(--ct-texto-secundario); margin-bottom:16px; }
+.ct-busqueda-vacia .ct-busqueda-vacia-apoyo { font-size:12px; line-height:20px; margin:16px 0 0; overflow-wrap:anywhere; }
+.ct-busqueda-vacia-apoyo a { display:inline-flex; align-items:center; min-height:44px; }
+@media(min-width:768px) and (max-width:1099px) { .ct-buscar-resultados > .ct-busqueda-vacia { grid-column:1 / -1; } }
+/* Corrección M3: controles de escritorio del prototipo. */
+@media(min-width:1100px) {
+ .ct-panel-filtros select { appearance:none; -webkit-appearance:none; background-image:none; text-align:center; text-align-last:center; color:var(--ct-primario); font-weight:600; border:1px solid var(--ct-primario); border-radius:4px; min-height:48px; padding:8px; }
+ .ct-busqueda-integrada { position:relative; padding-left:48px; }
+ .ct-busqueda-integrada > .ct-busqueda-icono { position:absolute; left:16px; top:50%; transform:translateY(-50%); color:var(--ct-primario); font-size:20px; }
+}
+
+/* A1: estados demostrativos del prototipo. */
+.ct-notificaciones > .ct-chip-materia { display:flex; justify-content:center; height:24px; }
+.ct-notificacion .ct-dato { display:block; color:var(--ct-texto); text-decoration:none; }
+.ct-notificacion .ct-dato small { display:block; margin-bottom:4px; }
+.ct-notificacion > p { margin:16px 0 0; font-size:14px; line-height:20px; }
+.ct-reprogramar-formulario { display:flex; flex:1; flex-direction:column; gap:16px; }
+.ct-reprogramar-formulario textarea { height:48px; min-height:48px; }
+.ct-reprogramar-formulario .ct-campo:has(select) { margin-bottom:8px; }
+.ct-estado-formulario > .ct-demostracion,.ct-demostracion { color:var(--ct-texto-secundario); font-size:12px; line-height:16px; }
+.ct-layout:has(.ct-sesion-expirada) { padding-bottom:0; }
+.ct-sesion-expirada { min-height:calc(100dvh - 96px); }
+.ct-desactivar-materia { min-height:400px; }
+@media(max-width:767px) {
+ .ct-modal-panel:has(.ct-desactivar-materia) { height:100dvh; max-height:100dvh; padding:16px; border-radius:0; background:var(--ct-fondo); display:flex; flex-direction:column; }
+ .ct-modal-panel:has(.ct-desactivar-materia) .ct-modal-cabecera { min-height:64px; padding:10px 16px; margin:-16px -16px 16px; background:var(--ct-superficie); }
+ .ct-modal-panel:has(.ct-desactivar-materia) .ct-modal-contenido { flex:1; }
+ .ct-desactivar-materia { min-height:calc(100dvh - 96px); }
+}
+
+.ct-notificaciones-lista { display:flex; flex-direction:column; gap:16px; min-width:0; }
+@media(max-width:767px) {
+ .ct-notificaciones { height:calc(100dvh - 160px); min-height:0; }
+ .ct-notificaciones-lista { flex:1; min-height:0; overflow:auto; }
+ .ct-notificaciones > .ct-estado-formulario-acciones { background:var(--ct-superficie); margin:auto -16px -16px; padding:16px; }
+}
+@media(min-width:768px) and (max-width:1099px) {
+ .ct-notificaciones > .ct-estado-formulario-acciones { display:none; }
+}
+
+.ct-busqueda-integrada { position:relative; padding-left:48px; }
+.ct-busqueda-integrada > .ct-busqueda-icono { position:absolute; left:16px; top:50%; transform:translateY(-50%); color:var(--ct-primario); font-size:20px; }
+@media(max-width:767px) {
+ .ct-reprogramar { padding-bottom:136px; }
+ .ct-reprogramar .ct-estado-formulario-acciones { position:fixed; z-index:1031; bottom:64px; left:0; right:0; background:var(--ct-superficie); padding:16px; }
+ .ct-reprogramar .ct-campo-control { scroll-margin-bottom:220px; }
+}
+
+@media(max-width:767px) {
+ .ct-modal:has(.ct-desactivar-materia) { padding:0; align-items:stretch; }
+ .ct-modal-panel:has(.ct-desactivar-materia) { width:100%; max-width:none; }
+}
+
+@media(max-width:767px) {
+ .ct-sesion-expirada > .ct-estado-formulario-acciones,.ct-desactivar-materia > .ct-estado-formulario-acciones { background:var(--ct-superficie); margin:auto -16px -16px; padding:16px; }
+}

@@ -10,7 +10,7 @@ import Sesion from '../modelo/Sesion.js'
 import { EstadoVerificacion, RolUsuario } from '../modelo/enums.js'
 
 // Súbela cuando cambie la forma de los datos guardados o los datos iniciales.
-export const VERSION_DATOS = 1
+export const VERSION_DATOS = 2
 
 const claves = Object.freeze({
   version: 'ct.version',
@@ -20,6 +20,7 @@ const claves = Object.freeze({
   perfilesTutor: 'ct.perfilesTutor',
   sesiones: 'ct.sesiones',
   sesionActual: 'ct.sesionActual',
+  favoritos: 'ct.favoritos',
 })
 
 /**
@@ -190,6 +191,47 @@ export function crearRepositorio(almacen = globalThis.localStorage ?? almacenEnM
   }
 
   return {
+    /**
+     * Alterna un favorito real de un estudiante y devuelve sus identificadores.
+     * @param {string} estudianteId Estudiante dueño de la lista.
+     * @param {string} perfilTutorId Perfil existente que se guarda o se quita.
+     * @returns {Promise<string[]>} Nueva lista sin duplicados.
+     */
+    async alternarFavorito(estudianteId, perfilTutorId) {
+      await esperar()
+      const contexto = reconstruir()
+      const estudiante = buscarReferencia(contexto.usuarios, 'Estudiante', estudianteId)
+      if (estudiante.getRol() !== RolUsuario.ESTUDIANTE) throw new Error('Solo un estudiante puede guardar favoritos.')
+      buscarReferencia(contexto.perfilesTutor, 'PerfilTutor', perfilTutorId)
+      const favoritos = JSON.parse(almacen.getItem(claves.favoritos) ?? '{}')
+      const lista = favoritos[estudianteId] ?? []
+      favoritos[estudianteId] = lista.includes(perfilTutorId)
+        ? lista.filter((id) => id !== perfilTutorId) : [...lista, perfilTutorId]
+      almacen.setItem(claves.favoritos, JSON.stringify(favoritos))
+      return [...favoritos[estudianteId]]
+    },
+
+    /**
+     * Relee la lista de favoritos de una cuenta sin exponer el almacenamiento.
+     * @param {string} estudianteId Estudiante dueño de la lista.
+     * @returns {Promise<string[]>} Identificadores de sus perfiles favoritos.
+     */
+    async listarFavoritos(estudianteId) {
+      await esperar()
+      return [...(JSON.parse(almacen.getItem(claves.favoritos) ?? '{}')[estudianteId] ?? [])]
+    },
+
+    /**
+     * Inserta o actualiza una materia con su programa existente.
+     * @param {Materia} materia Materia que se guarda.
+     * @returns {Promise<Materia>} Instancia reconstruida y persistida.
+     */
+    async guardarMateria(materia) {
+      await esperar()
+      guardarDatos('materias', materia.toJSON())
+      return reconstruir().materias.get(materia.getId())
+    },
+
     /**
      * Lista los programas académicos.
      * @returns {Promise<Programa[]>} Instancias nuevas de los programas guardados.
@@ -395,7 +437,7 @@ export function crearRepositorio(almacen = globalThis.localStorage ?? almacenEnM
     },
 
     /**
-     * Elimina únicamente las siete claves del repositorio.
+     * Elimina únicamente las ocho claves del repositorio.
      * @returns {Promise<void>} Finalización del reinicio.
      */
     async reiniciar() {
@@ -430,6 +472,11 @@ export function crearRepositorio(almacen = globalThis.localStorage ?? almacenEnM
       await esperar()
       const usuarioId = JSON.parse(almacen.getItem(claves.sesionActual) ?? 'null')
       return reconstruir().usuarios.get(usuarioId) ?? null
+    },
+
+    /** @returns {boolean} Indica si existe una referencia de sesión, aunque su cuenta ya no esté disponible. */
+    tieneSesionGuardada() {
+      return almacen.getItem(claves.sesionActual) !== null
     },
   }
 }

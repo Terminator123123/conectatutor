@@ -20,7 +20,7 @@ const dominioPrueba = 'conectatutor.test'
 const fechaPrueba = '2026-11-02T14:00:00.000Z'
 const clavesRepositorio = [
   'ct.programas', 'ct.materias', 'ct.usuarios',
-  'ct.perfilesTutor', 'ct.sesiones', 'ct.sesionActual', 'ct.version',
+  'ct.perfilesTutor', 'ct.sesiones', 'ct.sesionActual', 'ct.version', 'ct.favoritos',
 ]
 
 /**
@@ -149,7 +149,7 @@ async function ejecutar() {
     ['RolUsuario', RolUsuario, ['ESTUDIANTE', 'ADMINISTRADOR']],
     ['EstadoSesion', EstadoSesion, ['PENDIENTE', 'CONFIRMADA', 'RECHAZADA', 'CANCELADA', 'FINALIZADA']],
     ['EstadoVerificacion', EstadoVerificacion, ['PENDIENTE', 'VERIFICADO', 'RECHAZADO']],
-    ['DiaSemana', DiaSemana, ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO']],
+    ['DiaSemana', DiaSemana, ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO', 'DOMINGO']],
   ]
   for (const [nombre, enumeracion, valores] of enumeraciones) {
     prueba(`${nombre} tiene los valores del contrato y no permite modificaciones`, () => {
@@ -489,7 +489,7 @@ async function ejecutar() {
     assert.equal(almacen.getItem('ct.usuarios'), null)
     assert.equal((await repositorio.listarProgramas()).length, 1)
   })
-  prueba('Reiniciar elimina solo las siete claves propias del repositorio', async () => {
+  prueba('Reiniciar elimina solo las ocho claves propias del repositorio', async () => {
     const { almacen, repositorio, usuarios } = await prepararRepositorio()
     almacen.setItem('otra.aplicacion', 'conservar')
     repositorio.guardarSesionActual(usuarios[0].getId())
@@ -682,6 +682,82 @@ async function ejecutar() {
     assert.equal(await repositorio.asegurarVersion(), false)
     assert.deepEqual(clavesRepositorio.map((clave) => almacen.getItem(clave)), anteriores)
     assert.equal((await repositorio.listarSesiones()).length, 5)
+  })
+
+  prueba('Domingo pertenece a la enumeración y la agenda encuentra sus fechas colombianas', () => {
+    assert.equal(DiaSemana.DOMINGO, 'DOMINGO')
+    const franja = new FranjaHoraria({ dia: DiaSemana.DOMINGO, horaInicio: '08:00', horaFin: '10:00' })
+    const fechas = proximasOcurrencias(franja, new Date('2026-11-03T12:00:00-05:00'))
+    assert.deepEqual(fechas.map(({ clave }) => clave), ['2026-11-08', '2026-11-15'])
+    assert.equal(fechas[0].fecha.toISOString(), '2026-11-08T13:00:00.000Z')
+  })
+  prueba('cambiarTarifa admite valor positivo y null, conserva el anterior al rechazar valores inválidos', () => {
+    const { perfil } = crearEscenario()
+    perfil.cambiarTarifa(35000)
+    assert.equal(perfil.getTarifaHora(), 35000)
+    for (const valor of [0, -1, NaN, Infinity, '35000', undefined]) {
+      assert.throws(() => perfil.cambiarTarifa(valor), errorDeRegla('R10'))
+      assert.equal(perfil.getTarifaHora(), 35000)
+    }
+    perfil.cambiarTarifa(null)
+    assert.equal(perfil.getTarifaHora(), null)
+  })
+  prueba('Favoritos se guardan por estudiante, se releen en otro repositorio y se quitan', async () => {
+    const { almacen, repositorio, usuarios } = await prepararRepositorio()
+    const perfil = (await repositorio.listarTutoresVerificados())[0]
+    const estudiante = usuarios.find((usuario) => usuario.getRol() === RolUsuario.ESTUDIANTE)
+    const otro = usuarios.find((usuario) => usuario.getRol() === RolUsuario.ESTUDIANTE && usuario.getId() !== estudiante.getId())
+    assert.deepEqual(await repositorio.listarFavoritos(estudiante.getId()), [])
+    await repositorio.alternarFavorito(estudiante.getId(), perfil.getId())
+    const releido = crearRepositorio(almacen, 0)
+    assert.deepEqual(await releido.listarFavoritos(estudiante.getId()), [perfil.getId()])
+    assert.deepEqual(await releido.listarFavoritos(otro.getId()), [])
+    await releido.alternarFavorito(estudiante.getId(), perfil.getId())
+    assert.deepEqual(await repositorio.listarFavoritos(estudiante.getId()), [])
+    await assert.rejects(repositorio.alternarFavorito(estudiante.getId(), 'inexistente'))
+    await repositorio.alternarFavorito(estudiante.getId(), perfil.getId())
+    await repositorio.reiniciar()
+    assert.equal(almacen.getItem('ct.favoritos'), null)
+  })
+  prueba('guardarMateria inserta y actualiza sin duplicar y rechaza programas inexistentes', async () => {
+    const { almacen, repositorio } = await prepararRepositorio()
+    const programa = (await repositorio.listarProgramas())[0]
+    const materia = new Materia({ codigo: 'NUEVA', nombre: 'Nueva materia', programa })
+    const guardada = await repositorio.guardarMateria(materia)
+    assert.equal(guardada.getId(), materia.getId())
+    const editada = Materia.desdeJSON({ ...guardada.toJSON(), nombre: 'Materia editada' }, { buscarPrograma: () => programa })
+    await repositorio.guardarMateria(editada)
+    const lista = await crearRepositorio(almacen, 0).listarMaterias(programa.getId())
+    assert.equal(lista.filter((item) => item.getId() === materia.getId()).length, 1)
+    assert.equal(lista.find((item) => item.getId() === materia.getId()).getNombre(), 'Materia editada')
+    const antes = almacen.getItem('ct.materias')
+    await assert.rejects(repositorio.guardarMateria(crearEscenario().materia))
+    assert.equal(almacen.getItem('ct.materias'), antes)
+  })
+  prueba('La demostración conserva cinco sesiones y usa bloques de dos horas y tarifa informativa', async () => {
+    const { repositorio } = await prepararRepositorio()
+    const perfiles = await repositorio.listarPerfilesTutor()
+    assert.equal((await repositorio.listarSesiones()).length, 5)
+    assert.equal(perfiles.filter((perfil) => perfil.getTarifaHora() !== null).length, 1)
+    const bloques = ['08:00–10:00', '10:00–12:00', '14:00–16:00', '16:00–18:00']
+    assert.ok(perfiles.every((perfil) => perfil.getDisponibilidad().every((franja) => bloques.includes(`${franja.getHoraInicio()}–${franja.getHoraFin()}`))))
+  })
+
+  prueba('A1: distingue una sesión ausente, una referencia inválida y una cuenta restaurable', async () => {
+    const { almacen, repositorio, usuarios } = await prepararRepositorio()
+    assert.equal(repositorio.tieneSesionGuardada(), false)
+    assert.equal(await repositorio.obtenerSesionActual(), null)
+    repositorio.guardarSesionActual('cuenta-que-ya-no-existe')
+    const releido = crearRepositorio(almacen, 0)
+    assert.equal(releido.tieneSesionGuardada(), true)
+    assert.equal(await releido.obtenerSesionActual(), null)
+    releido.guardarSesionActual(usuarios[0].getId())
+    assert.equal((await releido.obtenerSesionActual()).getId(), usuarios[0].getId())
+    almacen.setItem('ct.sesionActual', 'referencia-malformada')
+    assert.equal(releido.tieneSesionGuardada(), true)
+    await assert.rejects(releido.obtenerSesionActual(), SyntaxError)
+    releido.guardarSesionActual(null)
+    assert.equal(releido.tieneSesionGuardada(), false)
   })
 
   let correctas = 0

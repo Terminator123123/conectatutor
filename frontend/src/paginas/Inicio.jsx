@@ -14,7 +14,9 @@ export default function Inicio() {
     <div className="ct-solicitante ct-inicio">
       <section className="ct-inicio-presentacion">
         <h1>Encuentra quién te acompañe en tus materias</h1>
-        <p>{`${INSTITUCION.nombreApp} conecta a estudiantes de ${INSTITUCION.nombre} con estudiantes tutores de semestres más avanzados. Complementa las tutorías del Área de Permanencia de tu sede.`}</p>
+        <p>
+          {`${INSTITUCION.nombreApp} conecta a estudiantes de ${INSTITUCION.nombre} con estudiantes tutores de semestres más avanzados. Complementa las tutorías del Área de Permanencia de tu sede.`}
+        </p>
         {!cargando && <div className="ct-acciones">
           {!usuario ? <>
             <Link className="ct-boton btn-ct-primario" to="/registro">Crear cuenta</Link>

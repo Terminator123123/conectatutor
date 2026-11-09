@@ -11,9 +11,10 @@ import Cargando from '../ui/Cargando.jsx'
  * @returns {import('react').ReactNode} Contenido, espera o redirección.
  */
 export default function RutaProtegida({ roles, children }) {
-  const { usuario, cargando } = useAutenticacion()
+  const { usuario, cargando, sesionExpirada } = useAutenticacion()
   const location = useLocation()
   if (cargando) return <Cargando texto="Verificando tu sesión…" />
+  if (!usuario && sesionExpirada) return <Navigate to="/sesion-expirada" replace state={{ desde: location.pathname + location.search }} />
   if (!usuario) return <Navigate to="/ingresar" replace state={{ desde: location.pathname + location.search }} />
   if (!roles.includes(usuario.getRol())) return <Navigate to={rutaInicialDe(usuario)} replace />
   return children

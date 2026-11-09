@@ -10,9 +10,10 @@ import { createPortal } from 'react-dom'
  * @param {function(): void} props.alCerrar Solicita al padre cerrar el diálogo.
  * @param {import('react').ReactNode} props.children Contenido del diálogo.
  * @param {import('react').ReactNode} [props.pie] Acciones opcionales del pie.
+ * @param {boolean} [props.conRegreso=false] Sustituye el cierre por la flecha de regreso del prototipo.
  * @returns {import('react').ReactPortal|null} Diálogo o nada cuando está cerrado.
  */
-export default function Modal({ abierto, titulo, alCerrar, children, pie }) {
+export default function Modal({ abierto, titulo, alCerrar, children, pie, conRegreso = false }) {
   const idTitulo = useId()
   const panelRef = useRef(null)
   const alCerrarRef = useRef(alCerrar)
@@ -27,7 +28,7 @@ export default function Modal({ abierto, titulo, alCerrar, children, pie }) {
     const panel = panelRef.current
     const focoAnterior = document.activeElement
     const overflowAnterior = document.body.style.overflow
-    const selector = 'a[href], button, input, select, textarea, [tabindex]'
+    const selector = 'a[href], button, input, select, textarea, summary, [tabindex]'
     const obtenerEnfocables = () => [...panel.querySelectorAll(selector)].filter(
       (elemento) => elemento.tabIndex >= 0 && !elemento.matches(':disabled')
         && elemento.getClientRects().length > 0 && getComputedStyle(elemento).visibility !== 'hidden',
@@ -86,11 +87,12 @@ export default function Modal({ abierto, titulo, alCerrar, children, pie }) {
         onClick={alCerrar}
       />
       <div className="ct-modal-panel" role="dialog" aria-modal="true" aria-labelledby={idTitulo} tabIndex={-1} ref={panelRef}>
-        <header className="ct-modal-cabecera">
+        <header className={`ct-modal-cabecera${conRegreso ? ' ct-modal-con-regreso' : ''}`}>
+          {conRegreso && <button className="ct-modal-cerrar" type="button" aria-label="Volver" onClick={alCerrar}><i className="bi bi-arrow-left" aria-hidden="true" /></button>}
           <h2 id={idTitulo}>{titulo}</h2>
-          <button className="ct-modal-cerrar" type="button" aria-label="Cerrar" onClick={alCerrar}>
+          {!conRegreso && <button className="ct-modal-cerrar" type="button" aria-label="Cerrar" onClick={alCerrar}>
             <i className="bi bi-x" aria-hidden="true" />
-          </button>
+          </button>}
         </header>
         <div className="ct-modal-contenido">{children}</div>
         {pie && <footer className="ct-modal-pie">{pie}</footer>}

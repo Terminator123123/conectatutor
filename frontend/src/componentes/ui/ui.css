@@ -586,3 +586,31 @@ textarea.ct-campo-control {
 @media (max-width: 767.98px) {
   .ct-tarjeta-enlace { width: 100%; }
 }
+
+/* Ajustes exactos del kit: controles planos de 4 px y paneles de 8 px. */
+.ct-boton,.ct-busqueda-boton,.ct-campo-control,.ct-franja { border-radius:var(--ct-radio-control); }
+.ct-campo { gap:4px; }
+.ct-campo-etiqueta { font-weight:600; line-height:20px; }
+.ct-campo-control { padding:11px 16px; border-color:var(--ct-borde); }
+.ct-campo-con-error { border-color:var(--ct-error); }
+.ct-campo-ayuda,.ct-campo-error { line-height:16px; }
+.ct-avatar { background:var(--ct-primario-suave); color:var(--ct-primario); font-size:calc(var(--ct-avatar-tamano) * .292); }
+.ct-tarjeta-encabezado { gap:16px; }
+.ct-tarjeta-tutor:hover,.ct-tarjeta-tutor:focus-within { transform:none; box-shadow:none; }
+.ct-tarjeta-materias { color:var(--ct-primario); font-size:14px; line-height:20px; font-weight:600; margin:0; }
+.ct-tarjeta-resumen { font-size:14px; }
+.ct-tarjeta-enlace { width:100%; }
+.ct-calificacion-lectura .ct-calificacion-estrellas .bi:not(:first-child) { display:none; }
+.ct-calificacion-total { color:var(--ct-texto); }
+.ct-franja { min-height:48px; font-weight:600; }
+.ct-tarifa { color:var(--ct-primario); }
+.ct-tarifa-gratuita { color:var(--ct-exito); }
+
+.ct-campo:has(input,select):not(:has(.ct-campo-ayuda,.ct-campo-error))::after { content:''; display:block; height:16px; }
+.ct-tarjeta-materias { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+.ct-busqueda { gap:0; overflow:hidden; border:1px solid var(--ct-borde); border-radius:8px; background:var(--ct-superficie); }
+.ct-busqueda-entrada { border:0; border-radius:0; }
+.ct-busqueda-boton { border:0; border-radius:0; }
+
+.ct-chip-estado { color:color-mix(in srgb,var(--ct-chip-color) 85%,var(--ct-texto)); }

@@ -124,11 +124,30 @@ export default function CatalogoComponentes() {
         <article className="ct-catalogo-bloque">
           <h3>CampoFormulario</h3>
           <div className="ct-catalogo-campos">
-            <CampoFormulario etiqueta="Nombre" valor={campos.nombre} alCambiar={(valor) => actualizarCampo('nombre', valor)} ayuda="Puedes editar este dato de muestra." nombre="nombre" autoComplete="name" />
-            <CampoFormulario etiqueta="Correo" tipo="email" valor={campos.correo} alCambiar={(valor) => actualizarCampo('correo', valor)} error={campos.correo.includes('@') ? '' : 'Escribe un correo válido.'} nombre="correo" autoComplete="email" obligatorio />
+            <CampoFormulario
+              etiqueta="Nombre"
+              valor={campos.nombre}
+              alCambiar={(valor) => actualizarCampo('nombre', valor)}
+              ayuda="Puedes editar este dato de muestra."
+              nombre="nombre"
+              autoComplete="name" />
+            <CampoFormulario
+              etiqueta="Correo"
+              tipo="email"
+              valor={campos.correo}
+              alCambiar={(valor) => actualizarCampo('correo', valor)}
+              error={campos.correo.includes('@') ? '' : 'Escribe un correo válido.'}
+              nombre="correo"
+              autoComplete="email" obligatorio />
             <CampoFormulario etiqueta="Contraseña" tipo="password" valor={campos.clave} alCambiar={(valor) => actualizarCampo('clave', valor)} nombre="clave" autoComplete="new-password" />
             <CampoFormulario etiqueta="Descripción" tipo="textarea" valor={campos.descripcion} alCambiar={(valor) => actualizarCampo('descripcion', valor)} nombre="descripcion" />
-            <CampoFormulario etiqueta="Programa" tipo="select" opciones={opcionesMuestra} valor={campos.programa} alCambiar={(valor) => actualizarCampo('programa', valor)} nombre="programa" />
+            <CampoFormulario
+              etiqueta="Programa"
+              tipo="select"
+              opciones={opcionesMuestra}
+              valor={campos.programa}
+              alCambiar={(valor) => actualizarCampo('programa', valor)}
+              nombre="programa" />
             <CampoFormulario etiqueta="Campo deshabilitado" valor={campos.deshabilitado} alCambiar={(valor) => actualizarCampo('deshabilitado', valor)} deshabilitado />
           </div>
         </article>
@@ -136,6 +155,12 @@ export default function CatalogoComponentes() {
         <article className="ct-catalogo-bloque">
           <h3>BarraBusqueda</h3>
           <BarraBusqueda valor={busqueda} alCambiar={setBusqueda} alBuscar={() => setUltimaBusqueda(busqueda)} etiqueta="Buscar una materia de muestra" placeholder="Busca una materia" />
+          <BarraBusqueda sinBoton
+            valor={busqueda}
+            alCambiar={setBusqueda}
+            alBuscar={() => setUltimaBusqueda(busqueda)}
+            etiqueta="Búsqueda integrada de muestra"
+            placeholder="Busca una materia" />
           {ultimaBusqueda !== null && <p className="ct-catalogo-resultado" role="status">Texto buscado: {ultimaBusqueda || 'Sin texto'}</p>}
         </article>
 
@@ -202,7 +227,11 @@ export default function CatalogoComponentes() {
         </article>
         <article className="ct-catalogo-bloque">
           <h3>EstadoVacio</h3>
-          <EstadoVacio icono="bi-calendar-event" titulo="No hay sesiones de muestra" texto="Prueba una acción del catálogo para continuar." accion={{ etiqueta: 'Probar acción', alHacerClic: () => setMensajeModal('Acción del estado vacío ejecutada.') }} />
+          <EstadoVacio
+            icono="bi-calendar-event"
+            titulo="No hay sesiones de muestra"
+            texto="Prueba una acción del catálogo para continuar."
+            accion={{ etiqueta: 'Probar acción', alHacerClic: () => setMensajeModal('Acción del estado vacío ejecutada.') }} />
         </article>
         <article className="ct-catalogo-bloque">
           <h3>Modal</h3>

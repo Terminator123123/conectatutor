@@ -1,12 +1,9 @@
+import { formatearMoneda } from './moneda.js'
 // Resume un tutor mediante datos de presentación y un enlace a su perfil.
 import { Link } from 'react-router-dom'
 import Avatar from './Avatar.jsx'
-import ChipMateria from './ChipMateria.jsx'
 import BloqueCalificacion from './BloqueCalificacion.jsx'
 
-const formatoMoneda = new Intl.NumberFormat('es-CO', {
-  style: 'currency', currency: 'COP', maximumFractionDigits: 0,
-})
 
 /**
  * Presenta un tutor sin acceder a clases ni servicios del dominio.
@@ -35,13 +32,11 @@ export default function TarjetaTutor({
           <p>{programa} · {semestre}.º semestre</p>
         </div>
       </div>
-      <div className="ct-lista-chips">
-        {materias.map((materia) => <ChipMateria key={materia} nombre={materia} />)}
-      </div>
+      <p className="ct-tarjeta-materias" title={materias.join(', ')}>{materias.join(', ')}</p>
       <div className="ct-tarjeta-resumen">
         <BloqueCalificacion promedio={promedio} total={totalCalificaciones} />
         <span className={`ct-tarifa${gratuita ? ' ct-tarifa-gratuita' : ''}`}>
-          {gratuita ? 'Gratuita' : `${formatoMoneda.format(tarifaHora)} / hora`}
+          {gratuita ? 'Gratuita' : `${formatearMoneda(tarifaHora)}/h`}
         </span>
       </div>
       <Link className="btn-ct-secundario ct-boton ct-tarjeta-enlace" to={ruta}>Ver perfil</Link>
