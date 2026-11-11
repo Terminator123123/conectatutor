@@ -47,7 +47,11 @@ export function manejarErrores(error, _req, res, _next) {
 
   // 4. Reglas del esquema de Mongoose que no se cumplen
   if (error instanceof mongoose.Error.ValidationError) {
-    const errores = Object.values(error.errors).map((detalle) => detalle.message)
+    // Los mensajes de las reglas del esquema están en español; los de conversión de tipo
+    // los escribe Mongoose en inglés y con detalles internos, así que se reemplazan.
+    const errores = Object.values(error.errors).map((detalle) => (
+      detalle.name === 'CastError' ? `El valor enviado en "${detalle.path}" no tiene el tipo esperado` : detalle.message
+    ))
     res.status(400).json({ mensaje: 'Los datos enviados no son válidos', errores })
     return
   }

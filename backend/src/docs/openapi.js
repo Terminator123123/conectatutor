@@ -1,5 +1,7 @@
 import { INSTITUCION } from '../config/institucion.js'
 import { esquemasAuth, rutasAuth } from './auth.docs.js'
+import { esquemasCatalogo, rutasCatalogo } from './catalogo.docs.js'
+import { esquemasTutores, rutasTutores } from './tutores.docs.js'
 import { DiaSemana, EstadoSesion, EstadoVerificacion, RolUsuario } from '../utils/enums.js'
 
 // DOCUMENTACIÓN DE LA API en formato OpenAPI 3: es lo que lee Swagger en /api/docs.
@@ -26,6 +28,8 @@ export const documentacion = {
   tags: [
     { name: 'Estado', description: 'Comprobación de que la API y la base de datos responden' },
     { name: 'Autenticación', description: 'Registro, ingreso y datos de la cuenta propia' },
+    { name: 'Catálogo', description: 'Programas académicos y materias. Leer es público; cambiar materias es del administrador' },
+    { name: 'Tutores', description: 'Perfil de tutor propio, búsqueda de tutores verificados y perfil público' },
   ],
 
   components: {
@@ -35,6 +39,8 @@ export const documentacion = {
     },
     schemas: {
       ...esquemasAuth,
+      ...esquemasCatalogo,
+      ...esquemasTutores,
       Error: {
         type: 'object',
         required: ['mensaje'],
@@ -152,6 +158,10 @@ export const documentacion = {
         description: 'Falta el token, no es válido o ya expiró',
         content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } },
       },
+      NoEncontrado: {
+        description: 'El recurso no existe',
+        content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } },
+      },
       SinPermiso: {
         description: 'El usuario no tiene el rol que exige la ruta',
         content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } },
@@ -180,5 +190,7 @@ export const documentacion = {
       },
     },
     ...rutasAuth,
+    ...rutasCatalogo,
+    ...rutasTutores,
   },
 }

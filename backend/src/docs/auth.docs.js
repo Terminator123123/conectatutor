@@ -86,6 +86,17 @@ export const esquemasAuth = {
       updatedAt: { type: 'string', format: 'date-time' },
     },
   },
+  CambiosCuenta: {
+    type: 'object',
+    description: 'Solo los campos que cambian (al menos uno). El correo y el rol no se pueden cambiar.',
+    properties: {
+      nombre: { type: 'string', minLength: 3, maxLength: 80 },
+      semestre: { type: 'integer', minimum: 1, maximum: INSTITUCION.semestreMaximo, description: 'Solo estudiante' },
+      sede: { type: 'string', enum: [...INSTITUCION.sedes], description: 'Solo estudiante' },
+      programa: { type: 'string', description: 'Id del programa. Solo estudiante', example: ID_EJEMPLO },
+      dependencia: { type: 'string', description: 'Solo administrador' },
+    },
+  },
   SesionIniciada: {
     type: 'object',
     properties: {
@@ -161,6 +172,25 @@ export const rutasAuth = {
             },
           },
         },
+        401: { $ref: '#/components/responses/NoAutenticado' },
+        500: { $ref: '#/components/responses/ErrorInterno' },
+      },
+    },
+    patch: {
+      tags: ['Autenticación'],
+      summary: 'Edita los datos de la cuenta propia',
+      security: [{ tokenJWT: [] }],
+      requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/CambiosCuenta' } } } },
+      responses: {
+        200: {
+          description: 'Cuenta actualizada',
+          content: {
+            'application/json': {
+              schema: { type: 'object', properties: { usuario: { $ref: '#/components/schemas/UsuarioConPerfil' } } },
+            },
+          },
+        },
+        400: error('Datos no válidos o ningún campo para cambiar'),
         401: { $ref: '#/components/responses/NoAutenticado' },
         500: { $ref: '#/components/responses/ErrorInterno' },
       },

@@ -26,3 +26,8 @@ export async function ingresar(req, res) {
 export async function obtenerPropio(req, res) {
   res.status(200).json({ usuario: await servicioAuth.presentarUsuario(req.usuario) })
 }
+
+/** PATCH /api/auth/yo */
+export async function editarPropio(req, res) {
+  res.status(200).json({ usuario: await servicioAuth.editarCuenta(req.usuario, req.body) })
+}

@@ -96,3 +96,18 @@ export async function ingresar({ correoInstitucional, clave }) {
   }
   return { token: firmarToken(usuario), usuario: await presentarUsuario(usuario) }
 }
+
+/**
+ * Cambia los datos de la cuenta propia (RQF026). El correo y el rol no se pueden cambiar.
+ * Los datos ya llegan revisados por el middleware validarEdicionCuenta.
+ * @param {import('mongoose').Document} usuario Usuario con la sesión iniciada.
+ * @param {object} cambios Solo los campos que se quieren cambiar.
+ */
+export async function editarCuenta(usuario, cambios) {
+  if (cambios.programa !== undefined && !(await Programa.exists({ _id: cambios.programa }))) {
+    throw new HttpError(400, 'Los datos de la cuenta no son válidos', ['El programa seleccionado no existe'])
+  }
+  usuario.set(cambios)
+  await usuario.save()
+  return presentarUsuario(usuario)
+}

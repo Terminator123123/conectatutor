@@ -5,11 +5,11 @@ import { ALGORITMO_TOKEN } from '../services/auth.service.js'
 import { HttpError } from '../utils/HttpError.js'
 
 /**
- * Exige una sesión activa (RQNF005).
- * Lee el encabezado `Authorization: Bearer <token>`, comprueba la firma y la
- * caducidad del token y deja al usuario en `req.usuario` para las rutas que siguen.
+ * Lee el token del encabezado `Authorization: Bearer <token>`, comprueba la
+ * firma y la caducidad, y devuelve el usuario al que pertenece.
+ * @returns {Promise<import('mongoose').Document>}
  */
-export async function autenticar(req, _res, next) {
+async function usuarioDelToken(req) {
   const encabezado = req.get('authorization') ?? ''
   const [esquema, token] = encabezado.split(' ')
   if (esquema !== 'Bearer' || !token) {
@@ -31,8 +31,26 @@ export async function autenticar(req, _res, next) {
   if (!usuario) {
     throw new HttpError(401, 'La sesión no es válida. Inicia sesión de nuevo')
   }
+  return usuario
+}
 
-  req.usuario = usuario
+/**
+ * Exige una sesión activa (RQNF005) y deja al usuario en `req.usuario`
+ * para las rutas que siguen.
+ */
+export async function autenticar(req, _res, next) {
+  req.usuario = await usuarioDelToken(req)
+  next()
+}
+
+/**
+ * Para rutas públicas que muestran algo más a quien tiene sesión: si llega un
+ * token se valida igual que en `autenticar`; si no llega, la petición sigue sin usuario.
+ */
+export async function autenticarSiHayToken(req, _res, next) {
+  if (req.get('authorization')) {
+    req.usuario = await usuarioDelToken(req)
+  }
   next()
 }
 

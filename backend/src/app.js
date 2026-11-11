@@ -8,6 +8,8 @@ import { documentacion } from './docs/openapi.js'
 import { manejarErrores, rutaNoEncontrada } from './middlewares/manejarErrores.js'
 import { registrarPeticiones } from './middlewares/registrarPeticiones.js'
 import { authRouter } from './routes/auth.routes.js'
+import { materiasRouter, programasRouter } from './routes/catalogo.routes.js'
+import { tutoresRouter } from './routes/tutores.routes.js'
 
 /**
  * Aplicación Express. El orden de los middlewares importa: cada petición los
@@ -43,6 +45,9 @@ app.get('/api/salud', (_req, res) => {
 })
 
 app.use('/api/auth', authRouter)
+app.use('/api/programas', programasRouter)
+app.use('/api/materias', materiasRouter)
+app.use('/api/tutores', tutoresRouter)
 
 // Después de todas las rutas: lo que nadie respondió es un 404, y cualquier error termina aquí
 app.use(rutaNoEncontrada)

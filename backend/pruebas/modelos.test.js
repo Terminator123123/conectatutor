@@ -160,6 +160,19 @@ describe('E1 · Modelos', () => {
       assert.equal((await PerfilTutor.findById(perfil._id)).tarifaHora, null)
     })
 
+    it('un valor con un tipo que el esquema no puede convertir se informa en español', async () => {
+      const { manejarErrores } = await import('../src/middlewares/manejarErrores.js')
+      const { perfil } = await crearEscenario()
+      perfil.disponibilidad.push({ dia: 'MARTES', horaInicio: ['08:00'], horaFin: '10:00' })
+      const error = await perfil.save().then(() => null, (fallo) => fallo)
+      assert.ok(error)
+      let cuerpo
+      const respuesta = { status: () => respuesta, json: (datos) => { cuerpo = datos } }
+      manejarErrores(error, {}, respuesta, () => {})
+      assert.ok(cuerpo.errores.some((mensaje) => /no tiene el tipo esperado/.test(mensaje)))
+      assert.doesNotMatch(JSON.stringify(cuerpo), /Cast to|failed for value/)
+    })
+
     it('permite un solo perfil por estudiante', async () => {
       const { tutor } = await crearEscenario()
       await assert.rejects(
