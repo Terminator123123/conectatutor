@@ -189,7 +189,7 @@ export async function obtenerDetalle(perfilId, usuario) {
   const [estadisticas, calificadas] = await Promise.all([
     calcularEstadisticas([perfil._id]),
     Sesion.find({ tutor: perfil._id, estado: EstadoSesion.FINALIZADA, calificacion: { $ne: null } })
-      .populate('solicitante', 'nombre')
+      .populate('solicitante', 'tipo nombre')
       .populate('materia', 'nombre')
       .sort({ 'calificacion.fecha': -1 }),
   ])

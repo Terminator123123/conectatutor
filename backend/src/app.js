@@ -9,6 +9,9 @@ import { manejarErrores, rutaNoEncontrada } from './middlewares/manejarErrores.j
 import { registrarPeticiones } from './middlewares/registrarPeticiones.js'
 import { authRouter } from './routes/auth.routes.js'
 import { materiasRouter, programasRouter } from './routes/catalogo.routes.js'
+import { coordinacionRouter } from './routes/coordinacion.routes.js'
+import { favoritosRouter } from './routes/favoritos.routes.js'
+import { sesionesRouter } from './routes/sesiones.routes.js'
 import { tutoresRouter } from './routes/tutores.routes.js'
 
 /**
@@ -48,6 +51,9 @@ app.use('/api/auth', authRouter)
 app.use('/api/programas', programasRouter)
 app.use('/api/materias', materiasRouter)
 app.use('/api/tutores', tutoresRouter)
+app.use('/api/sesiones', sesionesRouter)
+app.use('/api/favoritos', favoritosRouter)
+app.use('/api/coordinacion', coordinacionRouter)
 
 // Después de todas las rutas: lo que nadie respondió es un 404, y cualquier error termina aquí
 app.use(rutaNoEncontrada)

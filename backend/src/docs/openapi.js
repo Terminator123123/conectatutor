@@ -1,6 +1,7 @@
 import { INSTITUCION } from '../config/institucion.js'
 import { esquemasAuth, rutasAuth } from './auth.docs.js'
 import { esquemasCatalogo, rutasCatalogo } from './catalogo.docs.js'
+import { esquemasSesiones, rutasSesiones } from './sesiones.docs.js'
 import { esquemasTutores, rutasTutores } from './tutores.docs.js'
 import { DiaSemana, EstadoSesion, EstadoVerificacion, RolUsuario } from '../utils/enums.js'
 
@@ -30,6 +31,9 @@ export const documentacion = {
     { name: 'Autenticación', description: 'Registro, ingreso y datos de la cuenta propia' },
     { name: 'Catálogo', description: 'Programas académicos y materias. Leer es público; cambiar materias es del administrador' },
     { name: 'Tutores', description: 'Perfil de tutor propio, búsqueda de tutores verificados y perfil público' },
+    { name: 'Sesiones', description: 'Solicitud, respuesta del tutor, cancelación, calificación y reprogramación' },
+    { name: 'Favoritos', description: 'Tutores guardados por el estudiante' },
+    { name: 'Coordinación', description: 'Verificación de tutores y cifras de uso. Solo administrador' },
   ],
 
   components: {
@@ -41,11 +45,13 @@ export const documentacion = {
       ...esquemasAuth,
       ...esquemasCatalogo,
       ...esquemasTutores,
+      ...esquemasSesiones,
       Error: {
         type: 'object',
         required: ['mensaje'],
         properties: {
           mensaje: { type: 'string', example: 'Los datos enviados no son válidos' },
+          regla: { type: 'string', description: 'Regla de negocio incumplida, cuando aplica', example: 'R5' },
           errores: {
             type: 'array',
             items: { type: 'string' },
@@ -102,6 +108,7 @@ export const documentacion = {
           sede: { type: 'string', enum: [...INSTITUCION.sedes], description: 'Solo estudiante' },
           programa: { type: 'string', description: 'Id del programa. Solo estudiante', example: ID_EJEMPLO },
           quiereSerTutor: { type: 'boolean', description: 'Lo que eligió al registrarse. Solo estudiante' },
+          favoritos: { type: 'array', items: { type: 'string' }, description: 'Ids de los perfiles de tutor guardados como favoritos. Solo estudiante' },
           dependencia: { type: 'string', description: 'Solo administrador' },
           consentimientoDatos: {
             type: 'object',
@@ -192,5 +199,6 @@ export const documentacion = {
     ...rutasAuth,
     ...rutasCatalogo,
     ...rutasTutores,
+    ...rutasSesiones,
   },
 }

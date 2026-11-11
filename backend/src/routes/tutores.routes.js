@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { listarOcupacion } from '../controllers/sesiones.controller.js'
 import { buscarTutores, guardarMiPerfil, obtenerDetalle, obtenerMiPerfil } from '../controllers/tutores.controller.js'
 import { autenticar, exigirRol } from '../middlewares/autenticar.js'
 import { validarId } from '../middlewares/validarId.js'
@@ -18,3 +19,4 @@ tutoresRouter.get('/mi-perfil', exigirRol(RolUsuario.ESTUDIANTE), obtenerMiPerfi
 tutoresRouter.put('/mi-perfil', exigirRol(RolUsuario.ESTUDIANTE), validarPerfilTutor, guardarMiPerfil)
 
 tutoresRouter.get('/:id', validarId(), obtenerDetalle)
+tutoresRouter.get('/:id/ocupacion', validarId(), listarOcupacion)

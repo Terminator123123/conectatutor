@@ -17,13 +17,13 @@ function esErrorClaveDuplicada(error) {
 /**
  * Middleware de manejo de errores. Express lo reconoce por sus 4 parámetros.
  * Convierte cualquier error en una respuesta JSON con el formato:
- *   { "mensaje": "...", "errores": ["..."] }
+ *   { "mensaje": "...", "errores": ["..."], "regla": "R5" }
  * Debe registrarse al FINAL de app.js.
  */
 export function manejarErrores(error, _req, res, _next) {
   // 1. Errores que lanza la propia API (400, 401, 403, 404, 409...)
   if (error instanceof HttpError) {
-    res.status(error.status).json({ mensaje: error.message, errores: error.errores })
+    res.status(error.status).json({ mensaje: error.message, errores: error.errores, regla: error.regla })
     return
   }
 

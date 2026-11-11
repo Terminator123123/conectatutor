@@ -53,3 +53,12 @@ export function franjasSeSolapan(a, b) {
 export function franjasSonIguales(a, b) {
   return a.dia === b.dia && a.horaInicio === b.horaInicio && a.horaFin === b.horaFin
 }
+
+// El extremo final queda libre para permitir franjas consecutivas
+export function minutosDeFranja(franja) {
+  if (!FORMATO_HORA.test(franja?.horaInicio) || !FORMATO_HORA.test(franja?.horaFin)) return []
+  const aMinutos = (hora) => Number(hora.slice(0, 2)) * 60 + Number(hora.slice(3))
+  const inicio = aMinutos(franja.horaInicio)
+  const fin = aMinutos(franja.horaFin)
+  return Array.from({ length: Math.max(0, fin - inicio) }, (_, indice) => inicio + indice)
+}

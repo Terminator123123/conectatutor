@@ -72,6 +72,7 @@ export const esquemasAuth = {
       sede: { type: 'string', enum: [...INSTITUCION.sedes], description: 'Solo estudiante' },
       programa: { $ref: '#/components/schemas/Programa' },
       quiereSerTutor: { type: 'boolean', description: 'Lo que eligió al registrarse. Solo estudiante' },
+      favoritos: { type: 'array', items: { type: 'string' }, description: 'Ids de los perfiles de tutor guardados como favoritos. Solo estudiante' },
       dependencia: { type: 'string', description: 'Solo administrador' },
       perfilTutor: {
         type: 'object',

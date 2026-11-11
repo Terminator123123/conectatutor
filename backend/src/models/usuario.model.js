@@ -86,6 +86,8 @@ export const Estudiante = Usuario.discriminator(
     // RQF002: lo que eligió al registrarse ("Quiero aprender" o "Quiero enseñar").
     // No da permisos: para dictar tutorías debe activar su perfil y ser verificado.
     quiereSerTutor: { type: Boolean, default: false },
+    // RQF030: perfiles de tutor que guardó como favoritos.
+    favoritos: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'PerfilTutor' }], default: [] },
   }),
   RolUsuario.ESTUDIANTE,
 )

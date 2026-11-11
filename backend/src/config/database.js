@@ -22,7 +22,8 @@ export async function conectarBaseDeDatos(uri) {
 export async function conectarBaseEnMemoria() {
   // Se importa aquí porque es una dependencia de desarrollo: en producción no está instalada.
   const { MongoMemoryServer } = await import('mongodb-memory-server')
-  servidorEnMemoria = await MongoMemoryServer.create({ instance: { dbName: 'conectatutor' } })
+  // El primer arranque puede tardar en un equipo ocupado: se le da un minuto
+  servidorEnMemoria = await MongoMemoryServer.create({ instance: { dbName: 'conectatutor', launchTimeout: 60000 } })
   await mongoose.connect(servidorEnMemoria.getUri('conectatutor'))
   console.log('[MongoDB] Base temporal en memoria: los datos se pierden al apagar la API')
 }

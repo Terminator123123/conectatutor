@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto'
 import dotenv from 'dotenv'
 
-dotenv.config({ quiet: true })
+if (process.env.NODE_ENV !== 'test') dotenv.config({ quiet: true })
 
 const entorno = process.env.NODE_ENV ?? 'development'
 const esProduccion = entorno === 'production'
