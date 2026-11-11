@@ -2,7 +2,8 @@ import { app } from './app.js'
 import { conectarBaseDeDatos, conectarBaseEnMemoria, desconectarBaseDeDatos } from './config/database.js'
 import { env, revisarConfiguracion } from './config/env.js'
 import { asegurarIndices } from './models/index.js'
-import { cargarSemilla, esClaveAceptable } from './services/semilla.service.js'
+import { cargarSemilla } from './services/semilla.service.js'
+import { esClaveAceptable } from './utils/claves.js'
 
 /**
  * PUNTO DE ENTRADA DEL BACKEND

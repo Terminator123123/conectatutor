@@ -83,6 +83,9 @@ export const Estudiante = Usuario.discriminator(
       ref: 'Programa',
       required: [true, 'El programa es obligatorio'],
     },
+    // RQF002: lo que eligió al registrarse ("Quiero aprender" o "Quiero enseñar").
+    // No da permisos: para dictar tutorías debe activar su perfil y ser verificado.
+    quiereSerTutor: { type: Boolean, default: false },
   }),
   RolUsuario.ESTUDIANTE,
 )

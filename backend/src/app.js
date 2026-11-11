@@ -7,6 +7,7 @@ import { env } from './config/env.js'
 import { documentacion } from './docs/openapi.js'
 import { manejarErrores, rutaNoEncontrada } from './middlewares/manejarErrores.js'
 import { registrarPeticiones } from './middlewares/registrarPeticiones.js'
+import { authRouter } from './routes/auth.routes.js'
 
 /**
  * Aplicación Express. El orden de los middlewares importa: cada petición los
@@ -15,6 +16,9 @@ import { registrarPeticiones } from './middlewares/registrarPeticiones.js'
 export const app = express()
 
 app.disable('x-powered-by')
+
+// En producción la API está detrás del proxy de la plataforma: así req.ip es la dirección real del cliente.
+if (env.esProduccion) app.set('trust proxy', 1)
 
 app.use(registrarPeticiones)
 app.use(helmet())
@@ -37,6 +41,8 @@ app.get('/api/salud', (_req, res) => {
     fecha: new Date().toISOString(),
   })
 })
+
+app.use('/api/auth', authRouter)
 
 // Después de todas las rutas: lo que nadie respondió es un 404, y cualquier error termina aquí
 app.use(rutaNoEncontrada)

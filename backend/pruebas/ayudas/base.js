@@ -11,7 +11,8 @@ let servidor = null
  * Las pruebas nunca usan MONGODB_URI: no tocan la base real.
  */
 export async function iniciarBaseDePrueba() {
-  servidor = await MongoMemoryServer.create()
+  // El primer arranque puede tardar en un equipo ocupado: se le da un minuto
+  servidor = await MongoMemoryServer.create({ instance: { launchTimeout: 60000 } })
   await mongoose.connect(servidor.getUri('conectatutor_pruebas'))
   const { asegurarIndices } = await import('../../src/models/index.js')
   await asegurarIndices()

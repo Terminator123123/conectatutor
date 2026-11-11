@@ -1,18 +1,6 @@
-import bcrypt from 'bcryptjs'
 import { Administrador, Estudiante, Materia, PerfilTutor, Programa, Sesion, Usuario } from '../models/index.js'
 import { ADMINISTRADOR, ESTUDIANTES, MATERIAS, PERFILES_TUTOR, PROGRAMAS, SESIONES } from '../scripts/datosSemilla.js'
-
-/** Vueltas de bcrypt: cada unidad duplica el trabajo necesario para probar una contraseña. */
-const COSTO_HASH = 10
-
-/**
- * Indica si una contraseña cumple el mínimo: 8 caracteres, con letras y números.
- * @param {string} clave
- * @returns {boolean}
- */
-export function esClaveAceptable(clave) {
-  return typeof clave === 'string' && clave.length >= 8 && /[a-zA-Z]/.test(clave) && /\d/.test(clave)
-}
+import { cifrarClave, esClaveAceptable } from '../utils/claves.js'
 
 /**
  * Crea el documento si no existe o lo actualiza si ya está, buscándolo por su
@@ -37,7 +25,7 @@ export async function cargarSemilla(claveDemo) {
   if (!esClaveAceptable(claveDemo)) {
     throw new Error('CLAVE_DEMO debe tener al menos 8 caracteres, con letras y números (revisa backend/.env).')
   }
-  const claveHash = await bcrypt.hash(claveDemo, COSTO_HASH)
+  const claveHash = await cifrarClave(claveDemo)
   const consentimientoDatos = { aceptado: true, fecha: new Date('2026-11-01T00:00:00.000Z') }
 
   // 1. Programas

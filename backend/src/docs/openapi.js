@@ -1,4 +1,5 @@
 import { INSTITUCION } from '../config/institucion.js'
+import { esquemasAuth, rutasAuth } from './auth.docs.js'
 import { DiaSemana, EstadoSesion, EstadoVerificacion, RolUsuario } from '../utils/enums.js'
 
 // DOCUMENTACIÓN DE LA API en formato OpenAPI 3: es lo que lee Swagger en /api/docs.
@@ -22,7 +23,10 @@ export const documentacion = {
   },
   // Ruta relativa: Swagger llama a la misma dirección desde la que se abrió, en local o en producción.
   servers: [{ url: '/api', description: 'Este servidor' }],
-  tags: [{ name: 'Estado', description: 'Comprobación de que la API y la base de datos responden' }],
+  tags: [
+    { name: 'Estado', description: 'Comprobación de que la API y la base de datos responden' },
+    { name: 'Autenticación', description: 'Registro, ingreso y datos de la cuenta propia' },
+  ],
 
   components: {
     securitySchemes: {
@@ -30,6 +34,7 @@ export const documentacion = {
       tokenJWT: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
     },
     schemas: {
+      ...esquemasAuth,
       Error: {
         type: 'object',
         required: ['mensaje'],
@@ -90,6 +95,7 @@ export const documentacion = {
           semestre: { type: 'integer', minimum: 1, maximum: INSTITUCION.semestreMaximo, description: 'Solo estudiante' },
           sede: { type: 'string', enum: [...INSTITUCION.sedes], description: 'Solo estudiante' },
           programa: { type: 'string', description: 'Id del programa. Solo estudiante', example: ID_EJEMPLO },
+          quiereSerTutor: { type: 'boolean', description: 'Lo que eligió al registrarse. Solo estudiante' },
           dependencia: { type: 'string', description: 'Solo administrador' },
           consentimientoDatos: {
             type: 'object',
@@ -142,6 +148,14 @@ export const documentacion = {
       },
     },
     responses: {
+      NoAutenticado: {
+        description: 'Falta el token, no es válido o ya expiró',
+        content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } },
+      },
+      SinPermiso: {
+        description: 'El usuario no tiene el rol que exige la ruta',
+        content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } },
+      },
       ErrorInterno: {
         description: 'Error interno del servidor',
         content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } },
@@ -165,5 +179,6 @@ export const documentacion = {
         },
       },
     },
+    ...rutasAuth,
   },
 }
