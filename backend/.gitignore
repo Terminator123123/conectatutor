@@ -1,0 +1,5 @@
+# Dependencias, configuración privada y descargas locales.
+node_modules
+.env
+.cache
+*.log
