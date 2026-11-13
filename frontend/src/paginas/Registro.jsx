@@ -10,6 +10,7 @@ import CampoFormulario from '../componentes/ui/CampoFormulario.jsx'
 import Boton from '../componentes/ui/Boton.jsx'
 import Cargando from '../componentes/ui/Cargando.jsx'
 import MensajeError from '../componentes/ui/MensajeError.jsx'
+import EstadoVacio from '../componentes/ui/EstadoVacio.jsx'
 import MarcaApp from '../componentes/ui/MarcaApp.jsx'
 import EncabezadoPagina from '../componentes/layout/EncabezadoPagina.jsx'
 import '../estilos/autenticacion.css'
@@ -90,7 +91,6 @@ export default function Registro() {
   }
 
   function aceptar() {
-    //solucion temp por falrta de bak correguir despues//
     setPaso(3)
     window.scrollTo(0, 0)
   }
@@ -103,6 +103,7 @@ export default function Registro() {
         nombre: campos.nombre.trim(), correoInstitucional: campos.correoInstitucional,
         clave: campos.clave, semestre: Number(campos.semestre), sede: campos.sede,
         programa: programas.find((programa) => programa.getId() === campos.programa),
+        aceptaTratamientoDatos: true, quiereSerTutor: uso === 'tutor',
       })
       navigate(uso === 'tutor' ? '/perfil' : '/tutores', { replace: true })
     } catch (error) {
@@ -118,7 +119,6 @@ export default function Registro() {
   })
 
   function verificarCorreo() {
-    //solucion temp por falrta de bak correguir despues//
     return crearCuenta()
   }
 
@@ -161,7 +161,7 @@ export default function Registro() {
       </div>
   </section>
   if (paso === 3) return <section className="ct-autenticacion"><MarcaApp /><p className="ct-paso">Paso 3 de 3</p>
-    <h1>Revisa tu correo</h1><p>Verifica tu correo institucional para empezar a aprender con tu comunidad.</p>
+    <h1>Confirma tu cuenta</h1><p>Comprueba que tu correo institucional esté bien escrito antes de crear la cuenta.</p>
     <div className="ct-dato"><small>Correo institucional</small>{campos.correoInstitucional}</div>
     {errorServicio && <MensajeError mensaje={errorServicio} />}
     <Boton anchoCompleto cargando={enviando} alHacerClic={verificarCorreo}>Continuar</Boton>
@@ -192,7 +192,7 @@ export default function Registro() {
         <CampoFormulario {...propiedades('confirmacion')} etiqueta="Confirmar contraseña" tipo="password" autoComplete="new-password" />
         {cargandoProgramas ? <Cargando texto="Cargando programas…" /> : errorProgramas ? (
           <MensajeError mensaje={errorProgramas} alReintentar={() => setIntento((anterior) => anterior + 1)} />
-        ) : (
+        ) : !programas.length ? <EstadoVacio titulo="No hay programas disponibles" texto="Todavía no es posible crear una cuenta." /> : (
           <CampoFormulario
             {...propiedades('programa')}
             etiqueta="Programa"
@@ -213,7 +213,7 @@ export default function Registro() {
           placeholder="Selecciona tu sede"
           opciones={INSTITUCION.sedes.map((sede) => ({ valor: sede, etiqueta: sede }))} />
         {errorServicio && <MensajeError mensaje={errorServicio} />}
-        <Boton tipo="submit" anchoCompleto cargando={enviando} deshabilitado={cargandoProgramas || Boolean(errorProgramas)}>
+        <Boton tipo="submit" anchoCompleto cargando={enviando} deshabilitado={cargandoProgramas || Boolean(errorProgramas) || !programas.length}>
           {tocados.correoInstitucional && errores.correoInstitucional ? 'Corregir correo' : 'Crear cuenta'}
         </Boton>
       </form>

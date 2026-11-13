@@ -16,7 +16,7 @@ export default function PromedioSesion() {
   const { id } = useParams()
   const { usuario } = useAutenticacion()
   const { sesion, cargando:cargandoSesion, error:errorSesion, reintentar } = useSesion(id, usuario.getId())
-  const [sesiones, setSesiones] = useState([])
+  const [resenas, setResenas] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
   const [intento, setIntento] = useState(0)
@@ -25,7 +25,7 @@ export default function PromedioSesion() {
     let activo = true
     async function cargar() {
       setCargando(true); setError('')
-      try { const lista = await repositorio.listarSesionesDelTutor(sesion.getTutor().getId()); if (activo) setSesiones(lista) }
+      try { const resumen = await repositorio.obtenerResumenTutor(sesion.getTutor().getId()); if (activo) setResenas(resumen.resenas) }
       catch (fallo) { if (activo) setError(fallo.message) }
       finally { if (activo) setCargando(false) }
     }
@@ -37,13 +37,14 @@ export default function PromedioSesion() {
   if (!sesion?.getCalificacion()) return <EstadoVacio titulo="Esta sesión aún no tiene una calificación" accion={{ etiqueta:'Volver a mis sesiones', ruta:'/sesiones?estado=finalizadas' }} />
   if (cargando) return <Cargando texto="Calculando el promedio…" />
   if (error) return <MensajeError mensaje={error} alReintentar={() => setIntento((valor) => valor + 1)} />
-  const calificadas = sesiones.filter((item) => item.getCalificacion())
-  if (!calificadas.some((item) => item.getId() === id)) return <EstadoVacio titulo="La valoración ya no está disponible" accion={{ etiqueta:'Volver a mis sesiones', ruta:'/sesiones' }} />
-  const otras = calificadas.filter((item) => item.getId() !== id)
-  const sumar = (lista) => lista.reduce((total, item) => total + item.getCalificacion().getPuntaje(), 0)
-  const sumaAntes = sumar(otras)
-  const sumaDespues = sumar(calificadas)
-  const promedio = sesion.getTutor().calcularPromedio(calificadas)
+  const nota = sesion.getCalificacion()
+  const estaIncluida = resenas.some((resena) => resena.puntaje === nota.getPuntaje()
+    && resena.resena === nota.getResena() && new Date(resena.fecha).getTime() === nota.getFecha().getTime())
+  if (!estaIncluida) return <EstadoVacio titulo="La valoración ya no está disponible" accion={{ etiqueta:'Volver a mis sesiones', ruta:'/sesiones' }} />
+  const cantidadAntes = resenas.length - 1
+  const sumaDespues = resenas.reduce((total, resena) => total + resena.puntaje, 0)
+  const sumaAntes = sumaDespues - nota.getPuntaje()
+  const promedio = sumaDespues / resenas.length
   const numero = (valor, decimales = 1) => valor.toFixed(decimales).replace('.', ',')
   return <section className="ct-estado-formulario">
     <h1>Tu reseña ya forma parte del promedio
@@ -53,10 +54,10 @@ export default function PromedioSesion() {
     <div className="ct-dato">
         <small>Antes
       </small>
-      {otras.length ? `${numero(sumaAntes / otras.length)} de 5, ${otras.length} ${otras.length === 1 ? 'reseña' : 'reseñas'}, suma: ${sumaAntes}` : 'Sin reseñas anteriores, suma: 0'}
+      {cantidadAntes ? `${numero(sumaAntes / cantidadAntes)} de 5, ${cantidadAntes} ${cantidadAntes === 1 ? 'reseña' : 'reseñas'}, suma: ${sumaAntes}` : 'Sin reseñas anteriores, suma: 0'}
     </div>
     <div className="ct-dato"><small>Nueva calificación</small>{sesion.getCalificacion().getPuntaje()} de 5, 1 reseña nueva</div>
-    <div className="ct-dato"><small>Después</small>{sumaDespues} ÷ {calificadas.length} = {numero(promedio, 2)}, mostrado: {numero(promedio)} de 5</div>
+    <div className="ct-dato"><small>Después</small>{sumaDespues} ÷ {resenas.length} = {numero(promedio, 2)}, mostrado: {numero(promedio)} de 5</div>
     <p className="ct-promedio-aclaracion">La comparación «Antes» excluye esta reseña del cálculo actual.</p>
     <div className="ct-estado-formulario-acciones"><Link className="ct-boton btn-ct-primario" to="/sesiones?estado=finalizadas">Volver a mis sesiones</Link></div>
   </section>

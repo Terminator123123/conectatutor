@@ -6,7 +6,7 @@ import { INSTITUCION } from '../config/institucion.js'
 import { useAutenticacion } from '../contexto/useAutenticacion.js'
 import { repositorio } from '../servicios/instancias.js'
 import { EstadoVerificacion } from '../modelo/enums.js'
-import { calcularMetricas, metricasACsv } from '../servicios/metricas.js'
+import { metricasACsv } from '../servicios/metricas.js'
 import { fechaEnColombia } from '../servicios/agenda.js'
 import Avatar from '../componentes/ui/Avatar.jsx'
 import CampoFormulario from '../componentes/ui/CampoFormulario.jsx'
@@ -51,6 +51,8 @@ export default function VerificacionTutores() {
   const [soporte, setSoporte] = useState(null)
   const [soporteDetalle, setSoporteDetalle] = useState(null)
   const [errorReferencia, setErrorReferencia] = useState('')
+  const [intentoReferencia, setIntentoReferencia] = useState(0)
+  const [sinReferencia, setSinReferencia] = useState(false)
   const soporteId = parametros.get('soporte')
   const perfilResultadoId = parametros.get('perfil')
   const resultadoDetalle = parametros.get('resultado')
@@ -58,11 +60,12 @@ export default function VerificacionTutores() {
     let activo = true
     if (!soporteId && !perfilResultadoId) return
     async function cargarReferencia() {
+      setErrorReferencia('')
+      setSinReferencia(false)
       try {
         const perfil = await repositorio.obtenerPerfilTutor(soporteId || perfilResultadoId)
-        if (!perfil) throw new Error('No encontramos este perfil.')
         if (!activo) return
-        setErrorReferencia('')
+        if (!perfil) { setSinReferencia(true); return }
         if (soporteId) setSoporteDetalle(perfil)
         else {
           const rechazada = perfil.getEstadoVerificacion() === EstadoVerificacion.RECHAZADO
@@ -74,7 +77,7 @@ export default function VerificacionTutores() {
     }
     cargarReferencia()
     return () => { activo = false }
-  }, [soporteId, perfilResultadoId, resultadoDetalle])
+  }, [soporteId, perfilResultadoId, resultadoDetalle, intentoReferencia])
   useEffect(() => {
     let activo = true
     async function cargar() {
@@ -82,8 +85,8 @@ export default function VerificacionTutores() {
       setErrorCarga('')
       try {
         if (vista === 'panel') {
-          const [sesiones, tutores] = await Promise.all([repositorio.listarSesiones(), repositorio.listarPerfilesTutor()])
-          if (activo) setMetricas(calcularMetricas(sesiones, tutores, INSTITUCION.sedes))
+          const resumen = await repositorio.obtenerMetricas()
+          if (activo) setMetricas(resumen)
         } else {
           const pendientes = await repositorio.listarPerfilesPendientes()
           if (activo) setPerfiles(pendientes)
@@ -117,11 +120,9 @@ export default function VerificacionTutores() {
   }
   function cerrar() { if (!guardando) setPerfilRechazo(null) }
   function mostrarSoporte(perfil) {
-    //solucion temp por falrta de bak correguir despues//
     setSoporte(perfil)
   }
   function mostrarDetalleSoporte(perfil) {
-    //solucion temp por falrta de bak correguir despues//
     setSoporte(null); setSoporteDetalle(perfil); setErrorReferencia('')
     setParametros({ vista:'perfiles', soporte:perfil.getId() })
     window.scrollTo(0, 0)
@@ -146,7 +147,9 @@ export default function VerificacionTutores() {
       if (rechazar) usuario.rechazarTutor(perfil, motivo)
       else usuario.verificarTutor(perfil)
       await repositorio.guardarPerfilTutor(perfil)
-      setPerfiles(await repositorio.listarPerfilesPendientes())
+      // La revisión ya quedó guardada: si falla el refresco, el perfil sale de la lista local
+      try { setPerfiles(await repositorio.listarPerfilesPendientes()) }
+      catch { setPerfiles((anteriores) => anteriores.filter((item) => item.getId() !== id)) }
       setPerfilRechazo(null)
       setSoporte(null)
       setAviso(rechazar ? 'Perfil rechazado.' : 'Perfil verificado.')
@@ -184,7 +187,8 @@ export default function VerificacionTutores() {
     enviando={!!guardando}
     alConfirmar={() => revisar(perfilRechazo, true, Boolean(soporteId))}
     alCerrar={cerrar} />
-  if ((soporteId || perfilResultadoId) && errorReferencia) return <MensajeError mensaje={errorReferencia} alReintentar={volverPendientes} />
+  if ((soporteId || perfilResultadoId) && errorReferencia) return <MensajeError mensaje={errorReferencia} alReintentar={() => setIntentoReferencia((valor) => valor + 1)} />
+  if ((soporteId || perfilResultadoId) && sinReferencia) return <EstadoVacio icono="bi-person" titulo="No encontramos este perfil" texto="Vuelve a pendientes para consultar los perfiles disponibles." />
   if ((soporteId && soporteDetalle?.getId() !== soporteId) || (perfilResultadoId && (!revision?.detallada || revision.perfil.getId() !== perfilResultadoId))) return <Cargando texto="Cargando revisión…" />
   if (soporteId && soporteDetalle) {
     const estudiante = soporteDetalle.getEstudiante()

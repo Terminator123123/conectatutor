@@ -86,12 +86,13 @@ export default function SesionesQueDoy({ perfil, alAnunciar }) {
         } else if (tipo === 'rechazar') sesion.rechazar(motivo.trim())
         else if (tipo === 'cancelar') sesion.cancelar(motivo.trim())
         else sesion.finalizar()
-        await repositorio.guardarSesion(sesion)
-        return sesion
+        return repositorio.guardarSesion(sesion)
       }
       // Serializa las acciones del mismo tutor también entre pestañas.
       const actualizada = navigator.locks?.request ? await navigator.locks.request(`ct-agenda-${perfilId}`, modificar) : await modificar()
-      setSesiones(await repositorio.listarSesionesDelTutor(perfilId))
+      // La acción ya quedó guardada: si falla el refresco, se actualiza solo esta fila
+      try { setSesiones(await repositorio.listarSesionesDelTutor(perfilId)) }
+      catch { setSesiones((anteriores) => anteriores.map((item) => item.getId() === id ? actualizada : item)) }
       setModal(null)
       const mensajes = { aceptar: 'Tutoría aceptada.', rechazar: 'Tutoría rechazada.', finalizar: 'Tutoría marcada como realizada.', cancelar: 'Tutoría cancelada.' }
       if (tipo === 'aceptar' || tipo === 'rechazar') { setResultado({ tipo, sesion:actualizada }); window.scrollTo(0, 0) }
@@ -107,7 +108,8 @@ export default function SesionesQueDoy({ perfil, alAnunciar }) {
   if (resultado) {
     const sesion = resultado.sesion
     const solicitante = sesion.getSolicitante()
-    const horas = Number(sesion.getFranja().getHoraFin().slice(0, 2)) - Number(sesion.getFranja().getHoraInicio().slice(0, 2))
+    const aMinutos = (hora) => Number(hora.slice(0, 2)) * 60 + Number(hora.slice(3))
+    const horas = (aMinutos(sesion.getFranja().getHoraFin()) - aMinutos(sesion.getFranja().getHoraInicio())) / 60
     const tarifa = sesion.getTutor().getTarifaHora()
     return <section ref={resultadoRef} tabIndex={-1} aria-label="Resultado de la solicitud">
         <p className="ct-solicitud-gestionada">La solicitud ya fue gestionada.
@@ -187,7 +189,8 @@ export default function SesionesQueDoy({ perfil, alAnunciar }) {
         if (estado === EstadoSesion.PENDIENTE) {
           const solicitante = sesion.getSolicitante()
           const tarifa = sesion.getTutor().getTarifaHora()
-          const horas = (Number(sesion.getFranja().getHoraFin().slice(0,2)) - Number(sesion.getFranja().getHoraInicio().slice(0,2)))
+          const aMinutos = (hora) => Number(hora.slice(0, 2)) * 60 + Number(hora.slice(3))
+          const horas = (aMinutos(sesion.getFranja().getHoraFin()) - aMinutos(sesion.getFranja().getHoraInicio())) / 60
           return <article className="ct-solicitud-recibida" key={sesion.getId()}>
             <ChipEstado estado={estado} />
             <header className="ct-item-identidad">

@@ -1,9 +1,17 @@
-// Comparte una única instancia del repositorio y del servicio de autenticación.
 import { INSTITUCION } from '../config/institucion.js'
-import ServicioAutenticacion from './ServicioAutenticacion.js'
-import { crearRepositorio } from './repositorio.js'
+import ServicioAutenticacionApi from './ServicioAutenticacionApi.js'
+import { crearClienteApi } from './api.js'
+import { crearRepositorioApi } from './repositorioApi.js'
 
-export const repositorio = crearRepositorio()
-export const servicioAutenticacion = new ServicioAutenticacion(
-  repositorio, INSTITUCION.dominioCorreo, INSTITUCION.sedes,
+const escuchas = new Set()
+const cliente = crearClienteApi({ alExpirarSesion: () => escuchas.forEach((escuchar) => escuchar()) })
+
+export function suscribirExpiracionSesion(escuchar) {
+  escuchas.add(escuchar)
+  return () => escuchas.delete(escuchar)
+}
+
+export const repositorio = crearRepositorioApi({ cliente })
+export const servicioAutenticacion = new ServicioAutenticacionApi(
+  repositorio, INSTITUCION.dominioCorreo,
 )

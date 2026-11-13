@@ -56,7 +56,7 @@ export function proximasOcurrencias(franja, desde = new Date(), dias = 14) {
 }
 
 /**
- * Consulta ocupación por franja exacta y día colombiano.
+ * Consulta ocupacion por intervalos solapados y dia colombiano
  * @param {import('../modelo/Sesion.js').default[]} sesiones Sesiones del tutor.
  * @param {import('../modelo/FranjaHoraria.js').default} franja Franja elegida.
  * @param {string} clave Día colombiano AAAA-MM-DD.
@@ -66,5 +66,12 @@ export function proximasOcurrencias(franja, desde = new Date(), dias = 14) {
 export function estaOcupada(sesiones, franja, clave, excluirId = null) {
   return sesiones.some((sesion) => sesion.getId() !== excluirId
     && [EstadoSesion.PENDIENTE, EstadoSesion.CONFIRMADA].includes(sesion.getEstado())
-    && sesion.getFranja().esIgualA(franja) && fechaEnColombia(sesion.getFecha()) === clave)
+    && sesion.getFranja().seSolapaCon(franja) && fechaEnColombia(sesion.getFecha()) === clave)
+}
+
+export function estaOcupadaEnAgenda(ocupaciones, franja, clave) {
+  return ocupaciones.some((ocupacion) => ocupacion.fecha === clave
+    && ocupacion.franja.dia === franja.getDia()
+    && ocupacion.franja.horaInicio < franja.getHoraFin()
+    && franja.getHoraInicio() < ocupacion.franja.horaFin)
 }

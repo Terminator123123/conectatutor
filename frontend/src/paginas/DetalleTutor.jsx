@@ -7,8 +7,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useAutenticacion } from '../contexto/useAutenticacion.js'
 import { repositorio } from '../servicios/instancias.js'
-import { EstadoSesion } from '../modelo/enums.js'
-import { proximasOcurrencias } from '../servicios/agenda.js'
+import { estaOcupadaEnAgenda, proximasOcurrencias } from '../servicios/agenda.js'
 import Avatar from '../componentes/ui/Avatar.jsx'
 import BloqueCalificacion from '../componentes/ui/BloqueCalificacion.jsx'
 import Boton from '../componentes/ui/Boton.jsx'
@@ -42,12 +41,16 @@ export default function DetalleTutor({ tituloPagina }) {
     async function cargar() {
       setCargando(true); setError(''); setTodasLasResenas(false)
       try {
-        const [perfil, sesiones, favoritos] = await Promise.all([
-          repositorio.obtenerPerfilTutor(id), repositorio.listarSesionesDelTutor(id), repositorio.listarFavoritos(usuarioId),
+        const [resumen, favoritos] = await Promise.all([
+          repositorio.obtenerResumenTutor(id), repositorio.listarFavoritos(usuarioId),
         ])
-        if (activo) { setDatos({ perfil, sesiones }); setFavorito(favoritos.includes(id)) }
+        const ocupaciones = resumen.perfil.estaVerificado() ? await repositorio.obtenerOcupacionTutor(id) : []
+        if (activo) { setDatos({ ...resumen, ocupaciones }); setFavorito(favoritos.includes(id)) }
       } catch (fallo) {
-        if (activo) setError(fallo.message)
+        if (activo) {
+          if (fallo.status === 404) setDatos(null)
+          else setError(fallo.message)
+        }
       } finally {
         if (activo) setCargando(false)
       }
@@ -71,12 +74,14 @@ export default function DetalleTutor({ tituloPagina }) {
     titulo="No encontramos este tutor"
     texto="Vuelve a buscar un tutor que te acompañe."
     accion={{ etiqueta:'Volver a la búsqueda', ruta:'/tutores' }} />
-  const { perfil, sesiones } = datos
+  const { perfil, promedio, totalCalificaciones, tutoriasCompletadas, resenas, ocupaciones } = datos
   const estudiante = perfil.getEstudiante()
   const propio = estudiante.getId() === usuarioId
   const puedeSolicitar = perfil.estaVerificado() && !propio && perfil.getDisponibilidad().length > 0 && perfil.getMaterias().length > 0
-  const calificaciones = sesiones.filter((sesion) => sesion.getCalificacion()).sort((a,b) => b.getCalificacion().getFecha() - a.getCalificacion().getFecha())
-  const disponibilidad = perfil.getDisponibilidad().flatMap((franja) => proximasOcurrencias(franja).map((fecha) => ({ ...fecha, franja }))).sort((a,b) => a.fecha - b.fecha)
+  const calificaciones = [...resenas].sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
+  const disponibilidad = perfil.getDisponibilidad().flatMap((franja) => proximasOcurrencias(franja)
+    .filter(({ clave }) => !estaOcupadaEnAgenda(ocupaciones, franja, clave))
+    .map((fecha) => ({ ...fecha, franja }))).sort((a,b) => a.fecha - b.fecha)
   const proximas = disponibilidad.slice(0,4)
   const tarifa = perfil.getTarifaHora()
   const titular = perfil.getBiografia().split(/(?<=[.!?])\s/)[0]
@@ -88,7 +93,7 @@ export default function DetalleTutor({ tituloPagina }) {
         <small>
         {calificaciones.length ? 'Valoración' : 'Experiencia en la plataforma'}
       </small>
-      {calificaciones.length ? `${perfil.calcularPromedio(sesiones).toFixed(1)} de 5, ${calificaciones.length} ${calificaciones.length === 1 ? 'tutoría calificada' : 'tutorías calificadas'}` : `${sesiones.filter((sesion) => sesion.getEstado() === EstadoSesion.FINALIZADA).length} tutorías completadas, Aún sin reseñas`}
+      {totalCalificaciones ? `${promedio.toFixed(1)} de 5, ${totalCalificaciones} ${totalCalificaciones === 1 ? 'tutoría calificada' : 'tutorías calificadas'}` : `${tutoriasCompletadas} tutorías completadas, Aún sin reseñas`}
     </div>
     <div className="ct-dato">
         <small>Tarifa
@@ -131,7 +136,7 @@ export default function DetalleTutor({ tituloPagina }) {
         <div className="ct-dato">
             <small>Valoración
         </small>
-        {calificaciones.length ? `${perfil.calcularPromedio(sesiones).toFixed(1)} de 5, ${calificaciones.length} ${calificaciones.length === 1 ? 'tutoría completada' : 'tutorías completadas'}` : 'Tutor nuevo'}
+        {totalCalificaciones ? `${promedio.toFixed(1)} de 5, ${tutoriasCompletadas} ${tutoriasCompletadas === 1 ? 'tutoría completada' : 'tutorías completadas'}` : 'Tutor nuevo'}
       </div>
         <div className="ct-dato">
             <small>Tarifa
@@ -177,17 +182,15 @@ export default function DetalleTutor({ tituloPagina }) {
       </h2>
       {calificaciones.length ? 
       <ul className="ct-resenas">
-        {calificaciones.map((sesion) => {
-      const partes = sesion.getSolicitante().getNombre().split(' ')
-      const calificacion = sesion.getCalificacion()
-      return <li key={calificacion.getId()}>
+        {calificaciones.map((calificacion, indice) => {
+      return <li key={`${calificacion.fecha}-${calificacion.autor}-${indice}`}>
           <strong>
-          {partes[0]} {partes[1]?.[0] ?? ''}., {calificacion.getPuntaje()}/5
+          {calificacion.autor}, {calificacion.puntaje}/5
         </strong>
           <p>
-          {calificacion.getResena()}
+          {calificacion.resena}
         </p>
-          <Link className="ct-enlace-texto" to={`/reportar?tipo=reseña&id=${calificacion.getId()}`}>Reportar reseña
+          <Link className="ct-enlace-texto" to={`/reportar?tipo=reseña&id=${id}&fecha=${encodeURIComponent(calificacion.fecha)}&autor=${encodeURIComponent(calificacion.autor)}`}>Reportar reseña
         </Link>
         </li>
     })}</ul> : <p>Todavía no tiene reseñas.</p>}<Link className="ct-enlace-texto" to={`/reportar?tipo=perfil&id=${id}`}>Reportar perfil</Link></details>
@@ -209,7 +212,7 @@ export default function DetalleTutor({ tituloPagina }) {
               </div>
           </header>
         <div className="ct-ficha-valoracion">
-            <BloqueCalificacion promedio={perfil.calcularPromedio(sesiones)} total={calificaciones.length} />
+            <BloqueCalificacion promedio={promedio} total={totalCalificaciones} />
             <strong className={`ct-tarifa${tarifa === null ? ' ct-tarifa-gratuita' : ''}`}>
             {tarifa === null ? 'Gratuita' : `${formatearMoneda(tarifa)}/h`}
           </strong>
@@ -263,18 +266,15 @@ export default function DetalleTutor({ tituloPagina }) {
           </h2>
           {calificaciones.length ? 
           <ul className="ct-resenas">
-            {(todasLasResenas ? calificaciones : calificaciones.slice(0,5)).map((sesion) => {
-          const calificacion = sesion.getCalificacion()
-          const partes = sesion.getSolicitante().getNombre().split(' ')
-          const autor = partes[0] + (partes[1] ? ` ${partes[1][0]}.` : '')
-          return <li key={calificacion.getId()}>
+            {(todasLasResenas ? calificaciones : calificaciones.slice(0,5)).map((calificacion, indice) => {
+          return <li key={`${calificacion.fecha}-${calificacion.autor}-${indice}`}>
               <strong>
-              {autor}, {calificacion.getPuntaje()}/5
+              {calificacion.autor}, {calificacion.puntaje}/5
             </strong>
               <p>
-              {calificacion.getResena()}
+              {calificacion.resena}
             </p>
-              <Link className="ct-enlace-texto" to={`/reportar?tipo=reseña&id=${calificacion.getId()}`}>Reportar reseña
+              <Link className="ct-enlace-texto" to={`/reportar?tipo=reseña&id=${id}&fecha=${encodeURIComponent(calificacion.fecha)}&autor=${encodeURIComponent(calificacion.autor)}`}>Reportar reseña
             </Link>
             </li>
         })}</ul> : <p>Todavía no tiene reseñas.</p>}

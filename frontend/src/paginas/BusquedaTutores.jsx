@@ -6,7 +6,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { INSTITUCION } from '../config/institucion.js'
 import { useAutenticacion } from '../contexto/useAutenticacion.js'
 import { repositorio } from '../servicios/instancias.js'
-import { ETIQUETAS_DIA, fechaEnColombia, proximasOcurrencias } from '../servicios/agenda.js'
+import { ETIQUETAS_DIA, estaOcupadaEnAgenda, fechaEnColombia, proximasOcurrencias } from '../servicios/agenda.js'
 import BarraBusqueda from '../componentes/ui/BarraBusqueda.jsx'
 import CampoFormulario from '../componentes/ui/CampoFormulario.jsx'
 import TarjetaTutor from '../componentes/ui/TarjetaTutor.jsx'
@@ -14,6 +14,7 @@ import Avatar from '../componentes/ui/Avatar.jsx'
 import Boton from '../componentes/ui/Boton.jsx'
 import Cargando from '../componentes/ui/Cargando.jsx'
 import MensajeError from '../componentes/ui/MensajeError.jsx'
+import EstadoVacio from '../componentes/ui/EstadoVacio.jsx'
 import ResultadoBusquedaVacia from '../componentes/ui/ResultadoBusquedaVacia.jsx'
 import Modal from '../componentes/ui/Modal.jsx'
 import '../estilos/solicitante.css'
@@ -49,18 +50,22 @@ export default function BusquedaTutores({ soloFavoritos = false }) {
           repositorio.listarTutoresVerificados(filtros), repositorio.listarFavoritos(usuarioId),
         ])
         const tutores = await Promise.all(perfiles.filter((perfil) => perfil.getEstudiante().getId() !== usuarioId && (!soloFavoritos || favoritos.includes(perfil.getId()))).map(async (perfil) => {
-          const sesiones = await repositorio.listarSesionesDelTutor(perfil.getId())
+          const [{ promedio, totalCalificaciones }, ocupaciones] = await Promise.all([
+            repositorio.obtenerResumenTutor(perfil.getId()),
+            filtros.semana ? repositorio.obtenerOcupacionTutor(perfil.getId()) : Promise.resolve([]),
+          ])
           const estudiante = perfil.getEstudiante()
           const hoy = new Date(`${fechaEnColombia(new Date())}T12:00:00-05:00`)
           const finSemana = new Date(hoy.getTime() + ((7 - hoy.getUTCDay()) % 7) * 86400000)
-          const tipoResumen = !perfil.getDisponibilidad().length ? 'sin-horarios' : !sesiones.some((sesion) => sesion.getCalificacion()) ? 'nuevo' : ''
+          const tipoResumen = !perfil.getDisponibilidad().length ? 'sin-horarios' : totalCalificaciones === 0 ? 'nuevo' : ''
           const ruta = `/tutores/${perfil.getId()}${tipoResumen ? '?vista=resumen&tipo=' + tipoResumen + '&nombre=' + encodeURIComponent(estudiante.getNombre().split(' ')[0]) : ''}`
           return {
             id: perfil.getId(), nombre: estudiante.getNombre(), programa: estudiante.getPrograma().getNombre(),
             semestre: estudiante.getSemestre(), materias: perfil.getMaterias().map((materia) => materia.getNombre()),
-            promedio: perfil.calcularPromedio(sesiones), totalCalificaciones: sesiones.filter((sesion) => sesion.getCalificacion() !== null).length,
+            promedio, totalCalificaciones,
             tarifaHora: perfil.getTarifaHora(), ruta,
-            disponibleEstaSemana:perfil.getDisponibilidad().some((franja) => proximasOcurrencias(franja).some(({ clave }) => clave <= fechaEnColombia(finSemana))),
+            disponibleEstaSemana:perfil.getDisponibilidad().some((franja) => proximasOcurrencias(franja).some(({ clave }) => clave <= fechaEnColombia(finSemana)
+              && !estaOcupadaEnAgenda(ocupaciones, franja, clave))),
           }
         }))
         if (activo) setDatos({ programas, materias, tutores })
@@ -109,7 +114,8 @@ export default function BusquedaTutores({ soloFavoritos = false }) {
     <p className="ct-texto-secundario">Catálogo cerrado de la comunidad.<br />Selecciona la materia para ver sus tutores.</p>
     {cargando ? 
     <Cargando texto="Cargando materias…" /> : error ? 
-    <MensajeError mensaje={error} alReintentar={() => setIntento((valor) => valor + 1)} /> : datos.materias.filter((materia, indice, lista) => lista.findIndex((otra) => otra.getNombre() === materia.getNombre()) === indice).map((materia) => <Boton
+    <MensajeError mensaje={error} alReintentar={() => setIntento((valor) => valor + 1)} /> : !datos.materias.length ?
+    <EstadoVacio titulo="No hay materias disponibles" /> : datos.materias.filter((materia, indice, lista) => lista.findIndex((otra) => otra.getNombre() === materia.getNombre()) === indice).map((materia) => <Boton
       key={materia.getId()}
       variante={filtros.materiaId === materia.getId() ? 'primario' : 'secundario'} anchoCompleto
       alHacerClic={() => { elegirMateria(materia.getId()); setParametros({ materia:materia.getId() }) }}>

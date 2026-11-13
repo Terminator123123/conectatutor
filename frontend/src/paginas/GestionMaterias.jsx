@@ -22,24 +22,23 @@ export default function GestionMaterias() {
   const [filtro, setFiltro] = useState('')
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
+  const [errorCarga, setErrorCarga] = useState('')
   const [intento, setIntento] = useState(0)
   const [edicion, setEdicion] = useState(null)
   const [campos, setCampos] = useState({ nombre:'', codigo:'', programa:'', descripcion:'' })
-  const [descripciones, setDescripciones] = useState({})
   const [materiaElegida, setMateriaElegida] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [aviso, setAviso] = useState('')
   const [materiaDesactivar, setMateriaDesactivar] = useState(null)
-  const [inactivas, setInactivas] = useState([])
   const [desactivada, setDesactivada] = useState('')
   useEffect(() => {
     let activo = true
     async function cargar() {
-      setCargando(true); setError('')
+      setCargando(true); setErrorCarga('')
       try {
         const [listaProgramas, listaMaterias] = await Promise.all([repositorio.listarProgramas(), repositorio.listarMaterias()])
         if (activo) { setProgramas(listaProgramas); setMaterias(listaMaterias); setFiltro((actual) => actual || listaProgramas[0]?.getId() || '') }
-      } catch (fallo) { if (activo) setError(fallo.message) }
+      } catch (fallo) { if (activo) setErrorCarga(fallo.message) }
       finally { if (activo) setCargando(false) }
     }
     cargar()
@@ -48,12 +47,9 @@ export default function GestionMaterias() {
   function abrir(materia) {
     window.scrollTo(0, 0)
     setError(''); setAviso('')
+    setDesactivada('')
     setEdicion(materia?.getId() ?? 'nueva')
-    setCampos({ nombre:materia?.getNombre() ?? '', codigo:materia?.getCodigo() ?? '', programa:materia?.getPrograma().getId() ?? filtro, descripcion:descripciones[materia?.getId()] ?? '' })
-  }
-  function guardarDescripcion(id, texto) {
-    //solucion temp por falrta de bak correguir despues//
-    setDescripciones((anteriores) => ({ ...anteriores, [id]:texto.trim() }))
+    setCampos({ nombre:materia?.getNombre() ?? '', codigo:materia?.getCodigo() ?? '', programa:materia?.getPrograma().getId() ?? filtro, descripcion:'' })
   }
   async function guardar(evento) {
     evento.preventDefault()
@@ -70,29 +66,43 @@ export default function GestionMaterias() {
       if (edicion !== 'nueva' && !anterior) throw new Error('Esta materia ya no está disponible.')
       const datos = { nombre:campos.nombre.trim(), codigo:campos.codigo.trim() || `MAT-${crypto.randomUUID().slice(0,8).toUpperCase()}`, programa }
       const materia = anterior ? Materia.desdeJSON({ ...anterior.toJSON(), ...datos, programaId:programa.getId() }, { buscarPrograma:() => programa }) : new Materia(datos)
-      await repositorio.guardarMateria(materia)
-      guardarDescripcion(materia.getId(), campos.descripcion)
-      setMaterias(await repositorio.listarMaterias())
-      setEdicion(null); setAviso('Cambio confirmado. El catálogo quedó actualizado.')
+      const guardada = await repositorio.guardarMateria(materia)
+      setMaterias((lista) => lista.some((item) => item.getId() === guardada.getId())
+        ? lista.map((item) => item.getId() === guardada.getId() ? guardada : item)
+        : [...lista, guardada])
+      setMateriaElegida(guardada.getId())
+      setEdicion(null)
+      setAviso('Cambio confirmado. El catálogo quedó actualizado.')
       window.scrollTo(0, 0)
     } catch (fallo) { setError(fallo.message) }
     finally { setGuardando(false) }
   }
-  function desactivarMateria() {
-    //solucion temp por falrta de bak correguir despues//
-    setInactivas((anteriores) => [...anteriores, materiaDesactivar.getId()])
-    setDesactivada(materiaDesactivar.getNombre())
-    setMateriaDesactivar(null)
-    setAviso('Desactivación confirmada.')
-    window.scrollTo(0, 0)
+  async function desactivarMateria() {
+    if (guardando || !materiaDesactivar) return
+    setGuardando(true)
+    setError('')
+    try {
+      const materia = materiaDesactivar
+      await repositorio.desactivarMateria(materia.getId())
+      setMaterias((lista) => lista.filter((item) => item.getId() !== materia.getId()))
+      setDesactivada(materia.getNombre())
+      setMateriaDesactivar(null)
+      setAviso('Desactivación confirmada.')
+      window.scrollTo(0, 0)
+    } catch (fallo) {
+      setMateriaDesactivar(null)
+      setError(fallo.message)
+    } finally {
+      setGuardando(false)
+    }
   }
 
-  const filtradas = materias.filter((materia) => !inactivas.includes(materia.getId()) && (!filtro || materia.getPrograma().getId() === filtro))
+  const filtradas = materias.filter((materia) => !filtro || materia.getPrograma().getId() === filtro)
   const seleccionada = filtradas.find((materia) => materia.getId() === materiaElegida) ?? filtradas[0]
   if (aviso) return <section className="ct-gestion-materias ct-cambio-confirmado">
     <span className="ct-confirmacion-etiqueta">Operación completada</span>
     <h1>El cambio quedó confirmado</h1>
-    <p role="status">{desactivada ? 'La materia quedó inactiva en esta lista de demostración.' : 'El catálogo quedó actualizado.'}</p>
+    <p role="status">{desactivada ? 'La materia quedó inactiva para nuevas tutorías.' : 'El catálogo quedó actualizado.'}</p>
     <div className="ct-dato"><small>Resultado</small>{desactivada ? `${desactivada}: Inactiva` : 'Cambio de catálogo confirmado'}</div>
     <div className="ct-acciones-catalogo"><Link className="ct-boton btn-ct-primario ct-boton-completo" to="/admin/verificacion">Volver a administración</Link></div>
     {desactivada && <Boton anchoCompleto variante="secundario" alHacerClic={() => { setAviso(''); setDesactivada('') }}>Volver al catálogo</Boton>}
@@ -107,7 +117,7 @@ export default function GestionMaterias() {
     <p className="ct-texto-secundario">
       {edicion ? edicion === 'nueva' ? 'La materia estará disponible en el catálogo después de guardar.' : 'Conserva un nombre claro y consistente para estudiantes y tutores.' : `${filtradas.length} materias activas. Puedes agregar o editar una materia.`}
     </p>
-    {cargando ? <Cargando texto="Cargando catálogo…" /> : <>
+    {cargando ? <Cargando texto="Cargando catálogo…" /> : errorCarga ? <MensajeError mensaje={errorCarga} alReintentar={() => setIntento((valor) => valor + 1)} /> : <>
       {error && <MensajeError mensaje={error} alReintentar={() => setIntento((valor) => valor + 1)} />}
       {edicion ? <form className="ct-tutor-formulario" onSubmit={guardar}>
         <CampoFormulario
@@ -117,12 +127,13 @@ export default function GestionMaterias() {
           alCambiar={(valor) => setCampos({ ...campos, nombre:valor })} obligatorio
           deshabilitado={guardando} />
         <CampoFormulario
-          etiqueta="Descripción breve"
+          etiqueta="Descripción breve (no disponible)"
           nombre="descripcion"
           tipo="textarea"
           valor={campos.descripcion}
           alCambiar={(valor) => setCampos({ ...campos, descripcion:valor })}
-          deshabilitado={guardando} />
+          placeholder="La descripción no se guarda"
+          deshabilitado />
         <CampoFormulario
           etiqueta="Programa académico"
           nombre="programa"
@@ -162,12 +173,12 @@ export default function GestionMaterias() {
         <Boton anchoCompleto variante="secundario" deshabilitado={!seleccionada} alHacerClic={() => setMateriaDesactivar(seleccionada)}>
           Desactivar {seleccionada?.getNombre() ?? 'materia'}
         </Boton>
-        {!materias.length && <EstadoVacio titulo="Todavía no hay materias" />}
+        {!filtradas.length && <EstadoVacio titulo="Todavía no hay materias" />}
       </>}
     </>}
     <Link className="ct-boton btn-ct-secundario" to="/admin/verificacion">Volver a Coordinación</Link>
-    <Modal abierto={Boolean(materiaDesactivar)} titulo="Administración" conRegreso alCerrar={() => setMateriaDesactivar(null)}>
-      {materiaDesactivar && <ConfirmarDesactivacion nombre={materiaDesactivar.getNombre()} alConfirmar={desactivarMateria} alConservar={() => setMateriaDesactivar(null)} />}
+    <Modal abierto={Boolean(materiaDesactivar)} titulo="Administración" conRegreso alCerrar={() => { if (!guardando) setMateriaDesactivar(null) }}>
+      {materiaDesactivar && <ConfirmarDesactivacion nombre={materiaDesactivar.getNombre()} guardando={guardando} alConfirmar={desactivarMateria} alConservar={() => { if (!guardando) setMateriaDesactivar(null) }} />}
     </Modal>
   </section>
 }

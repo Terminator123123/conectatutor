@@ -6,7 +6,6 @@ import EstadoVacio from '../componentes/ui/EstadoVacio.jsx'
 import '../estilos/tutor.css'
 
 function listarReportes() {
-  //solucion temp por falrta de bak correguir despues//
   return []
 }
 
@@ -16,6 +15,7 @@ export default function Reportes() {
   const [vista, setVista] = useState('pendientes')
   const [reportes] = useState(listarReportes)
   return <section className="ct-gestion-materias"><h1>Revisar reportes</h1>
+    <p className="ct-demostracion">Demostración: la recepción y revisión de reportes aún no están disponibles.</p>
     <div className="ct-tabs-estado" role="group" aria-label="Estado de los reportes">
       {['pendientes','resueltos'].map((estado) => <button key={estado} type="button" aria-pressed={vista === estado} onClick={() => setVista(estado)}>
         {estado === 'pendientes' ? 'Pendientes' : 'Resueltos'}

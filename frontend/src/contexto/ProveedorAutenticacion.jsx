@@ -1,85 +1,86 @@
-// Restaura la sesión y expone las operaciones de autenticación a la interfaz.
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
-import { repositorio, servicioAutenticacion } from '../servicios/instancias.js'
+import { repositorio, servicioAutenticacion, suscribirExpiracionSesion } from '../servicios/instancias.js'
 import { ContextoAutenticacion } from './ContextoAutenticacion.js'
 
-function simularVigencia(habiaSesion, usuario) {
-  //solucion temp por falrta de bak correguir despues//
-  return habiaSesion && !usuario
-}
-
-/**
- * Provee el usuario y las operaciones de autenticación a sus descendientes.
- * @param {object} props Propiedades del proveedor.
- * @param {import('react').ReactNode} props.children Contenido de la aplicación.
- * @returns {import('react').ReactElement} Proveedor del contexto de autenticación.
- */
 export default function ProveedorAutenticacion({ children }) {
   const [usuario, setUsuario] = useState(null)
   const [cargando, setCargando] = useState(true)
   const [errorInicial, setErrorInicial] = useState('')
   const [sesionExpirada, setSesionExpirada] = useState(false)
+  const revision = useRef(0)
 
-  useEffect(() => {
-    let activo = true
-
-    async function restaurarSesion() {
-      let habiaSesion = false
-      try {
-        await repositorio.asegurarVersion()
-        await repositorio.cargarDatosIniciales()
-        habiaSesion = repositorio.tieneSesionGuardada()
-        const usuarioRestaurado = await repositorio.obtenerSesionActual()
-        if (activo) {
-          setUsuario(usuarioRestaurado)
-          setSesionExpirada(simularVigencia(habiaSesion, usuarioRestaurado))
-        }
-      } catch (error) {
-        if (activo) {
-          setUsuario(null)
-          setSesionExpirada(simularVigencia(habiaSesion, null))
-          setErrorInicial(error.message)
-        }
-      } finally {
-        if (activo) setCargando(false)
+  const restaurarSesion = useCallback(() => {
+    const actual = ++revision.current
+    const habiaSesion = repositorio.tieneSesionGuardada()
+    return repositorio.obtenerSesionActual().then((restaurado) => {
+      if (actual === revision.current) {
+        setUsuario(restaurado)
+        setSesionExpirada(habiaSesion && !restaurado)
       }
-    }
-
-    restaurarSesion()
-    return () => { activo = false }
+    }).catch((error) => {
+      if (actual === revision.current) {
+        setErrorInicial(error.message)
+        setSesionExpirada(false)
+      }
+    }).finally(() => {
+      if (actual === revision.current) setCargando(false)
+    })
   }, [])
 
+  const reintentarSesion = useCallback(() => {
+    setCargando(true)
+    setErrorInicial('')
+    return restaurarSesion()
+  }, [restaurarSesion])
+
+  useEffect(() => suscribirExpiracionSesion(() => {
+    revision.current += 1
+    setUsuario(null)
+    setSesionExpirada(true)
+    setErrorInicial('')
+    setCargando(false)
+  }), [])
+
+  useEffect(() => {
+    restaurarSesion()
+    return () => { revision.current += 1 }
+  }, [restaurarSesion])
+
   const iniciarSesion = useCallback(async (correo, clave) => {
-    const usuarioAutenticado = await servicioAutenticacion.iniciarSesion(correo, clave)
-    // Completa el cambio de sesión y sus guardas antes de navegar desde el formulario.
-    flushSync(() => { setUsuario(usuarioAutenticado); setSesionExpirada(false); setErrorInicial('') })
-    return usuarioAutenticado
+    const actual = ++revision.current
+    const autenticado = await servicioAutenticacion.iniciarSesion(correo, clave)
+    if (actual === revision.current) flushSync(() => { setUsuario(autenticado); setSesionExpirada(false); setErrorInicial(''); setCargando(false) })
+    return autenticado
   }, [])
 
   const registrar = useCallback(async (datos) => {
-    await servicioAutenticacion.registrar(datos)
-    return iniciarSesion(datos.correoInstitucional, datos.clave)
-  }, [iniciarSesion])
+    const actual = ++revision.current
+    const registrado = await servicioAutenticacion.registrar(datos)
+    if (actual === revision.current) flushSync(() => { setUsuario(registrado); setSesionExpirada(false); setErrorInicial(''); setCargando(false) })
+    return registrado
+  }, [])
 
   const cerrarSesion = useCallback(() => {
+    revision.current += 1
     servicioAutenticacion.cerrarSesion()
-    // Completa la salida y sus guardas antes de que la barra navegue al inicio.
-    flushSync(() => { setUsuario(null); setSesionExpirada(false); setErrorInicial('') })
+    flushSync(() => { setUsuario(null); setSesionExpirada(false); setErrorInicial(''); setCargando(false) })
   }, [])
 
   const actualizarUsuario = useCallback(async () => {
-    const actual = await repositorio.obtenerSesionActual()
-    flushSync(() => {
-      setUsuario(actual)
-      setSesionExpirada(simularVigencia(repositorio.tieneSesionGuardada(), actual))
+    const actual = revision.current
+    const habiaSesion = repositorio.tieneSesionGuardada()
+    const restaurado = await repositorio.obtenerSesionActual()
+    if (actual === revision.current) flushSync(() => {
+      setUsuario(restaurado)
+      setSesionExpirada(habiaSesion && !restaurado)
     })
-    return actual
+    return restaurado
   }, [])
 
   const valor = useMemo(() => ({
-    usuario, cargando, errorInicial, sesionExpirada, iniciarSesion, registrar, cerrarSesion, actualizarUsuario,
-  }), [usuario, cargando, errorInicial, sesionExpirada, iniciarSesion, registrar, cerrarSesion, actualizarUsuario])
+    usuario, cargando, errorInicial, sesionExpirada, iniciarSesion, registrar, cerrarSesion, actualizarUsuario, reintentarSesion,
+  }), [usuario, cargando, errorInicial, sesionExpirada, iniciarSesion, registrar, cerrarSesion, actualizarUsuario, reintentarSesion])
 
   return <ContextoAutenticacion.Provider value={valor}>{children}</ContextoAutenticacion.Provider>
 }

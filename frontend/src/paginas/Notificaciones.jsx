@@ -12,7 +12,6 @@ import EstadoVacio from '../componentes/ui/EstadoVacio.jsx'
 import '../estilos/solicitante.css'
 
 function derivarNovedades(sesiones, usuarioId) {
-  //solucion temp por falrta de bak correguir despues//
   return [...sesiones].sort((a, b) => b.getFecha() - a.getFecha()).map((sesion) => {
     const propia = sesion.getSolicitante().getId() === usuarioId
     const persona = propia ? sesion.getTutor().getEstudiante() : sesion.getSolicitante()
@@ -76,6 +75,7 @@ export default function Notificaciones() {
     <section className="ct-estado-formulario ct-notificaciones">
       <span className="ct-chip-materia">{novedades.length} {novedades.length === 1 ? 'novedad' : 'novedades'}</span>
       <h1>Novedades de tus tutorías</h1>
+      <p className="ct-demostracion">Simulación: estas novedades se derivan de tus sesiones; no se guardan ni se envían notificaciones.</p>
       <p className="ct-texto-secundario">Aquí verás los cambios en tus solicitudes y sesiones.</p>
       <div className="ct-notificaciones-lista">
       {novedades.length ? novedades.map((novedad) => (

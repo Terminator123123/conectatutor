@@ -7,7 +7,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAutenticacion } from '../contexto/useAutenticacion.js'
 import { repositorio } from '../servicios/instancias.js'
-import { estaOcupada, fechaEnColombia, proximasOcurrencias } from '../servicios/agenda.js'
+import { estaOcupadaEnAgenda, fechaEnColombia, proximasOcurrencias } from '../servicios/agenda.js'
 import CampoFormulario from '../componentes/ui/CampoFormulario.jsx'
 import Avatar from '../componentes/ui/Avatar.jsx'
 import Boton from '../componentes/ui/Boton.jsx'
@@ -54,12 +54,13 @@ export default function SolicitudSesion() {
       setCargando(true)
       setErrorCarga('')
       try {
-        const [perfil, sesiones] = await Promise.all([
-          repositorio.obtenerPerfilTutor(id), repositorio.listarSesionesDelTutor(id),
+        const [resumen, ocupaciones] = await Promise.all([
+          repositorio.obtenerResumenTutor(id), repositorio.obtenerOcupacionTutor(id),
         ])
+        const { perfil, totalCalificaciones } = resumen
         if (activo) {
-          setDatos({ perfil, sesiones })
-          const primera = perfil?.getDisponibilidad().flatMap((franja, indice) => proximasOcurrencias(franja).map((ocurrencia) => ({ ...ocurrencia, franja, indice }))).sort((a, b) => a.fecha - b.fecha).find((ocurrencia) => !estaOcupada(sesiones, ocurrencia.franja, ocurrencia.clave))
+          setDatos({ perfil, ocupaciones, totalCalificaciones })
+          const primera = perfil?.getDisponibilidad().flatMap((franja, indice) => proximasOcurrencias(franja).map((ocurrencia) => ({ ...ocurrencia, franja, indice }))).sort((a, b) => a.fecha - b.fecha).find((ocurrencia) => !estaOcupadaEnAgenda(ocupaciones, ocurrencia.franja, ocurrencia.clave))
           setFechaElegida(primera?.clave ?? '')
           const diaBase = new Date(`${fechaEnColombia(fechaBase)}T12:00:00-05:00`)
           const lunes = new Date(diaBase.getTime() - ((diaBase.getUTCDay() + 6) % 7) * 86400000)
@@ -69,7 +70,10 @@ export default function SolicitudSesion() {
           setErrorServicio('')
         }
       } catch (error) {
-        if (activo) setErrorCarga(error.message)
+        if (activo) {
+          if (error.status === 404) setDatos(null)
+          else setErrorCarga(error.message)
+        }
       } finally {
         if (activo) setCargando(false)
       }
@@ -81,7 +85,7 @@ export default function SolicitudSesion() {
   const errores = {
     materia: campos.materia ? '' : 'Selecciona la materia.',
     franja: campos.franja ? '' : 'Elige una franja libre.',
-    tema: campos.tema.trim().length >= 10 && campos.tema.trim().length <= 300 ? '' : 'Cuéntale al tutor qué quieres repasar (de 10 a 300 caracteres).',
+    tema: campos.tema.trim().length >= 10 && campos.tema.trim().length <= 300 && campos.tema.trim().split(/\s+/).length >= 3 ? '' : 'Cuéntale al tutor qué quieres repasar (al menos 3 palabras, de 10 a 300 caracteres).',
   }
   function cambiar(nombre, valor) {
     setCampos((anteriores) => ({ ...anteriores, [nombre]: valor }))
@@ -90,7 +94,6 @@ export default function SolicitudSesion() {
     setTocados((anteriores) => ({ ...anteriores, [nombre]: true }))
   }
   function adjuntar(evento) {
-    //solucion temp por falrta de bak correguir despues//
     const elegido = evento.target.files?.[0]
     setErrorArchivo('')
     if (elegido && (elegido.size > 5 * 1024 * 1024 || !/\.(pdf|png|jpe?g)$/i.test(elegido.name))) {
@@ -114,11 +117,11 @@ export default function SolicitudSesion() {
     texto="Vuelve a buscar un tutor que te acompañe."
     accion={{ etiqueta: 'Volver a la búsqueda', ruta: '/tutores' }} />
 
-  const { perfil, sesiones } = datos
+  const { perfil, ocupaciones, totalCalificaciones } = datos
   const opciones = perfil.getDisponibilidad().flatMap((franja, indice) => proximasOcurrencias(franja).map(({ fecha, clave }) => ({
     id: `${indice}|${clave}`, fecha, clave, franja,
     etiqueta: `${formatearFechaBreve(fecha)} · ${franja.getHoraInicio()}–${franja.getHoraFin()}`,
-    ocupada: estaOcupada(sesiones, franja, clave),
+    ocupada: estaOcupadaEnAgenda(ocupaciones, franja, clave),
   }))).sort((a, b) => a.fecha - b.fecha)
   const hoy = new Date(`${fechaEnColombia(fechaBase)}T12:00:00-05:00`)
   const diasDesdeLunes = (hoy.getUTCDay() + 6) % 7
@@ -126,11 +129,15 @@ export default function SolicitudSesion() {
   const numeroSemanas = Math.ceil((15 + diasDesdeLunes) / 7)
   const fechas = Array.from({ length: numeroSemanas * 7 }, (_, indice) => new Date(lunes.getTime() + indice * 86400000))
   const opcionesDelDia = opciones.filter((opcion) => opcion.clave === fechaElegida)
-  const bloques = [['08:00','10:00'],['10:00','12:00'],['14:00','16:00'],['16:00','18:00']]
+  const bloques = [...new Map(perfil.getDisponibilidad().map((franja) => [
+    `${franja.getHoraInicio()}-${franja.getHoraFin()}`, [franja.getHoraInicio(), franja.getHoraFin()],
+  ])).values()].sort(([inicioA, finA], [inicioB, finB]) => inicioA.localeCompare(inicioB) || finA.localeCompare(finB))
   const tarifa = perfil.getTarifaHora()
-    const sinResenas = !sesiones.some((sesion) => sesion.getCalificacion())
+  const sinResenas = totalCalificaciones === 0
   const opcionElegida = opciones.find((opcion) => opcion.id === campos.franja)
-  const horasElegidas = opcionElegida ? Number(opcionElegida.franja.getHoraFin().slice(0, 2)) - Number(opcionElegida.franja.getHoraInicio().slice(0, 2)) : 0
+  const minutos = (hora) => Number(hora.slice(0, 2)) * 60 + Number(hora.slice(3))
+  const horasElegidas = opcionElegida ? (minutos(opcionElegida.franja.getHoraFin()) - minutos(opcionElegida.franja.getHoraInicio())) / 60 : 0
+  const horasMostradas = horasElegidas.toLocaleString('es-CO', { maximumFractionDigits: 2 })
 
   async function enviar(evento) {
     evento.preventDefault()
@@ -149,14 +156,15 @@ export default function SolicitudSesion() {
     setEnviando(true)
     try {
       const reservar = async () => {
-        const perfilActual = await repositorio.obtenerPerfilTutor(id)
+        const [perfilActual, actuales] = await Promise.all([repositorio.obtenerPerfilTutor(id), repositorio.obtenerOcupacionTutor(id)])
         if (!perfilActual) throw new Error('No encontramos este tutor.')
         const materia = perfilActual.getMaterias().find((item) => item.getId() === campos.materia)
         const opcion = opciones.find((item) => item.id === campos.franja)
-        const actuales = await repositorio.listarSesionesDelTutor(id)
-        if (estaOcupada(actuales, opcion.franja, fechaEnColombia(opcion.fecha))) {
-          setDatos((anteriores) => ({ ...anteriores, sesiones: actuales }))
-          const siguiente = opciones.find((item) => item.clave === opcion.clave && item.fecha > opcion.fecha && !estaOcupada(actuales, item.franja, item.clave))
+        if (!materia) throw new Error('El tutor ya no ofrece esta materia. Vuelve a consultar su perfil.')
+        if (!opcion) throw new Error('Elige una fecha y una franja disponibles.')
+        if (estaOcupadaEnAgenda(actuales, opcion.franja, fechaEnColombia(opcion.fecha))) {
+          setDatos((anteriores) => ({ ...anteriores, ocupaciones: actuales }))
+          const siguiente = opciones.find((item) => item.clave === opcion.clave && item.fecha > opcion.fecha && !estaOcupadaEnAgenda(actuales, item.franja, item.clave))
           setCampos((anteriores) => ({ ...anteriores, franja: siguiente?.id ?? '' }))
           setErrorServicio(siguiente
             ? `Esta franja acaba de reservarse. Seleccionamos ${siguiente.franja.getHoraInicio()}–${siguiente.franja.getHoraFin()}. Revisa el horario antes de enviar.`
@@ -164,18 +172,24 @@ export default function SolicitudSesion() {
           return
         }
         const sesion = usuario.solicitarSesion(perfilActual, materia, opcion.franja, opcion.fecha, campos.tema.trim())
-        await repositorio.guardarSesion(sesion)
-        return sesion.getId()
+        const guardada = await repositorio.guardarSesion(sesion)
+        return guardada.getId()
       }
-      // El bloqueo entre pestañas mantiene juntas la relectura y el guardado.
-      const reservada = navigator.locks?.request
-        ? await navigator.locks.request(`ct-agenda-${id}`, reservar) : await reservar()
+      const reservada = await reservar()
       if (!reservada) return
       if (sinResenas || tableta) { navigate(`/sesiones/${reservada}?resultado=enviada&nombre=${encodeURIComponent(perfil.getEstudiante().getNombre().split(' ')[0])}`, { replace:true }); return }
       navigate('/sesiones', { replace: true, state: { aviso: `Solicitud enviada. ${perfil.getEstudiante().getNombre().split(' ')[0]} revisará tu solicitud.` } })
     } catch (error) {
-      setErrorServicio(error.message)
-      if (error.getCodigo?.() === 'R8') cambiarVista('fecha')
+      setErrorServicio([error.message, ...(error.errores ?? [])].join('. '))
+      if (error.regla === 'RQNF012') {
+        try {
+          const actuales = await repositorio.obtenerOcupacionTutor(id)
+          setDatos((anteriores) => ({ ...anteriores, ocupaciones: actuales }))
+          setCampos((anteriores) => ({ ...anteriores, franja: '' }))
+        } catch {
+          setErrorServicio(`${error.message}. No se pudo actualizar la agenda; vuelve a intentarlo`)
+        }
+      }
     } finally {
       setEnviando(false)
     }
@@ -216,7 +230,7 @@ export default function SolicitudSesion() {
           <div className="ct-dato">
               <small>Tarifa
           </small>
-          {tarifa === null ? `Tutoría gratuita, ${horasElegidas} horas` : `${horasElegidas} horas × ${formatearMoneda(tarifa)}/h = ${formatearMoneda(tarifa * horasElegidas)}`}
+          {tarifa === null ? `Tutoría gratuita, ${horasMostradas} horas` : `${horasMostradas} horas × ${formatearMoneda(tarifa)}/h = ${formatearMoneda(tarifa * horasElegidas)}`}
         </div>
         {errorServicio && 
         <MensajeError mensaje={errorServicio} />}
@@ -240,7 +254,7 @@ export default function SolicitudSesion() {
           </small>
           {archivo}, {Math.max(1, Math.round(tamanoArchivo / 1024))} KB
         </div>
-          <p className="ct-texto-secundario">Archivo adjunto a la solicitud.
+          <p className="ct-texto-secundario">Demostración: el archivo se selecciona en este dispositivo y no se envía.
         </p>
         </>}
       {vista === 'archivo' && 
@@ -307,7 +321,7 @@ export default function SolicitudSesion() {
   const controlMaterial = 
   <div className="ct-material-solicitud">
       <input ref={archivoRef} type="file" accept=".pdf,.png,.jpg,.jpeg" hidden aria-label="Material de la tutoría" onChange={adjuntar} />
-      <Boton variante="secundario" anchoCompleto alHacerClic={() => archivoRef.current?.click()}>Adjuntar material
+      <Boton variante="secundario" anchoCompleto alHacerClic={() => archivoRef.current?.click()}>Adjuntar material (demostración)
     </Boton>
     {archivo && 
     <p role="status">
@@ -409,7 +423,7 @@ export default function SolicitudSesion() {
               const seleccionada = opcion?.id === campos.franja
               return <button
                 type="button"
-                key={inicio}
+                key={`${inicio}-${fin}`}
                 disabled={!opcion || ocupada || enviando}
                 className={`ct-franja${seleccionada ? ' ct-franja-seleccionada' : ''}${ocupada ? ' ct-franja-ocupada' : ''}`}
                 aria-pressed={seleccionada}
@@ -437,12 +451,12 @@ export default function SolicitudSesion() {
         <div className="ct-dato ct-tarifa-resumen-tablet">
             <small>Tarifa informativa
           </small>
-          {tarifa === null ? `Tutoría gratuita, ${horasElegidas} horas. Sin pago en la plataforma.` : `${horasElegidas} horas × ${formatearMoneda(tarifa)}/h = ${formatearMoneda(tarifa * horasElegidas)}. Sin pago en la plataforma.`}
+          {tarifa === null ? `Tutoría gratuita, ${horasMostradas} horas. Sin pago en la plataforma.` : `${horasMostradas} horas × ${formatearMoneda(tarifa)}/h = ${formatearMoneda(tarifa * horasElegidas)}. Sin pago en la plataforma.`}
         </div>}
         {escritorio && 
         <div className="ct-costo-solicitud">
             <strong>
-            {opcionElegida ? `${horasElegidas} horas${tarifa === null ? ', Gratuita' : ` × ${formatearMoneda(tarifa)}/h = ${formatearMoneda(tarifa * horasElegidas)}`}` : 'Elige un horario disponible.'}
+            {opcionElegida ? `${horasMostradas} horas${tarifa === null ? ', Gratuita' : ` × ${formatearMoneda(tarifa)}/h = ${formatearMoneda(tarifa * horasElegidas)}`}` : 'Elige un horario disponible.'}
           </strong>
           {controlMaterial}
         </div>}

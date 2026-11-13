@@ -30,11 +30,11 @@ export default function Favoritos() {
         const [favoritos, perfiles] = await Promise.all([repositorio.listarFavoritos(usuarioId), repositorio.listarTutoresVerificados({})])
         const elegibles = perfiles.filter((perfil) => perfil.getEstudiante().getId() !== usuarioId)
         const resultado = await Promise.all(elegibles.filter((perfil) => favoritos.includes(perfil.getId())).map(async (perfil) => {
-          const sesiones = await repositorio.listarSesionesDelTutor(perfil.getId())
+          const { promedio, totalCalificaciones } = await repositorio.obtenerResumenTutor(perfil.getId())
           const estudiante = perfil.getEstudiante()
-          const tipoResumen = !perfil.getDisponibilidad().length ? 'sin-horarios' : !sesiones.some((sesion) => sesion.getCalificacion()) ? 'nuevo' : ''
+          const tipoResumen = !perfil.getDisponibilidad().length ? 'sin-horarios' : totalCalificaciones === 0 ? 'nuevo' : ''
           const ruta = `/tutores/${perfil.getId()}${tipoResumen ? '?vista=resumen&tipo=' + tipoResumen + '&nombre=' + encodeURIComponent(estudiante.getNombre().split(' ')[0]) : ''}`
-          return { id:perfil.getId(), nombre:estudiante.getNombre(), programa:estudiante.getPrograma().getNombre(), semestre:estudiante.getSemestre(), materias:perfil.getMaterias().map((materia) => materia.getNombre()), promedio:perfil.calcularPromedio(sesiones), totalCalificaciones:sesiones.filter((sesion) => sesion.getCalificacion()).length, tarifaHora:perfil.getTarifaHora(), ruta }
+          return { id:perfil.getId(), nombre:estudiante.getNombre(), programa:estudiante.getPrograma().getNombre(), semestre:estudiante.getSemestre(), materias:perfil.getMaterias().map((materia) => materia.getNombre()), promedio, totalCalificaciones, tarifaHora:perfil.getTarifaHora(), ruta }
         }))
         if (activo) { setTutores(resultado); setParametros(resultado.length ? {} : { vacio:'1' }, { replace:true }); setRecomendado(elegibles[0] ? { nombre:elegibles[0].getEstudiante().getNombre(), ruta:`/tutores/${elegibles[0].getId()}` } : null) }
       } catch (fallo) { if (activo) setError(fallo.message) }
@@ -47,14 +47,14 @@ export default function Favoritos() {
     if (guardando) return
     setGuardando(true); setError('')
     try {
-      const actuales = await repositorio.listarFavoritos(usuarioId)
-      if (actuales.includes(id)) await repositorio.alternarFavorito(usuarioId, id)
+      await repositorio.quitarFavorito(usuarioId, id)
       setTutores((anteriores) => anteriores.filter((tutor) => tutor.id !== id))
       if (tutores.length === 1) { setParametros({ vacio:'1' }, { replace:true }); window.scrollTo(0, 0) }
     } catch (fallo) { setError(fallo.message) }
     finally { setGuardando(false) }
   }
   if (cargando) return <Cargando texto="Cargando favoritos…" />
+  if (error && !tutores.length) return <MensajeError mensaje={error} alReintentar={() => setIntento((valor) => valor + 1)} />
   const primero = tutores[0]
   return <section className="ct-estado-formulario ct-favoritos">
     {primero && <span className="ct-confirmacion-etiqueta">{tutores.length} {tutores.length === 1 ? 'tutor guardado' : 'tutores guardados'}</span>}

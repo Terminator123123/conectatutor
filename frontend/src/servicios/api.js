@@ -1,0 +1,107 @@
+const URL_API = import.meta.env?.VITE_API_URL || 'http://localhost:3000/api'
+const CLAVE_TOKEN = 'ct.token'
+const RUTAS_DE_INGRESO = new Set(['/auth/ingreso', '/auth/registro'])
+
+export class ErrorApi extends Error {
+  constructor(mensaje, { status = 0, errores = [], regla, cause } = {}) {
+    super(mensaje, { cause })
+    this.name = 'ErrorApi'
+    this.status = status
+    this.errores = errores
+    this.regla = regla
+  }
+}
+
+function almacenPredeterminado() {
+  try {
+    if (globalThis.localStorage) return globalThis.localStorage
+  } catch {
+    // El navegador puede bloquear Storage aunque la API exista
+  }
+  const valores = new Map()
+  return {
+    getItem: (clave) => valores.get(clave) ?? null,
+    setItem: (clave, valor) => valores.set(clave, valor),
+    removeItem: (clave) => valores.delete(clave),
+  }
+}
+
+export function crearClienteApi({
+  urlBase = URL_API,
+  fetchImpl = globalThis.fetch,
+  almacen = almacenPredeterminado(),
+  alExpirarSesion = () => {},
+} = {}) {
+  const base = new URL(urlBase)
+  if (!['http:', 'https:'].includes(base.protocol) || base.username || base.password || base.search || base.hash) {
+    throw new TypeError('La URL de la API debe ser una dirección HTTP o HTTPS sin credenciales, consulta ni fragmento')
+  }
+  const direccion = base.href.replace(/\/+$/, '')
+  let revisionSesion = 0
+
+  const obtenerToken = () => almacen.getItem(CLAVE_TOKEN)
+  function guardarToken(token) {
+    if (typeof token !== 'string' || !token.trim()) throw new TypeError('El token debe ser un texto no vacío')
+    almacen.setItem(CLAVE_TOKEN, token)
+    revisionSesion += 1
+  }
+  function cerrarSesion() {
+    almacen.removeItem(CLAVE_TOKEN)
+    revisionSesion += 1
+  }
+
+  async function peticion(ruta, { metodo = 'GET', datos, parametros = {}, autenticada = true, signal } = {}) {
+    if (typeof ruta !== 'string' || !ruta.startsWith('/') || ruta.startsWith('//') || /[?#\\]/.test(ruta)) {
+      throw new TypeError('La ruta debe ser relativa a la API; usa parametros para la consulta')
+    }
+    const url = new URL(`${direccion}${ruta}`)
+    for (const [clave, valor] of Object.entries(parametros)) {
+      if (valor !== undefined && valor !== null && valor !== '') url.searchParams.set(clave, String(valor))
+    }
+    const enviarToken = autenticada && !RUTAS_DE_INGRESO.has(ruta.replace(/\/+$/, ''))
+    const token = enviarToken ? obtenerToken() : null
+    const revisionAlEnviar = revisionSesion
+    const headers = { Accept: 'application/json' }
+    if (token) headers.Authorization = `Bearer ${token}`
+    if (datos !== undefined) headers['Content-Type'] = 'application/json'
+    const body = datos === undefined ? undefined : JSON.stringify(datos)
+
+    let respuesta
+    try {
+      respuesta = await fetchImpl(url.href, { method: metodo, headers, body, signal })
+    } catch (cause) {
+      if (cause?.name === 'AbortError') throw cause
+      throw new ErrorApi('No se pudo conectar con la API. Revisa tu conexión e inténtalo de nuevo', { cause })
+    }
+
+    // Un 401 atrasado no puede cerrar una sesión iniciada después de la petición
+    if (respuesta.status === 401 && token && revisionSesion === revisionAlEnviar && obtenerToken() === token) {
+      cerrarSesion()
+      alExpirarSesion()
+    }
+    if (respuesta.status === 204 || respuesta.status === 205) return null
+
+    let contenido
+    try {
+      contenido = await respuesta.json()
+    } catch (cause) {
+      const mensaje = respuesta.ok
+        ? 'La API devolvió una respuesta que no se puede leer. Inténtalo de nuevo'
+        : `No se pudo completar la solicitud (HTTP ${respuesta.status})`
+      throw new ErrorApi(mensaje, { status: respuesta.status, cause })
+    }
+    if (!respuesta.ok) {
+      throw new ErrorApi(
+        typeof contenido?.mensaje === 'string' ? contenido.mensaje : `No se pudo completar la solicitud (HTTP ${respuesta.status})`,
+        {
+          status: respuesta.status,
+          errores: Array.isArray(contenido?.errores) ? contenido.errores.filter((error) => typeof error === 'string') : [],
+          regla: typeof contenido?.regla === 'string' ? contenido.regla : undefined,
+        },
+      )
+    }
+    return contenido
+  }
+
+  return { peticion, obtenerToken, guardarToken, cerrarSesion, tieneSesionGuardada: () => Boolean(obtenerToken()) }
+}

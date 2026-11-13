@@ -102,7 +102,6 @@ export default function MiPerfil() {
   useEffect(() => () => { if (foto) URL.revokeObjectURL(foto) }, [foto])
 
   function editarFoto(evento) {
-    //solucion temp por falrta de bak correguir despues//
     const archivo = evento.target.files?.[0]
     if (archivo && archivo.type.startsWith('image/')) setFoto(URL.createObjectURL(archivo))
   }
@@ -120,10 +119,13 @@ export default function MiPerfil() {
       const perfil = estudiante.esTutor() ? await repositorio.obtenerPerfilTutor(estudiante.getPerfilTutor().getId()) : null
       const actualizado = modificar(perfil, estudiante) ?? perfil
       if (!actualizado) throw new Error('No encontramos tu perfil. Vuelve a cargar la página.')
-      await repositorio.guardarPerfilTutor(actualizado)
-      const actualizadoUsuario = await repositorio.obtenerUsuario(usuarioId)
+      const guardado = await repositorio.guardarPerfilTutor(actualizado)
+      // Lo guardado ya está confirmado: si falla la lectura posterior se muestra la respuesta del guardado
+      let actualizadoUsuario
+      try { actualizadoUsuario = await repositorio.obtenerUsuario(usuarioId) }
+      catch { actualizadoUsuario = guardado.getEstudiante() }
       setDatos((anteriores) => ({ ...anteriores, estudiante: actualizadoUsuario }))
-      await actualizarUsuario()
+      try { await actualizarUsuario() } catch { /* la sesión se vuelve a leer al navegar */ }
       setAviso(mensaje)
       if (clave === 'activar' || clave === 'biografia') setBiografia(actualizado.getBiografia())
       if (clave === 'activar') window.scrollTo(0, 0)
@@ -350,7 +352,7 @@ export default function MiPerfil() {
       </>}
     <input ref={fotoRef} type="file" accept="image/*" hidden aria-label="Foto del perfil" onChange={editarFoto} />
     {foto && <img className="ct-foto-perfil" src={foto} alt="Vista previa de tu foto" width="72" height="72" />}
-    <Boton variante="secundario" alHacerClic={() => fotoRef.current?.click()}>Editar foto</Boton>
+    <Boton variante="secundario" alHacerClic={() => fotoRef.current?.click()}>Editar foto (vista previa)</Boton>
     <Boton variante="secundario" anchoCompleto alHacerClic={() => { cerrarSesion(); navigate('/') }}>Cerrar sesión</Boton>
     {errores.perfil && <MensajeError mensaje={errores.perfil} />}
     <div className="ct-editar-acciones">
@@ -469,6 +471,7 @@ export default function MiPerfil() {
             </div>
           {cargandoMaterias && <Cargando texto="Cargando materias…" />}
           {errorMaterias && <MensajeError mensaje={errorMaterias} alReintentar={() => setIntentoMaterias((valor) => valor + 1)} />}
+          {!cargandoMaterias && !errorMaterias && !materias.filter((materia) => !perfil.ofrece(materia)).length && <EstadoVacio titulo="No hay materias disponibles" texto="Todas las materias de este programa ya están en tu oferta o aún no hay materias registradas." />}
           {errores.materias && <MensajeError mensaje={errores.materias} />}
           <Boton
             tipo="submit"
@@ -506,7 +509,12 @@ export default function MiPerfil() {
               aria-label={`${etiqueta} ${horaInicio}–${horaFin}`}
               aria-pressed={activa}
               disabled={!!guardando}
-              onClick={() => actuar('horario', 'horarios', 'Disponibilidad guardada.', (actual) => actual.estaDisponible(franja) ? actual.quitarFranja(franja) : actual.agregarFranja(franja))}>
+              onClick={() => actuar('horario', 'horarios', 'Disponibilidad guardada.', (actual) => {
+                // Se aplica lo que el botón mostraba al hacer clic, no lo contrario de lo guardado: repetir el clic no revierte un guardado
+                if (activa && actual.estaDisponible(franja)) actual.quitarFranja(franja)
+                if (!activa && !actual.estaDisponible(franja)) actual.agregarFranja(franja)
+                return actual
+              })}>
               {horaInicio.slice(0,2)}h
             </button>
           }))}

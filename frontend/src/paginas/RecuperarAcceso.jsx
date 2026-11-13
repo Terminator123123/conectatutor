@@ -20,7 +20,6 @@ export default function RecuperarAcceso() {
   const [confirmacion, setConfirmacion] = useState('')
   const [error, setError] = useState('')
   function simular(siguiente) {
-    //solucion temp por falrta de bak correguir despues//
     setError('')
     setPaso(siguiente)
   }
@@ -28,13 +27,13 @@ export default function RecuperarAcceso() {
     evento.preventDefault()
     const fallo = paso === 'correo' ? validarCorreo(correo, INSTITUCION.dominioCorreo) : validarClave(clave) || validarConfirmacion(confirmacion, clave)
     if (fallo) { setError(fallo); evento.currentTarget.querySelector('input')?.focus(); return }
-    //solucion temp por falrta de bak correguir despues//
     simular(paso === 'correo' ? 'enlace' : 'guardada')
   }
   return <section className="ct-autenticacion ct-recuperar">
     <div className="ct-recuperar-cabecera"><MarcaApp /><Link className="ct-boton btn-ct-secundario" to="/ingresar">Volver</Link></div>
     <h1 className="ct-recuperar-titulo">Recuperar acceso</h1>
     <EncabezadoPagina titulo="Recuperar acceso" ruta="/ingresar" />
+    <p className="ct-demostracion">Demostración: no se envían correos ni se cambia tu contraseña.</p>
     {paso === 'correo' ? <form noValidate onSubmit={enviar}>
       <h1>Recupera tu cuenta</h1><p>Usa el correo institucional con el que te registraste.</p>
       <CampoFormulario
@@ -49,7 +48,7 @@ export default function RecuperarAcceso() {
       <Boton tipo="submit" anchoCompleto>Abrir el correo</Boton>
     </form> : paso === 'enlace' ? <>
       <p className="ct-paso">Correo de recuperación</p><h1>Revisa tu correo</h1>
-      <p role="status">Te enviamos un enlace para crear una contraseña nueva. Vence en 30 minutos.</p>
+      <p role="status">Este es un ejemplo del enlace de recuperación. No se envió ningún correo.</p>
       <div className="ct-dato"><small>Destinatario</small>{correo}</div>
       <div className="ct-dato"><small>Acción del mensaje</small>Restablecer mi contraseña</div>
       <p>Si no ves el correo, revisa la carpeta de spam.</p>
@@ -70,7 +69,7 @@ export default function RecuperarAcceso() {
       <Boton anchoCompleto variante="secundario" alHacerClic={() => simular('correo')}>Cancelar</Boton>
     </form> : paso === 'guardada' ? <>
       <p className="ct-confirmacion-etiqueta">Restablecimiento completado</p><h1>Puedes volver a entrar</h1>
-      <p role="status">La contraseña quedó actualizada. Ya puedes volver a iniciar sesión.</p><div className="ct-dato"><small>Cuenta</small>{correo}</div>
+      <p role="status">Terminó el ejemplo de recuperación. Tu contraseña no se modificó.</p><div className="ct-dato"><small>Cuenta de ejemplo</small>{correo}</div>
     </> : <>
       <p className="ct-confirmacion-etiqueta ct-etiqueta-error">Enlace vencido</p><h1>Este enlace ya no está disponible</h1>
       <p>El enlace de recuperación venció. Solicita uno nuevo para continuar.</p>

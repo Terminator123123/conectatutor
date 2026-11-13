@@ -60,7 +60,8 @@ export default function DetalleSesion() {
   const persona = solicitante ? sesion.getTutor().getEstudiante() : sesion.getSolicitante()
   const mutable = [EstadoSesion.PENDIENTE, EstadoSesion.CONFIRMADA].includes(sesion.getEstado())
   const confirmada = sesion.getEstado() === EstadoSesion.CONFIRMADA
-  const horas = (Number(sesion.getFranja().getHoraFin().slice(0, 2)) - Number(sesion.getFranja().getHoraInicio().slice(0, 2)))
+  const aMinutos = (hora) => Number(hora.slice(0, 2)) * 60 + Number(hora.slice(3))
+  const horas = (aMinutos(sesion.getFranja().getHoraFin()) - aMinutos(sesion.getFranja().getHoraInicio())) / 60
   const tarifa = sesion.getTutor().getTarifaHora()
   if (solicitante && parametros.get('resultado') === 'enviada' && sesion.getEstado() === EstadoSesion.PENDIENTE) {
     if (tableta) return <section className="ct-confirmacion-solicitud-tablet">
