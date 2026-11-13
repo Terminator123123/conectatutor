@@ -24,6 +24,7 @@ export default function SolicitudSesion() {
   const { id } = useParams()
   const { usuario } = useAutenticacion()
   const navigate = useNavigate()
+  const cerrarSolicitud = () => navigate(`/tutores/${id}`, { state: { enfocarSolicitud: true } })
   const escritorio = useEscritorio()
   const tableta = useEscritorio(768) && !escritorio
   const [parametros, setParametros] = useSearchParams()
@@ -464,7 +465,7 @@ export default function SolicitudSesion() {
           {escritorio ? 'Tarifa informativa. No hay cobros dentro de ConectaTutor.' : 'Sin pagos en la plataforma. Las tarifas son informativas. El tutor puede aceptar o rechazar tu solicitud.'}
         </p>
         <div className="ct-envio-fijo"><Boton tipo="submit" anchoCompleto cargando={enviando}>Enviar solicitud</Boton></div>
-        {escritorio && <Boton variante="secundario" anchoCompleto deshabilitado={enviando} alHacerClic={() => navigate(`/tutores/${id}`)}>Cancelar</Boton>}
+        {escritorio && <Boton variante="secundario" anchoCompleto deshabilitado={enviando} alHacerClic={cerrarSolicitud}>Cancelar</Boton>}
       </form>
     </section>
   )
@@ -475,7 +476,7 @@ export default function SolicitudSesion() {
         </div>
       <Modal abierto
       titulo={`Solicitar tutoría con ${perfil.getEstudiante().getNombre().split(' ')[0]}`}
-      alCerrar={() => { if (!enviando) navigate(`/tutores/${id}`) }}>
+      alCerrar={() => { if (!enviando) cerrarSolicitud() }}>
       {contenido}
     </Modal>
     </> : contenido

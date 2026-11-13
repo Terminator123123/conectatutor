@@ -101,6 +101,29 @@ describe('E4 · Las respuestas reales cumplen lo que publica Swagger', () => {
     await afirmarContrato(await elena.patch(`/sesiones/${ID_INEXISTENTE}/cancelar`, { motivo: 'No existe esta sesión' }), '/sesiones/{id}/cancelar', 'patch')
   })
 
+  it('Swagger solo promete el campo regla en los conflictos que de verdad lo traen', async () => {
+    const { body: documento } = await anonimo.get('/docs.json')
+    const descripcion = (metodo) => documento.paths['/sesiones/{id}/reprogramacion'][metodo].responses[409].description
+    const { body: sesion } = await elena.post('/sesiones', solicitud())
+    const ruta = `/sesiones/${sesion.id}/reprogramacion`
+
+    // Sin propuesta pendiente: 409 solo con mensaje
+    const sinPropuesta = await bruno.patch(ruta, { acepta: false })
+    assert.equal(sinPropuesta.status, 409)
+    assert.equal(sinPropuesta.body.regla, undefined)
+    assert.match(descripcion('patch'), /No hay propuesta pendiente[^.]*: solo trae mensaje, sin regla/)
+
+    // Propuesta repetida: 409 solo con mensaje; R5 sí trae regla
+    await elena.put(ruta, { fecha: lunes(5), franja: FRANJA_BRUNO })
+    const repetida = await bruno.put(ruta, { fecha: lunes(6), franja: FRANJA_BRUNO })
+    assert.equal(repetida.status, 409)
+    assert.equal(repetida.body.regla, undefined)
+    assert.match(descripcion('put'), /Ya hay una propuesta pendiente: solo trae mensaje, sin regla/)
+
+    // Ningún texto publicado promete regla sin condición en una respuesta que puede no traerla
+    for (const metodo of ['put', 'patch']) assert.doesNotMatch(descripcion(metodo), /^[^:]*\. El cuerpo incluye el campo regla$/)
+  })
+
   it('el motivo obligatorio se mide después de quitar espacios al inicio y al final', async () => {
     const documento = await anonimo.get('/docs.json')
     const patron = new RegExp(documento.body.components.schemas.Motivo.properties.motivo.pattern)

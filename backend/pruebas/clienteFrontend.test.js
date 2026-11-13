@@ -3,8 +3,10 @@ import { CLAVE_DE_PRUEBA, detenerBaseDePrueba, iniciarBaseDePrueba, vaciarBaseDe
 import assert from 'node:assert/strict'
 import { once } from 'node:events'
 import { after, before, beforeEach, describe, it } from 'node:test'
-import { crearClienteApi, ErrorApi } from '../../frontend/src/servicios/api.js'
+import jwt from 'jsonwebtoken'
+import { crearClienteApi, ErrorApi, vencimientoDelToken } from '../../frontend/src/servicios/api.js'
 import { app } from '../src/app.js'
+import { aSegundos, env } from '../src/config/env.js'
 import { reiniciarIntentos } from '../src/middlewares/limitarIntentos.js'
 import { cargarSemilla } from '../src/services/semilla.service.js'
 import { hoyEnColombia } from '../src/utils/fechas.js'
@@ -129,6 +131,100 @@ describe('Preparación E5/E6 · Cliente frontend con HTTP y MongoDB temporales',
     await assert.rejects(recargada.peticion('/auth/yo'), { status: 401 })
     assert.equal(recargada.obtenerToken(), null)
     assert.equal(expiraciones, 1)
+  })
+
+  describe('RQNF005: expiración por inactividad en el cliente', () => {
+    function temporizadorFalso() {
+      const alarmas = new Map()
+      let siguiente = 0
+      return {
+        alarmas,
+        programar: (fn, ms) => { alarmas.set(++siguiente, { fn, ms }); return siguiente },
+        cancelar: (id) => alarmas.delete(id),
+        disparar() { for (const [id, { fn }] of [...alarmas]) { alarmas.delete(id); fn() } },
+      }
+    }
+
+    it('sin actividad: al vencer el token la alarma cierra la sesión y avisa una vez', async () => {
+      const temporizador = temporizadorFalso()
+      let expiraciones = 0
+      const api = cliente({ temporizador, alExpirarSesion: () => { expiraciones += 1 } })
+      await ingresar(api, CORREOS.elena)
+      assert.equal(temporizador.alarmas.size, 1)
+      const [{ ms }] = temporizador.alarmas.values()
+      const ventana = aSegundos(env.sesionInactividad) * 1000
+      assert.ok(ms > ventana - 5000 && ms <= ventana, `la alarma queda a ${ms} ms, cerca de ${ventana}`)
+      temporizador.disparar()
+      assert.equal(api.obtenerToken(), null)
+      assert.equal(expiraciones, 1)
+      await assert.rejects(api.peticion('/auth/yo'), { status: 401 })
+    })
+
+    it('con actividad: la respuesta trae un token renovado, se guarda y la alarma se reprograma', async () => {
+      const temporizador = temporizadorFalso()
+      const api = cliente({ temporizador })
+      const ingreso = await ingresar(api, CORREOS.elena)
+      const ahora = Math.floor(Date.now() / 1000)
+      const usado = jwt.sign({ rol: 'ESTUDIANTE', ini: ahora - 300, iat: ahora - 120 }, env.jwtSecreto, {
+        subject: ingreso.id, expiresIn: aSegundos(env.sesionInactividad),
+      })
+      api.guardarToken(usado)
+      const msAntes = [...temporizador.alarmas.values()][0].ms
+      await api.peticion('/auth/yo')
+      const renovado = api.obtenerToken()
+      assert.notEqual(renovado, usado)
+      assert.equal(jwt.decode(renovado).ini, ahora - 300)
+      assert.equal(temporizador.alarmas.size, 1)
+      assert.ok([...temporizador.alarmas.values()][0].ms > msAntes + 100_000, 'la ventana vuelve a empezar')
+    })
+
+    it('cerrar sesión cancela la alarma y una alarma vieja no cierra una sesión nueva', async () => {
+      const temporizador = temporizadorFalso()
+      let expiraciones = 0
+      const api = cliente({ temporizador, alExpirarSesion: () => { expiraciones += 1 } })
+      await ingresar(api, CORREOS.elena)
+      const vieja = [...temporizador.alarmas.values()][0]
+      api.cerrarSesion()
+      assert.equal(temporizador.alarmas.size, 0)
+      await ingresar(api, CORREOS.elena)
+      vieja.fn()
+      assert.ok(api.obtenerToken())
+      assert.equal(expiraciones, 0)
+    })
+
+    it('dos pestañas: si la otra renueva, esta sigue el nuevo vencimiento y al vencer también retira su sesión', async () => {
+      const almacen = almacenEnMemoria()
+      const relojA = temporizadorFalso(), relojB = temporizadorFalso()
+      let avisosA = 0, avisosB = 0
+      const pestanaA = cliente({ almacen, temporizador: relojA, alExpirarSesion: () => { avisosA += 1 } })
+      const usuario = await ingresar(pestanaA, CORREOS.elena)
+      const pestanaB = cliente({ almacen, temporizador: relojB, alExpirarSesion: () => { avisosB += 1 } })
+      // B renueva la sesión compartida (token emitido hace 2 min)
+      const ahora = Math.floor(Date.now() / 1000)
+      almacen.setItem('ct.token', jwt.sign({ rol: 'ESTUDIANTE', ini: ahora - 120, iat: ahora - 120 }, env.jwtSecreto, {
+        subject: usuario.id, expiresIn: aSegundos(env.sesionInactividad),
+      }))
+      await pestanaB.peticion('/auth/yo')
+      const renovado = almacen.getItem('ct.token')
+      // Vence la alarma vieja de A: no cierra nada y queda vigilando el token renovado
+      relojA.disparar()
+      assert.equal(almacen.getItem('ct.token'), renovado)
+      assert.equal(avisosA, 0)
+      assert.equal(relojA.alarmas.size, 1)
+      // Vence la sesión renovada: B la cierra y A también retira su estado privado
+      relojB.disparar()
+      assert.equal(almacen.getItem('ct.token'), null)
+      assert.equal(avisosB, 1)
+      relojA.disparar()
+      assert.equal(avisosA, 1)
+      assert.equal(relojA.alarmas.size, 0)
+    })
+
+    it('vencimientoDelToken lee el exp del JWT y rechaza textos que no lo son', () => {
+      const token = jwt.sign({ a: 1 }, 'x'.repeat(32), { expiresIn: 60 })
+      assert.equal(vencimientoDelToken(token), jwt.decode(token).exp * 1000)
+      assert.equal(vencimientoDelToken('no-es-un-token'), null)
+    })
   })
 
   it('con la API apagada entrega error de red y permite reintentar conservando sesión', async () => {

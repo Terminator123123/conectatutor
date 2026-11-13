@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto'
 import jwt from 'jsonwebtoken'
-import { env } from '../config/env.js'
+import { aSegundos, env } from '../config/env.js'
 import { Estudiante, PerfilTutor, Programa, Usuario } from '../models/index.js'
 import { cifrarClave, compararClave } from '../utils/claves.js'
 import { RolUsuario } from '../utils/enums.js'
@@ -19,15 +19,21 @@ const MENSAJE_CREDENCIALES = 'El correo o la contraseña no son correctos'
 const hashSenuelo = cifrarClave(randomBytes(24).toString('hex'))
 
 /**
- * Crea el token de sesión de un usuario.
- * Solo lleva el id y el rol: nada que sea privado, porque el contenido de un JWT se puede leer.
+ * Crea el token de sesión de un usuario (RQNF005).
+ * Solo lleva el id, el rol y cuándo empezó la sesión (`ini`): nada privado,
+ * porque el contenido de un JWT se puede leer.
+ * Vence tras `sesionInactividad` sin uso; cada petición autenticada lo renueva
+ * (ver middlewares/autenticar.js) hasta el tope absoluto `jwtDuracion`.
  * @param {{id: string, tipo: string}} usuario
+ * @param {number} [inicio] Segundos desde 1970 en que se inició la sesión; por defecto, ahora.
  * @returns {string}
  */
-export function firmarToken(usuario) {
-  return jwt.sign({ rol: usuario.tipo }, env.jwtSecreto, {
+export function firmarToken(usuario, inicio = Math.floor(Date.now() / 1000)) {
+  const tope = inicio + aSegundos(env.jwtDuracion)
+  const ahora = Math.floor(Date.now() / 1000)
+  return jwt.sign({ rol: usuario.tipo, ini: inicio }, env.jwtSecreto, {
     subject: String(usuario.id),
-    expiresIn: env.jwtDuracion,
+    expiresIn: Math.max(0, Math.min(aSegundos(env.sesionInactividad), tope - ahora)),
     algorithm: ALGORITMO_TOKEN,
   })
 }

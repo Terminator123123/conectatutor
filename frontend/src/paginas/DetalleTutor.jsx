@@ -3,8 +3,8 @@ import { formatearFechaBreve } from '../componentes/ui/fechaBreve.js'
 // Presenta al tutor, su oferta real y las opiniones con autor abreviado.
 import { useTituloPagina } from '../hooks/useTituloPagina.js'
 import { useEscritorio } from '../hooks/useEscritorio.js'
-import { useEffect, useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAutenticacion } from '../contexto/useAutenticacion.js'
 import { repositorio } from '../servicios/instancias.js'
 import { estaOcupadaEnAgenda, proximasOcurrencias } from '../servicios/agenda.js'
@@ -22,6 +22,12 @@ import '../estilos/solicitante.css'
 /** @returns {import('react').ReactElement} Perfil público de un tutor para estudiantes. */
 export default function DetalleTutor({ tituloPagina }) {
   const { id } = useParams()
+  const ubicacion = useLocation()
+  const navigate = useNavigate()
+  const enlacesSolicitudRef = useRef(new Set())
+  const registrarSolicitud = useCallback((enlace) => {
+    if (enlace) enlacesSolicitudRef.current.add(enlace)
+  }, [])
   const [parametros] = useSearchParams()
   const { usuario } = useAutenticacion()
   const escritorio = useEscritorio()
@@ -58,6 +64,16 @@ export default function DetalleTutor({ tituloPagina }) {
     cargar()
     return () => { activo = false }
   }, [id, intento, usuarioId])
+  useEffect(() => {
+    if (cargando || error || !ubicacion.state?.enfocarSolicitud) return
+    // El perfil mantiene enlaces separados para móvil y escritorio; se enfoca el visible
+    const enlace = [...enlacesSolicitudRef.current].find((elemento) => elemento.isConnected && elemento.getClientRects().length > 0)
+    if (!enlace) return
+    enlace.focus()
+    navigate(`${ubicacion.pathname}${ubicacion.search}${ubicacion.hash}`, {
+      replace: true, state: { ...ubicacion.state, enfocarSolicitud: false },
+    })
+  }, [cargando, error, escritorio, tableta, navigate, ubicacion])
   async function alternar() {
     if (guardando) return
     setGuardando(true); setErrorFavorito('')
@@ -86,7 +102,7 @@ export default function DetalleTutor({ tituloPagina }) {
   const tarifa = perfil.getTarifaHora()
   const titular = perfil.getBiografia().split(/(?<=[.!?])\s/)[0]
   const datosAcademicos = `${estudiante.getPrograma().getNombre()} · ${estudiante.getSemestre()}.º semestre · ${estudiante.getSede()}`
-  const solicitar = <Link className="ct-boton btn-ct-primario ct-boton-completo" to={`/tutores/${id}/solicitar`}>Solicitar tutoría</Link>
+  const solicitar = <Link ref={registrarSolicitud} className="ct-boton btn-ct-primario ct-boton-completo" to={`/tutores/${id}/solicitar`}>Solicitar tutoría</Link>
   if (parametros.get('vista') === 'resumen') return <article className="ct-estado-formulario ct-resumen-perfil">
     <h1>{estudiante.getNombre()}</h1><p className="ct-texto-secundario">{estudiante.getPrograma().getNombre()}, {estudiante.getSemestre()}.º semestre. {titular}</p>
     <div className="ct-dato">

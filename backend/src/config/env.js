@@ -9,6 +9,18 @@ const esProduccion = entorno === 'production'
 /** Longitud mínima del secreto con el que se firman los tokens. */
 const LONGITUD_MINIMA_SECRETO = 32
 
+const SEGUNDOS_POR_UNIDAD = { s: 1, m: 60, h: 3600, d: 86400 }
+
+/**
+ * Convierte una duración como "30m", "2h", "1d" o "90" (segundos) a segundos.
+ * @returns {number} Segundos; NaN si el texto no es una duración válida.
+ */
+export function aSegundos(texto) {
+  const partes = /^(\d+)\s*([smhd])?$/i.exec(String(texto).trim())
+  if (!partes) return Number.NaN
+  return Number(partes[1]) * SEGUNDOS_POR_UNIDAD[(partes[2] ?? 's').toLowerCase()]
+}
+
 /** Única fuente de configuración: el resto del código importa `env` y no lee process.env. */
 export const env = Object.freeze({
   entorno,
@@ -26,8 +38,10 @@ export const env = Object.freeze({
   // Secreto con el que se firman los tokens. En desarrollo, si no se define, se genera
   // uno al azar en cada arranque (los tokens anteriores dejan de servir al reiniciar).
   jwtSecreto: (process.env.JWT_SECRETO ?? '').trim() || (esProduccion ? '' : randomBytes(48).toString('hex')),
-  // Cuánto dura una sesión antes de pedir el ingreso de nuevo: "2h", "30m"...
+  // Tope absoluto de una sesión, aunque haya actividad: "2h", "30m"...
   jwtDuracion: (process.env.JWT_DURACION ?? '').trim() || '2h',
+  // Tiempo sin usar la aplicación tras el cual la sesión expira (RQNF005): "30m", "15m"...
+  sesionInactividad: (process.env.SESION_INACTIVIDAD ?? '').trim() || '30m',
 })
 
 /**
@@ -44,6 +58,9 @@ export function revisarConfiguracion() {
   }
   if (env.jwtSecreto.length < LONGITUD_MINIMA_SECRETO) {
     problemas.push(`JWT_SECRETO debe tener al menos ${LONGITUD_MINIMA_SECRETO} caracteres al azar.`)
+  }
+  for (const [nombre, valor] of [['JWT_DURACION', env.jwtDuracion], ['SESION_INACTIVIDAD', env.sesionInactividad]]) {
+    if (!(aSegundos(valor) > 0)) problemas.push(`${nombre} debe ser una duración como 30m, 2h o 1d.`)
   }
   return problemas
 }

@@ -17,6 +17,9 @@ const idPerfil = { name: 'id', in: 'path', required: true, description: 'Id del 
 const sesionActualizada = (descripcion) => ({ description: descripcion, content: json({ $ref: '#/components/schemas/SesionDetallada' }) })
 const cuerpoMotivo = { required: true, content: json({ $ref: '#/components/schemas/Motivo' }) }
 const errorDeRegla = (descripcion) => error(`${descripcion}. El cuerpo incluye el campo regla`)
+/** Conflicto en el que solo algunos casos corresponden a una regla identificada. */
+const conflictoMixto = (conRegla, sinRegla) =>
+  error(`${conRegla}: el cuerpo incluye el campo regla. ${sinRegla}: solo trae mensaje, sin regla`)
 
 /** Acción del tutor o del solicitante que cambia el estado de una sesión. */
 function cambioDeEstado({ resumen, descripcion, conMotivo = false }) {
@@ -270,7 +273,7 @@ export const rutasSesiones = {
         200: sesionActualizada('Propuesta registrada'),
         400: error('Propuesta no válida o igual a la fecha actual'),
         404: { $ref: '#/components/responses/NoEncontrado' },
-        409: errorDeRegla('R3 (franja que el tutor no tiene), R5 (estado que no lo permite) o ya hay una propuesta pendiente'),
+        409: conflictoMixto('R3 (franja que el tutor no tiene) o R5 (estado que no lo permite)', 'Ya hay una propuesta pendiente'),
         ...privadas,
       },
     },
@@ -288,7 +291,7 @@ export const rutasSesiones = {
         200: sesionActualizada('Propuesta respondida'),
         400: error('Falta indicar si acepta'),
         404: { $ref: '#/components/responses/NoEncontrado' },
-        409: errorDeRegla('No hay propuesta pendiente, o la nueva franja ya fue reservada (RQNF012)'),
+        409: conflictoMixto('La nueva franja ya fue reservada (RQNF012)', 'No hay propuesta pendiente o ya no está vigente'),
         ...privadas,
       },
     },

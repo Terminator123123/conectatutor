@@ -608,6 +608,8 @@ textarea.ct-campo-control {
 
 .ct-campo:has(input,select):not(:has(.ct-campo-ayuda,.ct-campo-error))::after { content:''; display:block; height:16px; }
 .ct-tarjeta-materias { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* Sin esto, una lista larga de materias (datos reales de la API) ensancha la tarjeta en tableta */
+.ct-tarjeta-tutor { min-width:0; }
 
 .ct-busqueda { gap:0; overflow:hidden; border:1px solid var(--ct-borde); border-radius:8px; background:var(--ct-superficie); }
 .ct-busqueda-entrada { border:0; border-radius:0; }

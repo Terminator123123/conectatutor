@@ -6,7 +6,7 @@ import express from 'express'
 import jwt from 'jsonwebtoken'
 import request from 'supertest'
 import { app } from '../src/app.js'
-import { env } from '../src/config/env.js'
+import { aSegundos, env } from '../src/config/env.js'
 import { autenticar, exigirRol } from '../src/middlewares/autenticar.js'
 import { reiniciarIntentos } from '../src/middlewares/limitarIntentos.js'
 import { manejarErrores } from '../src/middlewares/manejarErrores.js'
@@ -240,7 +240,72 @@ describe('E2 · Autenticación', () => {
       const { body } = await ingresar(CORREO_ESTUDIANTE)
       const contenido = jwt.decode(body.token)
       assert.ok(contenido.exp > contenido.iat)
-      assert.deepEqual(Object.keys(contenido).sort(), ['exp', 'iat', 'rol', 'sub'])
+      assert.deepEqual(Object.keys(contenido).sort(), ['exp', 'iat', 'ini', 'rol', 'sub'])
+    })
+
+    describe('RQNF005: expiración por inactividad', () => {
+      const VENTANA = aSegundos(env.sesionInactividad)
+      const TOPE = aSegundos(env.jwtDuracion)
+      const ahora = () => Math.floor(Date.now() / 1000)
+      const tokenEmitido = (usuario, { hace, ini = ahora() - hace, vence = VENTANA }) => jwt.sign(
+        { rol: usuario.tipo, ini, iat: ahora() - hace }, env.jwtSecreto, { subject: usuario.id, expiresIn: vence },
+      )
+
+      it('el token de ingreso vence tras el tiempo de inactividad, no tras el tope absoluto', async () => {
+        const { body } = await ingresar(CORREO_ESTUDIANTE)
+        const contenido = jwt.decode(body.token)
+        assert.equal(contenido.exp - contenido.iat, Math.min(VENTANA, TOPE))
+        assert.equal(contenido.ini, contenido.iat)
+      })
+
+      it('con actividad: cada uso devuelve un token renovado con el mismo inicio de sesión', async () => {
+        const usuario = await Usuario.findOne({ correoInstitucional: CORREO_ESTUDIANTE })
+        const inicio = ahora() - 600
+        const usado = tokenEmitido(usuario, { hace: 300, ini: inicio })
+        const respuesta = await request(app).get('/api/auth/yo').set('Authorization', `Bearer ${usado}`)
+        assert.equal(respuesta.status, 200)
+        const renovado = respuesta.get('X-Token-Renovado')
+        assert.ok(renovado, 'debe llegar el token renovado')
+        const contenido = jwt.decode(renovado)
+        assert.equal(contenido.ini, inicio)
+        assert.ok(contenido.exp >= ahora() + VENTANA - 2, 'la ventana de inactividad vuelve a empezar')
+        const siguiente = await request(app).get('/api/auth/yo').set('Authorization', `Bearer ${renovado}`)
+        assert.equal(siguiente.status, 200)
+      })
+
+      it('sin actividad: pasado el tiempo de inactividad la sesión ya no sirve', async () => {
+        const usuario = await Usuario.findOne({ correoInstitucional: CORREO_ESTUDIANTE })
+        const inactivo = tokenEmitido(usuario, { hace: VENTANA + 5 })
+        const respuesta = await request(app).get('/api/auth/yo').set('Authorization', `Bearer ${inactivo}`)
+        assert.equal(respuesta.status, 401)
+        assert.match(respuesta.body.mensaje, /expiró/)
+        assert.equal(respuesta.get('X-Token-Renovado'), undefined)
+      })
+
+      it('la renovación no pasa del tope absoluto de la sesión', async () => {
+        const usuario = await Usuario.findOne({ correoInstitucional: CORREO_ESTUDIANTE })
+        const inicio = ahora() - TOPE + 120
+        const casiAlTope = tokenEmitido(usuario, { hace: 120, ini: inicio })
+        const respuesta = await request(app).get('/api/auth/yo').set('Authorization', `Bearer ${casiAlTope}`)
+        assert.equal(respuesta.status, 200)
+        const contenido = jwt.decode(respuesta.get('X-Token-Renovado'))
+        assert.ok(contenido.exp <= inicio + TOPE)
+      })
+
+      it('un uso seguido (menos de un minuto) no firma otro token', async () => {
+        const { body } = await ingresar(CORREO_ESTUDIANTE)
+        const respuesta = await request(app).get('/api/auth/yo').set('Authorization', `Bearer ${body.token}`)
+        assert.equal(respuesta.status, 200)
+        assert.equal(respuesta.get('X-Token-Renovado'), undefined)
+      })
+
+      it('el navegador puede leer el token renovado (CORS lo expone)', async () => {
+        const usuario = await Usuario.findOne({ correoInstitucional: CORREO_ESTUDIANTE })
+        const respuesta = await request(app).get('/api/auth/yo')
+          .set('Origin', env.corsOrigenes[0])
+          .set('Authorization', `Bearer ${tokenEmitido(usuario, { hace: 120 })}`)
+        assert.match(respuesta.get('Access-Control-Expose-Headers') ?? '', /X-Token-Renovado/i)
+      })
     })
   })
 

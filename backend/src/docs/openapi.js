@@ -22,7 +22,10 @@ export const documentacion = {
     description:
       'API REST de tutorías entre estudiantes de la Universidad de La Guajira. ' +
       'Organizada por capas: rutas, controladores, servicios y modelos. ' +
-      'Todas las respuestas de error tienen la forma `{ mensaje, errores? }`.',
+      'Todas las respuestas de error tienen la forma `{ mensaje, errores? }`. ' +
+      'La sesión expira tras 30 minutos sin uso (RQNF005). Una petición con token válido emitido hace al menos ' +
+      '60 segundos devuelve uno renovado en el encabezado `X-Token-Renovado`, que el cliente debe guardar; si la ' +
+      'cabecera no llega, el token actual sigue vigente. La renovación no pasa de un tope absoluto de 2 horas.',
   },
   // Ruta relativa: Swagger llama a la misma dirección desde la que se abrió, en local o en producción.
   servers: [{ url: '/api', description: 'Este servidor' }],

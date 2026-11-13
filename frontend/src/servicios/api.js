@@ -1,6 +1,18 @@
 const URL_API = import.meta.env?.VITE_API_URL || 'http://localhost:3000/api'
 const CLAVE_TOKEN = 'ct.token'
 const RUTAS_DE_INGRESO = new Set(['/auth/ingreso', '/auth/registro'])
+const ENCABEZADO_TOKEN_RENOVADO = 'X-Token-Renovado'
+
+/** Momento (ms) en que vence un JWT según su campo `exp`; null si no se puede leer. */
+export function vencimientoDelToken(token) {
+  try {
+    const parte = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    const { exp } = JSON.parse(globalThis.atob(parte.padEnd(Math.ceil(parte.length / 4) * 4, '=')))
+    return Number.isFinite(exp) ? exp * 1000 : null
+  } catch {
+    return null
+  }
+}
 
 export class ErrorApi extends Error {
   constructor(mensaje, { status = 0, errores = [], regla, cause } = {}) {
@@ -31,6 +43,15 @@ export function crearClienteApi({
   fetchImpl = globalThis.fetch,
   almacen = almacenPredeterminado(),
   alExpirarSesion = () => {},
+  reloj = () => Date.now(),
+  temporizador = {
+    programar: (fn, ms) => {
+      const id = setTimeout(fn, Math.min(ms, 2 ** 31 - 1))
+      id?.unref?.() // En Node (pruebas) la alarma no mantiene vivo el proceso
+      return id
+    },
+    cancelar: (id) => clearTimeout(id),
+  },
 } = {}) {
   const base = new URL(urlBase)
   if (!['http:', 'https:'].includes(base.protocol) || base.username || base.password || base.search || base.hash) {
@@ -38,17 +59,45 @@ export function crearClienteApi({
   }
   const direccion = base.href.replace(/\/+$/, '')
   let revisionSesion = 0
+  let alarmaInactividad = null
+  let turnoAlarma = 0
 
   const obtenerToken = () => almacen.getItem(CLAVE_TOKEN)
+
+  // RQNF005: el token vence tras un rato sin usar la aplicación. La alarma cierra
+  // la sesión en ese momento aunque la pantalla siga abierta sin hacer peticiones.
+  function programarVencimiento(token) {
+    if (alarmaInactividad !== null) temporizador.cancelar(alarmaInactividad)
+    alarmaInactividad = null
+    const turno = ++turnoAlarma
+    const vence = token ? vencimientoDelToken(token) : null
+    if (vence === null) return
+    alarmaInactividad = temporizador.programar(() => {
+      if (turno !== turnoAlarma) return // alarma de una sesión anterior de esta pestaña
+      alarmaInactividad = null
+      const actual = obtenerToken()
+      // Otra pestaña renovó la sesión compartida: seguir vigilando su nuevo vencimiento
+      if (actual && actual !== token) { programarVencimiento(actual); return }
+      // Otra pestaña ya la cerró o la dio por vencida: esta también retira el estado privado
+      if (!actual) { revisionSesion += 1; alExpirarSesion(); return }
+      cerrarSesion()
+      alExpirarSesion()
+    }, Math.max(0, vence - reloj()))
+  }
+
   function guardarToken(token) {
     if (typeof token !== 'string' || !token.trim()) throw new TypeError('El token debe ser un texto no vacío')
     almacen.setItem(CLAVE_TOKEN, token)
     revisionSesion += 1
+    programarVencimiento(token)
   }
   function cerrarSesion() {
     almacen.removeItem(CLAVE_TOKEN)
     revisionSesion += 1
+    programarVencimiento(null)
   }
+
+  programarVencimiento(obtenerToken())
 
   async function peticion(ruta, { metodo = 'GET', datos, parametros = {}, autenticada = true, signal } = {}) {
     if (typeof ruta !== 'string' || !ruta.startsWith('/') || ruta.startsWith('//') || /[?#\\]/.test(ruta)) {
@@ -78,6 +127,12 @@ export function crearClienteApi({
     if (respuesta.status === 401 && token && revisionSesion === revisionAlEnviar && obtenerToken() === token) {
       cerrarSesion()
       alExpirarSesion()
+    }
+    // Cada uso renueva el token: la sesión sigue mientras haya actividad
+    const renovado = respuesta.headers?.get?.(ENCABEZADO_TOKEN_RENOVADO)
+    if (renovado && respuesta.ok && token && revisionSesion === revisionAlEnviar && obtenerToken() === token) {
+      almacen.setItem(CLAVE_TOKEN, renovado)
+      programarVencimiento(renovado)
     }
     if (respuesta.status === 204 || respuesta.status === 205) return null
 

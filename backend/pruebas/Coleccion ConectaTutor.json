@@ -1,0 +1,2452 @@
+{
+  "info": {
+    "name": "ConectaTutor — Pruebas locales E6",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Ejecutar completa y en orden SOLO contra API local aislada con fixture ficticia. node --test pruebas/coleccion.test.js desde backend, incluido en npm test, crea MongoMemoryServer, puerto efímero y cierre automático. No usar una API de desarrollo conectada a Atlas. Los JWT quedan en memoria durante el ejecutor; no exportar valores actuales de Postman. Estas 65 peticiones son secuenciales; la suite añade por separado carreras HTTP de reserva y calificación. No demuestra interfaz, responsive, navegación, caducidad por inactividad, carga productiva ni respaldo. No certifica E5/E6 ni sustituye la matriz de 44 requisitos."
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api"
+    },
+    {
+      "key": "clave",
+      "value": "ClaveDePrueba1"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const destino = pm.variables.replaceIn(pm.request.url.toString());",
+          "if (!/^http:\\/\\/localhost:\\d{1,5}\\/api(?:\\/|$)/.test(destino)) throw new Error('Esta colección solo permite API HTTP de prueba en localhost con puerto explícito');"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Preparación",
+      "item": [
+        {
+          "name": "E6-01 Salud de la API temporal",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/salud",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: GET /salud. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('sufijo', Date.now().toString(36));",
+                  "const hoy = new Date(Date.now() - 5 * 60 * 60 * 1000);",
+                  "const lunes = new Date(hoy.toISOString().slice(0, 10) + 'T00:00:00Z');",
+                  "lunes.setUTCDate(lunes.getUTCDate() + 14);",
+                  "while (lunes.getUTCDay() !== 1) lunes.setUTCDate(lunes.getUTCDate() + 1);",
+                  "pm.collectionVariables.set('fecha', lunes.toISOString().slice(0, 10));",
+                  "lunes.setUTCDate(lunes.getUTCDate() + 7);",
+                  "pm.collectionVariables.set('fechaNueva', lunes.toISOString().slice(0, 10));",
+                  "for (const clave of ['tutorToken', 'solicitanteToken', 'adminToken', 'ajenoToken', 'perfilId', 'sesionId', 'cancelableId', 'rechazableId', 'materiaCreadaId']) pm.collectionVariables.unset(clave);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-01 Salud de la API temporal\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-02 Swagger publicado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/docs.json",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: GET /docs.json. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-02 Swagger publicado\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(datos.openapi.startsWith('3.'), 'Falta OpenAPI 3'); asegurar(datos.paths['/sesiones'], 'Falta documentación de sesiones');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-03 Programas públicos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/programas",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: GET /programas. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-03 Programas públicos\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(Array.isArray(datos) && datos.length > 0, 'Faltan programas'); pm.collectionVariables.set('programaId', datos[0].id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-04 Materias del programa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/materias?programa={{programaId}}",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: GET /materias?programa={{programaId}}. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-04 Materias del programa\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(Array.isArray(datos) && datos.length >= 2, 'La fixture necesita dos materias'); pm.collectionVariables.set('materiaId', datos[0].id); pm.collectionVariables.set('otraMateriaId', datos[1].id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-05 Sesiones sin autenticación",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/sesiones",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: GET /sesiones. Resultado esperado: HTTP 401. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-05 Sesiones sin autenticación\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 401, 'HTTP esperado 401; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-06 Ingreso de coordinación ficticia",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/ingreso",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correoInstitucional\": \"gabriela.montes@uniguajira.edu.co\",\n  \"clave\": \"{{clave}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: POST /auth/ingreso. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-06 Ingreso de coordinación ficticia\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(typeof datos.token === 'string' && datos.token.length > 30, 'Falta JWT de prueba'); asegurar(!('claveHash' in datos.usuario) && !('clave' in datos.usuario), 'Contraseña expuesta'); pm.collectionVariables.set('adminToken', datos.token);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-07 Ingreso de tercero ajeno",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/ingreso",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correoInstitucional\": \"bruno.valdes@uniguajira.edu.co\",\n  \"clave\": \"{{clave}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: POST /auth/ingreso. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-07 Ingreso de tercero ajeno\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(typeof datos.token === 'string' && datos.token.length > 30, 'Falta JWT de prueba'); asegurar(!('claveHash' in datos.usuario) && !('clave' in datos.usuario), 'Contraseña expuesta'); pm.collectionVariables.set('ajenoToken', datos.token);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 Autenticación y perfil",
+      "item": [
+        {
+          "name": "E6-08 R8 rechaza dominio externo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/registro",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Tutor de pruebas\",\n  \"correoInstitucional\": \"qa@example.com\",\n  \"clave\": \"{{clave}}\",\n  \"semestre\": 3,\n  \"sede\": \"Riohacha\",\n  \"programa\": \"{{programaId}}\",\n  \"aceptaTratamientoDatos\": true,\n  \"quiereSerTutor\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: POST /auth/registro. Resultado esperado: HTTP 400. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-08 R8 rechaza dominio externo\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 400, 'HTTP esperado 400; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(datos.errores.some(e => e.includes('uniguajira.edu.co')), 'Falta explicación del dominio');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-09 Consentimiento obligatorio",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/registro",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Tutor de pruebas\",\n  \"correoInstitucional\": \"qa.tutor.{{sufijo}}@uniguajira.edu.co\",\n  \"clave\": \"{{clave}}\",\n  \"semestre\": 3,\n  \"sede\": \"Riohacha\",\n  \"programa\": \"{{programaId}}\",\n  \"aceptaTratamientoDatos\": false,\n  \"quiereSerTutor\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: POST /auth/registro. Resultado esperado: HTTP 400. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-09 Consentimiento obligatorio\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 400, 'HTTP esperado 400; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-10 Registro con elección de tutor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/registro",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Tutor de pruebas\",\n  \"correoInstitucional\": \"qa.tutor.{{sufijo}}@uniguajira.edu.co\",\n  \"clave\": \"{{clave}}\",\n  \"semestre\": 3,\n  \"sede\": \"Riohacha\",\n  \"programa\": \"{{programaId}}\",\n  \"aceptaTratamientoDatos\": true,\n  \"quiereSerTutor\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: POST /auth/registro. Resultado esperado: HTTP 201. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-10 Registro con elección de tutor\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 201, 'HTTP esperado 201; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(typeof datos.token === 'string' && datos.token.length > 30, 'Falta JWT de prueba'); asegurar(!('claveHash' in datos.usuario) && !('clave' in datos.usuario), 'Contraseña expuesta'); pm.collectionVariables.set('tutorToken', datos.token); asegurar(datos.usuario.quiereSerTutor === true, 'Rol incorrecto'); asegurar(datos.usuario.consentimientoDatos.aceptado === true && datos.usuario.consentimientoDatos.fecha, 'Falta consentimiento fechado');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-11 Correo duplicado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/registro",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Tutor de pruebas\",\n  \"correoInstitucional\": \"qa.tutor.{{sufijo}}@uniguajira.edu.co\",\n  \"clave\": \"{{clave}}\",\n  \"semestre\": 3,\n  \"sede\": \"Riohacha\",\n  \"programa\": \"{{programaId}}\",\n  \"aceptaTratamientoDatos\": true,\n  \"quiereSerTutor\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: POST /auth/registro. Resultado esperado: HTTP 409. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-11 Correo duplicado\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 409, 'HTTP esperado 409; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-12 Registro de solicitante",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/registro",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Solicitante de pruebas\",\n  \"correoInstitucional\": \"qa.solicitante.{{sufijo}}@uniguajira.edu.co\",\n  \"clave\": \"{{clave}}\",\n  \"semestre\": 3,\n  \"sede\": \"Riohacha\",\n  \"programa\": \"{{programaId}}\",\n  \"aceptaTratamientoDatos\": true,\n  \"quiereSerTutor\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: POST /auth/registro. Resultado esperado: HTTP 201. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-12 Registro de solicitante\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 201, 'HTTP esperado 201; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(typeof datos.token === 'string' && datos.token.length > 30, 'Falta JWT de prueba'); asegurar(!('claveHash' in datos.usuario) && !('clave' in datos.usuario), 'Contraseña expuesta'); pm.collectionVariables.set('solicitanteToken', datos.token); asegurar(datos.usuario.quiereSerTutor === false, 'Rol incorrecto');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-13 Cuenta propia desde JWT",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/yo",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: GET /auth/yo. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-13 Cuenta propia desde JWT\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(datos.usuario.correoInstitucional.includes(pm.collectionVariables.get('sufijo')), 'Cuenta incorrecta'); asegurar(!('claveHash' in datos.usuario), 'Hash expuesto');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-14 R9 rechaza franjas solapadas",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tutorToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/tutores/mi-perfil",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"biografia\": \"Acompaño el estudio con ejemplos y ejercicios de aplicación\",\n  \"tarifaHora\": null,\n  \"materias\": [\n    \"{{materiaId}}\"\n  ],\n  \"disponibilidad\": [\n    {\n      \"dia\": \"LUNES\",\n      \"horaInicio\": \"08:00\",\n      \"horaFin\": \"10:00\"\n    },\n    {\n      \"dia\": \"LUNES\",\n      \"horaInicio\": \"09:00\",\n      \"horaFin\": \"11:00\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: PUT /tutores/mi-perfil. Resultado esperado: HTTP 400. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-14 R9 rechaza franjas solapadas\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 400, 'HTTP esperado 400; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(datos.errores.some(e => e.includes('solapa')), 'Falta detalle del solapamiento');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-15 R10 cero no representa gratuidad",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tutorToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/tutores/mi-perfil",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"biografia\": \"Acompaño el estudio con ejemplos y ejercicios de aplicación\",\n  \"tarifaHora\": 0,\n  \"materias\": [\n    \"{{materiaId}}\"\n  ],\n  \"disponibilidad\": [\n    {\n      \"dia\": \"LUNES\",\n      \"horaInicio\": \"08:00\",\n      \"horaFin\": \"10:00\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: PUT /tutores/mi-perfil. Resultado esperado: HTTP 400. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-15 R10 cero no representa gratuidad\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 400, 'HTTP esperado 400; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-16 R10 tarifa negativa inválida",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tutorToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/tutores/mi-perfil",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"biografia\": \"Acompaño el estudio con ejemplos y ejercicios de aplicación\",\n  \"tarifaHora\": -100,\n  \"materias\": [\n    \"{{materiaId}}\"\n  ],\n  \"disponibilidad\": [\n    {\n      \"dia\": \"LUNES\",\n      \"horaInicio\": \"08:00\",\n      \"horaFin\": \"10:00\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: PUT /tutores/mi-perfil. Resultado esperado: HTTP 400. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-16 R10 tarifa negativa inválida\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 400, 'HTTP esperado 400; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-17 Activar perfil gratuito pendiente",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tutorToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/tutores/mi-perfil",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"biografia\": \"Acompaño el estudio con ejemplos y ejercicios de aplicación\",\n  \"tarifaHora\": null,\n  \"materias\": [\n    \"{{materiaId}}\"\n  ],\n  \"disponibilidad\": [\n    {\n      \"dia\": \"LUNES\",\n      \"horaInicio\": \"08:00\",\n      \"horaFin\": \"10:00\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: PUT /tutores/mi-perfil. Resultado esperado: HTTP 201. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-17 Activar perfil gratuito pendiente\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 201, 'HTTP esperado 201; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  pm.collectionVariables.set('perfilId', datos.id); asegurar(datos.estadoVerificacion === 'PENDIENTE' && datos.tarifaHora === null, 'Perfil o tarifa incorrectos');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-18 R4 impide pedir a tutor no verificado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tutor\": \"{{perfilId}}\",\n  \"materia\": \"{{materiaId}}\",\n  \"fecha\": \"{{fecha}}\",\n  \"franja\": {\n    \"dia\": \"LUNES\",\n    \"horaInicio\": \"08:00\",\n    \"horaFin\": \"10:00\"\n  },\n  \"tema\": \"Repasar ejercicios de álgebra\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: POST /sesiones. Resultado esperado: HTTP 409 y regla R4. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-18 R4 impide pedir a tutor no verificado\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 409, 'HTTP esperado 409; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  asegurar(datos.regla === 'R4', 'Regla esperada R4');",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-19 Estudiante no verifica perfiles",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/coordinacion/perfiles/{{perfilId}}/verificar",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: PATCH /coordinacion/perfiles/{{perfilId}}/verificar. Resultado esperado: HTTP 403. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-19 Estudiante no verifica perfiles\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 403, 'HTTP esperado 403; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-20 Coordinación verifica perfil",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/coordinacion/perfiles/{{perfilId}}/verificar",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: PATCH /coordinacion/perfiles/{{perfilId}}/verificar. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-20 Coordinación verifica perfil\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(datos.estadoVerificacion === 'VERIFICADO', 'No se verificó');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-21 Búsqueda filtrada sin datos privados",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/tutores?materia={{materiaId}}&dia=LUNES&soloGratuitas=true",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: GET /tutores?materia={{materiaId}}&dia=LUNES&soloGratuitas=true. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-21 Búsqueda filtrada sin datos privados\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  const perfil = datos.find(p => p.id === pm.collectionVariables.get('perfilId')); asegurar(perfil, 'Tutor ausente'); asegurar(!('correoInstitucional' in perfil.estudiante) && !('telefono' in perfil.estudiante) && !('documento' in perfil.estudiante), 'Datos privados expuestos');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 Sesiones y reglas",
+      "item": [
+        {
+          "name": "E6-22 R1 impide autorreserva",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tutorToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tutor\": \"{{perfilId}}\",\n  \"materia\": \"{{materiaId}}\",\n  \"fecha\": \"{{fecha}}\",\n  \"franja\": {\n    \"dia\": \"LUNES\",\n    \"horaInicio\": \"08:00\",\n    \"horaFin\": \"10:00\"\n  },\n  \"tema\": \"Repasar ejercicios de álgebra\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: POST /sesiones. Resultado esperado: HTTP 409 y regla R1. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-22 R1 impide autorreserva\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 409, 'HTTP esperado 409; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  asegurar(datos.regla === 'R1', 'Regla esperada R1');",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-23 R2 exige materia ofrecida",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tutor\": \"{{perfilId}}\",\n  \"materia\": \"{{otraMateriaId}}\",\n  \"fecha\": \"{{fecha}}\",\n  \"franja\": {\n    \"dia\": \"LUNES\",\n    \"horaInicio\": \"08:00\",\n    \"horaFin\": \"10:00\"\n  },\n  \"tema\": \"Repasar ejercicios de álgebra\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: POST /sesiones. Resultado esperado: HTTP 409 y regla R2. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-23 R2 exige materia ofrecida\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 409, 'HTTP esperado 409; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  asegurar(datos.regla === 'R2', 'Regla esperada R2');",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-24 R3 exige franja ofrecida",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tutor\": \"{{perfilId}}\",\n  \"materia\": \"{{materiaId}}\",\n  \"fecha\": \"{{fecha}}\",\n  \"franja\": {\n    \"dia\": \"LUNES\",\n    \"horaInicio\": \"10:00\",\n    \"horaFin\": \"12:00\"\n  },\n  \"tema\": \"Repasar ejercicios de álgebra\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: POST /sesiones. Resultado esperado: HTTP 409 y regla R3. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-24 R3 exige franja ofrecida\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 409, 'HTTP esperado 409; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  asegurar(datos.regla === 'R3', 'Regla esperada R3');",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-25 Tema insuficiente explica tres palabras",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tutor\": \"{{perfilId}}\",\n  \"materia\": \"{{materiaId}}\",\n  \"fecha\": \"{{fecha}}\",\n  \"franja\": {\n    \"dia\": \"LUNES\",\n    \"horaInicio\": \"08:00\",\n    \"horaFin\": \"10:00\"\n  },\n  \"tema\": \"Programación\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: POST /sesiones. Resultado esperado: HTTP 400. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-25 Tema insuficiente explica tres palabras\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 400, 'HTTP esperado 400; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(datos.errores.some(e => /3|tres/.test(e)), 'Falta condición de tres palabras');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-26 Solicitud pendiente persistida",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tutor\": \"{{perfilId}}\",\n  \"materia\": \"{{materiaId}}\",\n  \"fecha\": \"{{fecha}}\",\n  \"franja\": {\n    \"dia\": \"LUNES\",\n    \"horaInicio\": \"08:00\",\n    \"horaFin\": \"10:00\"\n  },\n  \"tema\": \"Repasar ejercicios de álgebra\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: POST /sesiones. Resultado esperado: HTTP 201. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-26 Solicitud pendiente persistida\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 201, 'HTTP esperado 201; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  pm.collectionVariables.set('sesionId', datos.id); asegurar(datos.estado === 'PENDIENTE', 'Estado inicial incorrecto'); asegurar(!('correoInstitucional' in datos.tutor.estudiante), 'Contacto expuesto antes de aceptar');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-27 RQNF012 rechaza reserva duplicada",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tutor\": \"{{perfilId}}\",\n  \"materia\": \"{{materiaId}}\",\n  \"fecha\": \"{{fecha}}\",\n  \"franja\": {\n    \"dia\": \"LUNES\",\n    \"horaInicio\": \"08:00\",\n    \"horaFin\": \"10:00\"\n  },\n  \"tema\": \"Repasar ejercicios de álgebra\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: POST /sesiones. Resultado esperado: HTTP 409 y regla RQNF012. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-27 RQNF012 rechaza reserva duplicada\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 409, 'HTTP esperado 409; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  asegurar(datos.regla === 'RQNF012', 'Regla esperada RQNF012');",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-28 Ocupación pública sin participantes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ajenoToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/tutores/{{perfilId}}/ocupacion",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: GET /tutores/{{perfilId}}/ocupacion. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-28 Ocupación pública sin participantes\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(datos.length === 1 && datos[0].fecha === pm.collectionVariables.get('fecha'), 'Reserva no visible'); asegurar(Object.keys(datos[0]).sort().join(',') === 'fecha,franja', 'La ocupación expone participantes');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-29 Tercero no consulta sesión",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ajenoToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones/{{sesionId}}",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: GET /sesiones/{{sesionId}}. Resultado esperado: HTTP 403. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-29 Tercero no consulta sesión\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 403, 'HTTP esperado 403; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-30 Solicitante no confirma su petición",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones/{{sesionId}}/confirmar",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: PATCH /sesiones/{{sesionId}}/confirmar. Resultado esperado: HTTP 403. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-30 Solicitante no confirma su petición\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 403, 'HTTP esperado 403; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-31 Cancelación exige motivo",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones/{{sesionId}}/cancelar",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: PATCH /sesiones/{{sesionId}}/cancelar. Resultado esperado: HTTP 400. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-31 Cancelación exige motivo\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 400, 'HTTP esperado 400; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-32 R6 impide calificar pendiente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones/{{sesionId}}/calificacion",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"puntaje\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: POST /sesiones/{{sesionId}}/calificacion. Resultado esperado: HTTP 409 y regla R6. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-32 R6 impide calificar pendiente\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 409, 'HTTP esperado 409; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  asegurar(datos.regla === 'R6', 'Regla esperada R6');",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-33 R7 rechaza puntaje fuera de rango",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones/{{sesionId}}/calificacion",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"puntaje\": 6\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: POST /sesiones/{{sesionId}}/calificacion. Resultado esperado: HTTP 400. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-33 R7 rechaza puntaje fuera de rango\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 400, 'HTTP esperado 400; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-34 Tutor acepta solicitud",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tutorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones/{{sesionId}}/confirmar",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: PATCH /sesiones/{{sesionId}}/confirmar. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-34 Tutor acepta solicitud\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(datos.estado === 'CONFIRMADA', 'Sesión no confirmada');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-35 Contacto limitado a sesión confirmada",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones/{{sesionId}}",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: GET /sesiones/{{sesionId}}. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-35 Contacto limitado a sesión confirmada\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(datos.tutor.estudiante.correoInstitucional.includes(pm.collectionVariables.get('sufijo')), 'Contacto ausente');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-36 Propuesta no altera fecha vigente",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones/{{sesionId}}/reprogramacion",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fecha\": \"{{fechaNueva}}\",\n  \"franja\": {\n    \"dia\": \"LUNES\",\n    \"horaInicio\": \"08:00\",\n    \"horaFin\": \"10:00\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: PUT /sesiones/{{sesionId}}/reprogramacion. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-36 Propuesta no altera fecha vigente\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(datos.fecha === pm.collectionVariables.get('fecha') && datos.reprogramacion, 'Cambio anticipado o propuesta ausente');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-37 Proponente no acepta su propuesta",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones/{{sesionId}}/reprogramacion",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"acepta\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: PATCH /sesiones/{{sesionId}}/reprogramacion. Resultado esperado: HTTP 403. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-37 Proponente no acepta su propuesta\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 403, 'HTTP esperado 403; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-38 Contraparte acepta reprogramación",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tutorToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones/{{sesionId}}/reprogramacion",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"acepta\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: PATCH /sesiones/{{sesionId}}/reprogramacion. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-38 Contraparte acepta reprogramación\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(datos.fecha === pm.collectionVariables.get('fechaNueva') && datos.reprogramacion === null, 'No se aplicó la propuesta');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-39 Tutor finaliza sesión",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tutorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones/{{sesionId}}/finalizar",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: PATCH /sesiones/{{sesionId}}/finalizar. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-39 Tutor finaliza sesión\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(datos.estado === 'FINALIZADA', 'No se finalizó');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-40 R5 impide repetir finalización",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tutorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones/{{sesionId}}/finalizar",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: PATCH /sesiones/{{sesionId}}/finalizar. Resultado esperado: HTTP 409 y regla R5. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-40 R5 impide repetir finalización\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 409, 'HTTP esperado 409; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  asegurar(datos.regla === 'R5', 'Regla esperada R5');",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-41 Calificación y reseña persistidas",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones/{{sesionId}}/calificacion",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"puntaje\": 4,\n  \"resena\": \"Explicación con ejemplos claros\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: POST /sesiones/{{sesionId}}/calificacion. Resultado esperado: HTTP 201. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-41 Calificación y reseña persistidas\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 201, 'HTTP esperado 201; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(datos.calificacion.puntaje === 4, 'Nota no persistida');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-42 R6 impide segunda calificación",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones/{{sesionId}}/calificacion",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"puntaje\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: POST /sesiones/{{sesionId}}/calificacion. Resultado esperado: HTTP 409 y regla R6. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-42 R6 impide segunda calificación\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 409, 'HTTP esperado 409; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  asegurar(datos.regla === 'R6', 'Regla esperada R6');",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-43 Nueva lectura conserva calificación",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones/{{sesionId}}",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: GET /sesiones/{{sesionId}}. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-43 Nueva lectura conserva calificación\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(datos.calificacion.puntaje === 4, 'Nota alterada por reintento');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-44 Promedio y tutorías derivadas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/tutores/{{perfilId}}",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: GET /tutores/{{perfilId}}. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-44 Promedio y tutorías derivadas\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(datos.promedio === 4 && datos.totalCalificaciones === 1 && datos.tutoriasCompletadas === 1, 'Agregados incorrectos'); asegurar(datos.resenas.length === 1 && datos.resenas[0].puntaje === 4, 'Reseña ausente');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-45 Lista propia por estado",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones?estado=FINALIZADA&papel=SOLICITANTE",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: GET /sesiones?estado=FINALIZADA&papel=SOLICITANTE. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-45 Lista propia por estado\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(datos.length === 1 && datos[0].id === pm.collectionVariables.get('sesionId'), 'Sesión ausente');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-46 Reserva original liberada al reprogramar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tutor\": \"{{perfilId}}\",\n  \"materia\": \"{{materiaId}}\",\n  \"fecha\": \"{{fecha}}\",\n  \"franja\": {\n    \"dia\": \"LUNES\",\n    \"horaInicio\": \"08:00\",\n    \"horaFin\": \"10:00\"\n  },\n  \"tema\": \"Repasar ejercicios de álgebra\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: POST /sesiones. Resultado esperado: HTTP 201. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-46 Reserva original liberada al reprogramar\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 201, 'HTTP esperado 201; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  pm.collectionVariables.set('cancelableId', datos.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-47 Cancelar con motivo persistido",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones/{{cancelableId}}/cancelar",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"Coincide con otra actividad académica\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: PATCH /sesiones/{{cancelableId}}/cancelar. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-47 Cancelar con motivo persistido\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(datos.estado === 'CANCELADA' && datos.motivo.includes('actividad'), 'Cancelación incompleta');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-48 R5 impide confirmar cancelada",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tutorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones/{{cancelableId}}/confirmar",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: PATCH /sesiones/{{cancelableId}}/confirmar. Resultado esperado: HTTP 409 y regla R5. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-48 R5 impide confirmar cancelada\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 409, 'HTTP esperado 409; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  asegurar(datos.regla === 'R5', 'Regla esperada R5');",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-49 Cancelación libera la reserva",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tutor\": \"{{perfilId}}\",\n  \"materia\": \"{{materiaId}}\",\n  \"fecha\": \"{{fecha}}\",\n  \"franja\": {\n    \"dia\": \"LUNES\",\n    \"horaInicio\": \"08:00\",\n    \"horaFin\": \"10:00\"\n  },\n  \"tema\": \"Repasar ejercicios de álgebra\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: POST /sesiones. Resultado esperado: HTTP 201. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-49 Cancelación libera la reserva\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 201, 'HTTP esperado 201; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  pm.collectionVariables.set('rechazableId', datos.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-50 Tutor rechaza con motivo",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tutorToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones/{{rechazableId}}/rechazar",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"No puedo asistir en esa fecha\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: PATCH /sesiones/{{rechazableId}}/rechazar. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-50 Tutor rechaza con motivo\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(datos.estado === 'RECHAZADA', 'Rechazo no persistido');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 Favoritos y coordinación",
+      "item": [
+        {
+          "name": "E6-51 Agregar favorito",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/favoritos/{{perfilId}}",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: PUT /favoritos/{{perfilId}}. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-51 Agregar favorito\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-52 Agregar favorito es idempotente",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/favoritos/{{perfilId}}",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: PUT /favoritos/{{perfilId}}. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-52 Agregar favorito es idempotente\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-53 Favorito único persistido",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/favoritos",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: GET /favoritos. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-53 Favorito único persistido\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(datos.length === 1 && datos[0].id === pm.collectionVariables.get('perfilId'), 'Favorito repetido o ausente');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-54 Quitar favorito",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/favoritos/{{perfilId}}",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: DELETE /favoritos/{{perfilId}}. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-54 Quitar favorito\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-55 Quitar favorito es idempotente",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/favoritos/{{perfilId}}",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: DELETE /favoritos/{{perfilId}}. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-55 Quitar favorito es idempotente\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-56 Lista vacía tras quitar favorito",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/favoritos",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: GET /favoritos. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-56 Lista vacía tras quitar favorito\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(datos.length === 0, 'No se retiró el favorito');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-57 Métricas exclusivas de coordinación",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/coordinacion/metricas",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: GET /coordinacion/metricas. Resultado esperado: HTTP 403. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-57 Métricas exclusivas de coordinación\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 403, 'HTTP esperado 403; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-58 Coordinación consulta métricas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/coordinacion/metricas",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: GET /coordinacion/metricas. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-58 Coordinación consulta métricas\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(datos && typeof datos === 'object', 'Métricas inválidas');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-59 Estudiante no crea materias",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{solicitanteToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/materias",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"QA-{{sufijo}}\",\n  \"nombre\": \"Materia de pruebas\",\n  \"programa\": \"{{programaId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: POST /materias. Resultado esperado: HTTP 403. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-59 Estudiante no crea materias\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 403, 'HTTP esperado 403; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-60 Crear materia con id de servidor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/materias",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"QA-{{sufijo}}\",\n  \"nombre\": \"Materia de pruebas\",\n  \"programa\": \"{{programaId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: POST /materias. Resultado esperado: HTTP 201. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-60 Crear materia con id de servidor\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 201, 'HTTP esperado 201; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  pm.collectionVariables.set('materiaCreadaId', datos.id); asegurar(datos.activa === true, 'Materia nueva inactiva');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-61 Editar materia persistida",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/materias/{{materiaCreadaId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Materia de integración\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: PUT /materias/{{materiaCreadaId}}. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-61 Editar materia persistida\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(datos.nombre === 'Materia de integración', 'Nombre no actualizado');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-62 Desactivar materia",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/materias/{{materiaCreadaId}}",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: DELETE /materias/{{materiaCreadaId}}. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-62 Desactivar materia\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-63 Conservar materia en historial",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/materias/{{materiaCreadaId}}",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: GET /materias/{{materiaCreadaId}}. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-63 Conservar materia en historial\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(datos.activa === false && datos.nombre === 'Materia de integración', 'Materia eliminada o edición perdida');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-64 Catálogo público omite inactivas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/materias",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: GET /materias. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-64 Catálogo público omite inactivas\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(!datos.some(m => m.id === pm.collectionVariables.get('materiaCreadaId')), 'Materia inactiva en catálogo');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6-65 Administrador ve inactivas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/materias?incluirInactivas=true",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: GET /materias?incluirInactivas=true. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-65 Administrador ve inactivas\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  ",
+                  "  asegurar(datos.some(m => m.id === pm.collectionVariables.get('materiaCreadaId') && !m.activa), 'Materia inactiva ausente');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -5,6 +5,7 @@ import swaggerUi from 'swagger-ui-express'
 import { estaConectada } from './config/database.js'
 import { env } from './config/env.js'
 import { documentacion } from './docs/openapi.js'
+import { ENCABEZADO_TOKEN_RENOVADO } from './middlewares/autenticar.js'
 import { manejarErrores, rutaNoEncontrada } from './middlewares/manejarErrores.js'
 import { registrarPeticiones } from './middlewares/registrarPeticiones.js'
 import { authRouter } from './routes/auth.routes.js'
@@ -29,7 +30,7 @@ app.use(registrarPeticiones)
 app.use(helmet())
 
 // Solo el frontend autorizado puede consumir la API desde un navegador
-app.use(cors({ origin: env.corsOrigenes }))
+app.use(cors({ origin: env.corsOrigenes, exposedHeaders: [ENCABEZADO_TOKEN_RENOVADO] }))
 
 // El límite evita que un cuerpo enorme ocupe la memoria del servidor
 app.use(express.json({ limit: '100kb' }))
