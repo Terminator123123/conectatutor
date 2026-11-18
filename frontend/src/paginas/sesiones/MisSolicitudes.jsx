@@ -48,7 +48,7 @@ export default function MisSolicitudes({ aviso = '' }) {
     evento.currentTarget.querySelectorAll('[role="tab"]')[siguiente]?.focus()
   }
   if (cargando) return <Cargando texto="Cargando solicitudes…" />
-  if (error) return <MensajeError mensaje={error} alReintentar={() => setIntento((valor) => valor + 1)} />
+  if (error) return <MensajeError mensaje={error} alReintentar={() => setIntento((valor) => valor + 1)} forma="lista" />
   if (!sesiones.length) return <section className="ct-primera-sesion">
       <i className="bi bi-calendar-event" aria-hidden="true" />
       <h1>Tu primera tutoría te espera.

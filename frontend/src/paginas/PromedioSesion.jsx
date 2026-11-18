@@ -33,10 +33,10 @@ export default function PromedioSesion() {
     return () => { activo = false }
   }, [sesion, intento])
   if (cargandoSesion) return <Cargando texto="Cargando valoración…" />
-  if (errorSesion) return <MensajeError mensaje={errorSesion} alReintentar={reintentar} />
+  if (errorSesion) return <MensajeError mensaje={errorSesion} alReintentar={reintentar} forma="perfil" />
   if (!sesion?.getCalificacion()) return <EstadoVacio titulo="Esta sesión aún no tiene una calificación" accion={{ etiqueta:'Volver a mis sesiones', ruta:'/sesiones?estado=finalizadas' }} />
   if (cargando) return <Cargando texto="Calculando el promedio…" />
-  if (error) return <MensajeError mensaje={error} alReintentar={() => setIntento((valor) => valor + 1)} />
+  if (error) return <MensajeError mensaje={error} alReintentar={() => setIntento((valor) => valor + 1)} forma="perfil" />
   const nota = sesion.getCalificacion()
   const estaIncluida = resenas.some((resena) => resena.puntaje === nota.getPuntaje()
     && resena.resena === nota.getResena() && new Date(resena.fecha).getTime() === nota.getFecha().getTime())
@@ -49,8 +49,6 @@ export default function PromedioSesion() {
   return <section className="ct-estado-formulario">
     <h1>Tu reseña ya forma parte del promedio
     </h1>
-    <p className="ct-texto-secundario">El promedio se recalcula con cada reseña nueva: suma de calificaciones dividida entre el número de reseñas.
-    </p>
     <div className="ct-dato">
         <small>Antes
       </small>

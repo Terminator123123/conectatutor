@@ -30,6 +30,7 @@ export const documentacion = {
   // Ruta relativa: Swagger llama a la misma dirección desde la que se abrió, en local o en producción.
   servers: [{ url: '/api', description: 'Este servidor' }],
   tags: [
+    { name: 'Notificaciones', description: 'Campana de avisos y recordatorios de las sesiones' },
     { name: 'Estado', description: 'Comprobación de que la API y la base de datos responden' },
     { name: 'Autenticación', description: 'Registro, ingreso y datos de la cuenta propia' },
     { name: 'Catálogo', description: 'Programas académicos y materias. Leer es público; cambiar materias es del administrador' },
@@ -111,6 +112,7 @@ export const documentacion = {
           sede: { type: 'string', enum: [...INSTITUCION.sedes], description: 'Solo estudiante' },
           programa: { type: 'string', description: 'Id del programa. Solo estudiante', example: ID_EJEMPLO },
           quiereSerTutor: { type: 'boolean', description: 'Lo que eligió al registrarse. Solo estudiante' },
+          primerAccesoPendiente: { type: 'boolean', description: 'true en cuentas creadas por Coordinación que aún no completan el primer acceso' },
           favoritos: { type: 'array', items: { type: 'string' }, description: 'Ids de los perfiles de tutor guardados como favoritos. Solo estudiante' },
           dependencia: { type: 'string', description: 'Solo administrador' },
           consentimientoDatos: {

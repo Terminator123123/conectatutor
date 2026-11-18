@@ -1,5 +1,5 @@
 import { INSTITUCION } from '../config/institucion.js'
-import { EstadoSesion, EstadoVerificacion } from '../utils/enums.js'
+import { EstadoSesion, EstadoVerificacion, MotivoCancelacion, TipoNotificacion } from '../utils/enums.js'
 
 // Documentación OpenAPI de sesiones, favoritos y coordinación.
 
@@ -120,6 +120,7 @@ export const esquemasSesiones = {
       tema: { type: 'string' },
       estado: { type: 'string', enum: Object.values(EstadoSesion) },
       motivo: { type: 'string', nullable: true, description: 'Motivo del rechazo o de la cancelación' },
+      motivosCancelacion: { type: 'array', items: { type: 'string', enum: Object.keys(MotivoCancelacion) }, description: 'Razones marcadas en la encuesta al cancelar' },
       calificacion: { allOf: [{ $ref: '#/components/schemas/Calificacion' }], nullable: true },
       reprogramacion: {
         type: 'object',
@@ -171,6 +172,36 @@ export const esquemasSesiones = {
     properties: {
       total: { $ref: '#/components/schemas/FilaMetricas' },
       porSede: { type: 'object', additionalProperties: { $ref: '#/components/schemas/FilaMetricas' } },
+      motivosCancelacion: {
+        type: 'object',
+        description: 'Cuántas veces se marcó cada razón en la encuesta de cancelación',
+        properties: Object.fromEntries(Object.keys(MotivoCancelacion).map((clave) => [clave, { type: 'integer' }])),
+      },
+    },
+  },
+  EncuestaCancelacion: {
+    type: 'object',
+    required: ['motivos'],
+    properties: {
+      motivos: {
+        type: 'array', minItems: 1, items: { type: 'string', enum: Object.keys(MotivoCancelacion) },
+        description: Object.entries(MotivoCancelacion).map(([clave, texto]) => `${clave}: ${texto}`).join('; '),
+      },
+      motivo: { type: 'string', description: 'Obligatorio si se marca OTRO: entre 5 y 300 caracteres. Por compatibilidad, enviar solo `motivo` equivale a OTRO' },
+    },
+  },
+  Notificacion: {
+    type: 'object',
+    properties: {
+      id: { type: 'string', example: ID_EJEMPLO },
+      sesion: { type: 'string', nullable: true },
+      tipo: { type: 'string', enum: Object.values(TipoNotificacion) },
+      titulo: { type: 'string' },
+      texto: { type: 'string' },
+      ruta: { type: 'string', description: 'Pantalla del frontend a la que lleva' },
+      leida: { type: 'boolean' },
+      createdAt: { type: 'string', format: 'date-time' },
+      updatedAt: { type: 'string', format: 'date-time' },
     },
   },
 }
@@ -234,11 +265,15 @@ export const rutasSesiones = {
     descripcion: 'PENDIENTE -> RECHAZADA, con motivo. Solo el tutor de la sesión.',
     conMotivo: true,
   }),
-  '/sesiones/{id}/cancelar': cambioDeEstado({
-    resumen: 'Cancela la sesión',
-    descripcion: 'PENDIENTE o CONFIRMADA -> CANCELADA, con motivo. Cualquiera de las dos partes. La franja queda libre.',
-    conMotivo: true,
-  }),
+  '/sesiones/{id}/cancelar': {
+    patch: {
+      ...cambioDeEstado({ resumen: 'Cancela la sesión' }).patch,
+      description:
+        'PENDIENTE o CONFIRMADA -> CANCELADA. Cualquiera de las dos partes. La franja queda libre. ' +
+        'Pide la encuesta: una o varias razones y, con OTRO, una explicación. La otra parte recibe una notificación.',
+      requestBody: { required: true, content: json({ $ref: '#/components/schemas/EncuestaCancelacion' }) },
+    },
+  },
   '/sesiones/{id}/finalizar': cambioDeEstado({
     resumen: 'El tutor marca la tutoría como realizada',
     descripcion: 'CONFIRMADA -> FINALIZADA. Solo el tutor de la sesión.',
@@ -300,8 +335,7 @@ export const rutasSesiones = {
     get: {
       tags: ['Tutores'],
       summary: 'Lista las franjas ya reservadas de un tutor desde hoy',
-      description: 'Para que el formulario de solicitud no ofrezca lo que ya está tomado. No dice quién reservó.',
-      ...conSesion,
+      description: 'Para que el formulario de solicitud no ofrezca lo que ya está tomado. No dice quién reservó. Es pública.',
       parameters: [idPerfil],
       responses: {
         200: { description: 'Franjas ocupadas', content: json({ type: 'array', items: { $ref: '#/components/schemas/FranjaOcupada' } }) },
@@ -344,6 +378,62 @@ export const rutasSesiones = {
       responses: {
         200: { description: 'Lista de favoritos actualizada', content: json({ type: 'array', items: { $ref: '#/components/schemas/TutorPublico' } }) },
         400: error('El id no es válido'),
+        ...privadas,
+      },
+    },
+  },
+  '/notificaciones': {
+    get: {
+      tags: ['Notificaciones'],
+      summary: 'Notificaciones de la campana (estudiante)',
+      description:
+        'Avisos de cambios en sus sesiones (solicitud nueva, aceptada, rechazada, cancelada, finalizada, calificada, ' +
+        'reprogramación) y recordatorios que se crean al consultar: un día antes, una hora antes y al terminar el horario.',
+      ...conSesion,
+      responses: {
+        200: { description: 'Las 40 más recientes', content: json({ type: 'object', properties: {
+          sinLeer: { type: 'integer' },
+          notificaciones: { type: 'array', items: { $ref: '#/components/schemas/Notificacion' } },
+        } }) },
+        ...privadas,
+      },
+    },
+  },
+  '/notificaciones/leidas': {
+    patch: {
+      tags: ['Notificaciones'],
+      summary: 'Marca todas las notificaciones como leídas (estudiante)',
+      ...conSesion,
+      responses: { 204: { description: 'Marcadas' }, ...privadas },
+    },
+  },
+  '/coordinacion/cuentas': {
+    post: {
+      tags: ['Coordinación'],
+      summary: 'Crea la cuenta de un estudiante (administrador)',
+      description:
+        'Uniguajira entrega las credenciales: correo institucional y, como contraseña inicial, el documento de ' +
+        'identidad. Al primer ingreso el estudiante debe cambiarla, elegir si quiere enseñar y aceptar el ' +
+        'tratamiento de datos (POST /auth/yo/primer-acceso).',
+      ...conSesion,
+      requestBody: {
+        required: true,
+        content: json({
+          type: 'object', required: ['nombre', 'correoInstitucional', 'documento', 'semestre', 'sede', 'programa'],
+          properties: {
+            nombre: { type: 'string', minLength: 3, maxLength: 80, example: 'Laura Pérez' },
+            correoInstitucional: { type: 'string', example: 'laura.perez@uniguajira.edu.co' },
+            documento: { type: 'string', pattern: '^\\d{6,12}$', description: 'Solo dígitos. Es la contraseña inicial; no se guarda en claro' },
+            semestre: { type: 'integer', minimum: 1, example: 1 },
+            sede: { type: 'string', enum: [...INSTITUCION.sedes] },
+            programa: { type: 'string', description: 'Id del programa académico' },
+          },
+        }),
+      },
+      responses: {
+        201: { description: 'Cuenta creada, pendiente de activar', content: json({ type: 'object', properties: { usuario: { $ref: '#/components/schemas/UsuarioConPerfil' } } }) },
+        400: error('Datos no válidos o programa inexistente'),
+        409: error('Ya existe una cuenta con ese correo'),
         ...privadas,
       },
     },

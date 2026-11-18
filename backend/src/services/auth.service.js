@@ -28,14 +28,25 @@ const hashSenuelo = cifrarClave(randomBytes(24).toString('hex'))
  * @param {number} [inicio] Segundos desde 1970 en que se inició la sesión; por defecto, ahora.
  * @returns {string}
  */
-export function firmarToken(usuario, inicio = Math.floor(Date.now() / 1000)) {
+export function firmarToken(usuario, inicio = Math.floor(Date.now() / 1000), sesion = undefined) {
   const tope = inicio + aSegundos(env.jwtDuracion)
   const ahora = Math.floor(Date.now() / 1000)
-  return jwt.sign({ rol: usuario.tipo, ini: inicio }, env.jwtSecreto, {
+  return jwt.sign({ rol: usuario.tipo, ini: inicio, ...(sesion ? { sid: sesion } : {}) }, env.jwtSecreto, {
     subject: String(usuario.id),
     expiresIn: Math.max(0, Math.min(aSegundos(env.sesionInactividad), tope - ahora)),
     algorithm: ALGORITMO_TOKEN,
   })
+}
+
+/**
+ * Abre la única sesión activa de la cuenta: un ingreso nuevo invalida los tokens de
+ * cualquier otro navegador o dispositivo (ver middlewares/autenticar.js).
+ * @returns {Promise<string>} Token de la sesión nueva.
+ */
+export async function abrirSesionUnica(usuario) {
+  const sesion = randomBytes(16).toString('hex')
+  await Usuario.updateOne({ _id: usuario._id }, { $set: { sesionActiva: sesion } })
+  return firmarToken(usuario, undefined, sesion)
 }
 
 /**
@@ -86,7 +97,7 @@ export async function registrar({ nombre, correoInstitucional, clave, semestre, 
     throw error
   }
 
-  return { token: firmarToken(estudiante), usuario: await presentarUsuario(estudiante) }
+  return { token: await abrirSesionUnica(estudiante), usuario: await presentarUsuario(estudiante) }
 }
 
 /**
@@ -100,7 +111,7 @@ export async function ingresar({ correoInstitucional, clave }) {
   if (!usuario || !coincide) {
     throw new HttpError(401, MENSAJE_CREDENCIALES)
   }
-  return { token: firmarToken(usuario), usuario: await presentarUsuario(usuario) }
+  return { token: await abrirSesionUnica(usuario), usuario: await presentarUsuario(usuario) }
 }
 
 /**

@@ -105,7 +105,22 @@ export function materiaDesdeApi(datos, { programas = [] } = {}) {
   return reconstruirMateria(datos, contextoDe({ programas }))
 }
 
+// Cuentas creadas por Coordinación que aún no completan el primer acceso. Se marca aparte
+// para no cambiar las clases del dominio por un dato que solo importa a la navegación.
+const sinActivar = new WeakSet()
+
+/** Indica si la cuenta debe crear su contraseña y aceptar el tratamiento de datos antes de seguir. */
+export function cuentaSinActivar(usuario) {
+  return Boolean(usuario) && sinActivar.has(usuario)
+}
+
 function reconstruirUsuario(datos, contexto) {
+  const usuario = reconstruirUsuarioBase(datos, contexto)
+  if (datos.primerAccesoPendiente === true) sinActivar.add(usuario)
+  return usuario
+}
+
+function reconstruirUsuarioBase(datos, contexto) {
   objeto(datos, 'usuario')
   const comunes = {
     id: idDe(datos, 'usuario'),

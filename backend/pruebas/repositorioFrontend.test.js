@@ -2,6 +2,7 @@ import { CLAVE_DE_PRUEBA, detenerBaseDePrueba, iniciarBaseDePrueba, vaciarBaseDe
 
 import assert from 'node:assert/strict'
 import { once } from 'node:events'
+import jwt from 'jsonwebtoken'
 import { after, before, beforeEach, describe, it } from 'node:test'
 import { crearClienteApi } from '../../frontend/src/servicios/api.js'
 import { crearRepositorioApi } from '../../frontend/src/servicios/repositorioApi.js'
@@ -11,6 +12,7 @@ import Administrador from '../../frontend/src/modelo/Administrador.js'
 import Materia from '../../frontend/src/modelo/Materia.js'
 import FranjaHoraria from '../../frontend/src/modelo/FranjaHoraria.js'
 import { app } from '../src/app.js'
+import { aSegundos, env } from '../src/config/env.js'
 import { reiniciarIntentos } from '../src/middlewares/limitarIntentos.js'
 import { cargarSemilla } from '../src/services/semilla.service.js'
 import { hoyEnColombia } from '../src/utils/fechas.js'
@@ -63,6 +65,27 @@ describe('Preparación E5/E6 · Repositorio de dominio sobre la API temporal', (
   after(async () => {
     if (servidor) await new Promise((resolver) => { servidor.close(resolver); servidor.closeAllConnections() })
     await detenerBaseDePrueba()
+  })
+
+  it('restaurar la sesión conserva la cuenta aunque la API renueve el token en esa misma consulta', async () => {
+    const { almacen, repositorio } = solicitante
+    const actual = jwt.decode(almacen.getItem('ct.token'))
+    const ahora = Math.floor(Date.now() / 1000)
+    // Token de la misma sesión emitido hace 2 minutos: la API lo renueva al usarlo
+    almacen.setItem('ct.token', jwt.sign({ rol: actual.rol, ini: actual.ini, iat: ahora - 120, sid: actual.sid }, env.jwtSecreto, {
+      subject: actual.sub, expiresIn: aSegundos(env.sesionInactividad),
+    }))
+    const antes = almacen.getItem('ct.token')
+    const restaurado = await repositorio.obtenerSesionActual()
+    assert.notEqual(almacen.getItem('ct.token'), antes, 'la API debía renovar el token')
+    assert.equal(restaurado?.getId(), solicitante.usuario.getId())
+  })
+
+  it('restaurar la sesión devuelve null si mientras tanto se cerró la sesión', async () => {
+    const { cliente, repositorio } = solicitante
+    const pendiente = repositorio.obtenerSesionActual()
+    cliente.cerrarSesion()
+    assert.equal(await pendiente, null)
   })
 
   async function solicitar({ repositorio = solicitante.repositorio, perfil } = {}) {
@@ -277,7 +300,8 @@ describe('Preparación E5/E6 · Repositorio de dominio sobre la API temporal', (
     const nombre = solicitante.usuario.toJSON()
     const programa = solicitante.usuario.getPrograma()
     const editado = Estudiante.desdeJSON({ ...nombre, nombre: 'Elena Lozano Pimienta' }, { buscarPrograma: () => programa })
-    assert.equal((await solicitante.repositorio.guardarUsuario(editado)).getNombre(), 'Elena Lozano Pimienta')
+    // El nombre y los datos académicos los pone la Universidad: el estudiante no los cambia
+    await assert.rejects(solicitante.repositorio.guardarUsuario(editado), (error) => error.status === 403)
   })
 
   it('una credencial inválida expira sin restaurar datos de demostración', async () => {

@@ -63,7 +63,7 @@ export default function MisSesiones() {
     {doy && <div role="status" className={aviso ? 'ct-aviso' : undefined}>{aviso}</div>}
     {cargando ? 
     <Cargando texto="Cargando tus sesiones…" /> : error ? 
-    <MensajeError mensaje={error} alReintentar={() => setIntento((valor) => valor + 1)} /> : doy ? perfil ? resumenTutor ? 
+    <MensajeError mensaje={error} alReintentar={() => setIntento((valor) => valor + 1)} forma="lista" /> : doy ? perfil ? resumenTutor ? 
     <ResumenSesionesTutor perfil={perfil} /> : 
     <SesionesQueDoy perfil={perfil} alAnunciar={setAviso} /> : 
     <EstadoVacio titulo="Activa tu perfil de tutor" accion={{ etiqueta:'Mi perfil', ruta:'/perfil' }} /> : 

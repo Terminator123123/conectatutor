@@ -1,5 +1,5 @@
 import mongoose from 'mongoose'
-import { ESTADOS_QUE_OCUPAN_FRANJA, EstadoSesion } from '../utils/enums.js'
+import { ESTADOS_QUE_OCUPAN_FRANJA, EstadoSesion, MotivoCancelacion } from '../utils/enums.js'
 import { aplicarSalidaJson } from '../utils/salidaJson.js'
 import { franjaSchema, minutosDeFranja } from './franja.schema.js'
 
@@ -81,6 +81,11 @@ const sesionSchema = new mongoose.Schema(
     },
     // Motivo del rechazo o de la cancelación.
     motivo: { type: String, default: null, trim: true, maxlength: [300, 'El motivo admite hasta 300 caracteres'] },
+    // Razones marcadas en la encuesta de cancelación, para poder contarlas.
+    motivosCancelacion: {
+      type: [{ type: String, enum: Object.keys(MotivoCancelacion) }],
+      default: undefined,
+    },
     calificacion: { type: calificacionSchema, default: null },
     // Propuesta de cambio de fecha pendiente de respuesta (RQF028); null si no hay ninguna.
     reprogramacion: { type: reprogramacionSchema, default: null },

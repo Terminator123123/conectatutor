@@ -41,14 +41,15 @@ export default function DetalleTutor({ tituloPagina }) {
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
   const [intento, setIntento] = useState(0)
-  const usuarioId = usuario.getId()
+  // El visitante ve el perfil; guardar en favoritos y solicitar le piden ingresar.
+  const usuarioId = usuario?.getId() ?? null
   useEffect(() => {
     let activo = true
     async function cargar() {
       setCargando(true); setError(''); setTodasLasResenas(false)
       try {
         const [resumen, favoritos] = await Promise.all([
-          repositorio.obtenerResumenTutor(id), repositorio.listarFavoritos(usuarioId),
+          repositorio.obtenerResumenTutor(id), usuarioId ? repositorio.listarFavoritos(usuarioId) : Promise.resolve([]),
         ])
         const ocupaciones = resumen.perfil.estaVerificado() ? await repositorio.obtenerOcupacionTutor(id) : []
         if (activo) { setDatos({ ...resumen, ocupaciones }); setFavorito(favoritos.includes(id)) }
@@ -75,6 +76,10 @@ export default function DetalleTutor({ tituloPagina }) {
     })
   }, [cargando, error, escritorio, tableta, navigate, ubicacion])
   async function alternar() {
+    if (!usuario) {
+      navigate('/ingresar', { state: { desde: ubicacion.pathname + ubicacion.search } })
+      return
+    }
     if (guardando) return
     setGuardando(true); setErrorFavorito('')
     try {
@@ -84,7 +89,7 @@ export default function DetalleTutor({ tituloPagina }) {
     finally { setGuardando(false) }
   }
   if (cargando) return <Cargando texto="Cargando perfil…" />
-  if (error) return <MensajeError mensaje={error} alReintentar={() => setIntento((anterior) => anterior + 1)} />
+  if (error) return <MensajeError mensaje={error} alReintentar={() => setIntento((anterior) => anterior + 1)} forma="perfil" />
   if (!datos?.perfil) return <EstadoVacio
     icono="bi-person"
     titulo="No encontramos este tutor"
@@ -101,10 +106,14 @@ export default function DetalleTutor({ tituloPagina }) {
   const proximas = disponibilidad.slice(0,4)
   const tarifa = perfil.getTarifaHora()
   const titular = perfil.getBiografia().split(/(?<=[.!?])\s/)[0]
-  const datosAcademicos = `${estudiante.getPrograma().getNombre()} · ${estudiante.getSemestre()}.º semestre · ${estudiante.getSede()}`
+  const datosAcademicos = `${estudiante.getPrograma().getNombre()} · ${estudiante.getSemestre()}.º semestre · Sede ${estudiante.getSede()}`
+  const otraSede = usuario && !propio && usuario.getSede?.() && usuario.getSede() !== estudiante.getSede()
+  const avisoSede = otraSede && <p className="ct-aviso-sede" role="note"><i className="bi bi-geo-alt" aria-hidden="true" />
+    <span>{estudiante.getNombre().split(' ')[0]} es de la sede {estudiante.getSede()}; tú eres de {usuario.getSede()}. Tenlo en cuenta al agendar.</span></p>
   const solicitar = <Link ref={registrarSolicitud} className="ct-boton btn-ct-primario ct-boton-completo" to={`/tutores/${id}/solicitar`}>Solicitar tutoría</Link>
   if (parametros.get('vista') === 'resumen') return <article className="ct-estado-formulario ct-resumen-perfil">
-    <h1>{estudiante.getNombre()}</h1><p className="ct-texto-secundario">{estudiante.getPrograma().getNombre()}, {estudiante.getSemestre()}.º semestre. {titular}</p>
+    <h1>{estudiante.getNombre()}</h1><p className="ct-texto-secundario">{estudiante.getPrograma().getNombre()}, {estudiante.getSemestre()}.º semestre, sede {estudiante.getSede()}. {titular}</p>
+    {avisoSede}
     <div className="ct-dato">
         <small>
         {calificaciones.length ? 'Valoración' : 'Experiencia en la plataforma'}
@@ -126,7 +135,7 @@ export default function DetalleTutor({ tituloPagina }) {
       </Link>
       {!propio && 
       <Boton variante="secundario" anchoCompleto cargando={guardando} alHacerClic={alternar}>
-        {favorito ? 'Guardado en favoritos' : 'Guardar en favoritos'}
+        <i className={`bi ${favorito ? 'bi-heart-fill' : 'bi-heart'} ct-icono-favorito`} aria-hidden="true" />{favorito ? 'En tus favoritos' : 'Guardar en favoritos'}
       </Boton>}
     </div>
     {errorFavorito && 
@@ -148,6 +157,7 @@ export default function DetalleTutor({ tituloPagina }) {
     <p className="ct-texto-secundario">
       {datosAcademicos}
     </p>
+    {avisoSede}
     <div className="ct-ficha-datos-tablet">
         <div className="ct-dato">
             <small>Valoración
@@ -179,7 +189,7 @@ export default function DetalleTutor({ tituloPagina }) {
         {perfil.estaVerificado() ? 'Sin horarios disponibles' : 'Perfil en revisión'}
       </Boton>}{!propio && 
       <Boton variante="secundario" anchoCompleto cargando={guardando} alHacerClic={alternar}>
-        {favorito ? 'Guardado en favoritos' : 'Guardar en favoritos'}
+        <i className={`bi ${favorito ? 'bi-heart-fill' : 'bi-heart'} ct-icono-favorito`} aria-hidden="true" />{favorito ? 'En tus favoritos' : 'Guardar en favoritos'}
       </Boton>}
     </div>
     {errorFavorito && 
@@ -216,7 +226,7 @@ export default function DetalleTutor({ tituloPagina }) {
     <div className="ct-ficha-composicion">
       <aside className="ct-ficha-identidad">
         <header className="ct-ficha-nombre">
-            <Avatar nombre={estudiante.getNombre()} tamano={72} />
+            <Avatar nombre={estudiante.getNombre()} usuarioId={estudiante.getId()} tamano={72} />
             <div>
                 <h1>
               {estudiante.getNombre()}
@@ -233,10 +243,11 @@ export default function DetalleTutor({ tituloPagina }) {
             {tarifa === null ? 'Gratuita' : `${formatearMoneda(tarifa)}/h`}
           </strong>
           </div>
-        {!propio && <Boton variante="secundario" anchoCompleto cargando={guardando} alHacerClic={alternar}>{favorito ? 'Guardado en favoritos' : 'Guardar en favoritos'}</Boton>}
+        {!propio && <Boton variante="secundario" anchoCompleto cargando={guardando} alHacerClic={alternar}><i className={`bi ${favorito ? 'bi-heart-fill' : 'bi-heart'} ct-icono-favorito`} aria-hidden="true" />{favorito ? 'En tus favoritos' : 'Guardar en favoritos'}</Boton>}
         <div role="status" className="visually-hidden">{favorito ? 'Tutor guardado en tu lista.' : ''}</div>
         {errorFavorito && <MensajeError mensaje={errorFavorito} />}
-        {puedeSolicitar && <div className="ct-ficha-accion-escritorio">{solicitar}<p>Tu solicitud se confirma cuando el tutor la acepta.</p></div>}
+        {avisoSede}
+        {puedeSolicitar && <div className="ct-ficha-accion-escritorio">{solicitar}<p>{usuario ? 'Tu solicitud se confirma cuando el tutor la acepta.' : 'Te pediremos ingresar con tu cuenta institucional; después sigues con la solicitud.'}</p></div>}
         {propio && <p>Este es tu perfil de tutor.</p>}
         {!perfil.estaVerificado() && <p>Este tutor todavía no está verificado por Coordinación.</p>}
       </aside>

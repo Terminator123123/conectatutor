@@ -111,7 +111,7 @@ export default function SolicitudSesion() {
   }
 
   if (cargando) return <Cargando texto="Cargando horarios…" />
-  if (errorCarga) return <MensajeError mensaje={errorCarga} alReintentar={() => setIntento((anterior) => anterior + 1)} />
+  if (errorCarga) return <MensajeError mensaje={errorCarga} alReintentar={() => setIntento((anterior) => anterior + 1)} forma="formulario" />
   if (!datos?.perfil) return <EstadoVacio
     icono="bi-person"
     titulo="No encontramos este tutor"
@@ -335,16 +335,21 @@ export default function SolicitudSesion() {
       <Link className="ct-volver ct-solo-escritorio" to={`/tutores/${id}`}>← Volver al perfil</Link>
       <h1 className="ct-solo-escritorio">Solicitar tutoría</h1>
       <header className="ct-resumen-tutor">
-          <Avatar nombre={perfil.getEstudiante().getNombre()} />
+          <Avatar nombre={perfil.getEstudiante().getNombre()} usuarioId={perfil.getEstudiante().getId()} />
           <div>
               <strong>
             {perfil.getEstudiante().getNombre()}
           </strong>
               <p>
-            {tarifa === null ? 'Gratuita' : `${formatearMoneda(tarifa)} por hora`}
+            {tarifa === null ? 'Gratuita' : `${formatearMoneda(tarifa)} por hora`} · Sede {perfil.getEstudiante().getSede()}
           </p>
             </div>
         </header>
+      {/* Aviso si el tutor es de otra sede: puede implicar desplazarse o acordar la modalidad */}
+      {usuario.getSede() !== perfil.getEstudiante().getSede() && <p className="ct-aviso-sede" role="note">
+        <i className="bi bi-geo-alt" aria-hidden="true" />
+        <span>{perfil.getEstudiante().getNombre().split(' ')[0]} es de la sede {perfil.getEstudiante().getSede()} y tú de la sede {usuario.getSede()}. Antes de enviar, ten en cuenta el desplazamiento o acuerda con tu tutor dónde se verán.</span>
+      </p>}
       {tableta && <p className="ct-resumen-tutor-tablet">{perfil.getEstudiante().getNombre()}, {perfil.getMaterias().find((materia) => materia.getId() === campos.materia)?.getNombre()}</p>}
       <form noValidate onSubmit={enviar} onBlur={(evento) => { if (Object.hasOwn(campos, evento.target.name)) tocar(evento.target.name) }}>
         {tableta && 

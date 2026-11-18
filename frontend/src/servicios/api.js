@@ -1,5 +1,22 @@
 const URL_API = import.meta.env?.VITE_API_URL || 'http://localhost:3000/api'
+
+/** Dirección de la foto de perfil de un usuario; la API responde 204 si no tiene. */
+export function urlFotoDe(usuarioId, version = 0) {
+  return `${URL_API.replace(/\/+$/, '')}/usuarios/${encodeURIComponent(usuarioId)}/foto${version ? `?v=${version}` : ''}`
+}
 const CLAVE_TOKEN = 'ct.token'
+
+/** Mensaje de error de red; MensajeError lo reconoce para reconectar solo, sin botón. */
+export const MENSAJE_SIN_CONEXION = 'No pudimos conectarnos con ConectaTutor. Estamos intentando de nuevo'
+const ESPERAS_RECONEXION = [500, 1200]
+const TOPE_RESPUESTA_MS = 15000
+
+/** Fallos de red seguidos en toda la aplicación; vuelve a 0 con la primera respuesta. */
+export const estadoConexion = {
+  fallosSeguidos: 0,
+  anotarFallo() { this.fallosSeguidos += 1 },
+  anotarExito() { this.fallosSeguidos = 0 },
+}
 const RUTAS_DE_INGRESO = new Set(['/auth/ingreso', '/auth/registro'])
 const ENCABEZADO_TOKEN_RENOVADO = 'X-Token-Renovado'
 
@@ -9,6 +26,17 @@ export function vencimientoDelToken(token) {
     const parte = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
     const { exp } = JSON.parse(globalThis.atob(parte.padEnd(Math.ceil(parte.length / 4) * 4, '=')))
     return Number.isFinite(exp) ? exp * 1000 : null
+  } catch {
+    return null
+  }
+}
+
+/** Identifica la sesión de un JWT (cuenta y sesión), igual antes y después de renovarlo; null si no se puede leer. */
+export function sesionDelToken(token) {
+  try {
+    const parte = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    const { sub, sid, ini } = JSON.parse(globalThis.atob(parte.padEnd(Math.ceil(parte.length / 4) * 4, '=')))
+    return sub ? `${sub}:${sid ?? ''}:${ini ?? ''}` : null
   } catch {
     return null
   }
@@ -115,12 +143,36 @@ export function crearClienteApi({
     if (datos !== undefined) headers['Content-Type'] = 'application/json'
     const body = datos === undefined ? undefined : JSON.stringify(datos)
 
+    // Sin conexión, las consultas (GET) se reintentan solas unos segundos antes de rendirse:
+    // mientras tanto la pantalla sigue mostrando el esqueleto de carga. Lo que cambia datos
+    // (POST, PUT…) no se repite solo, para no enviar dos veces la misma acción.
+    const esperas = metodo === 'GET' ? ESPERAS_RECONEXION : []
     let respuesta
-    try {
-      respuesta = await fetchImpl(url.href, { method: metodo, headers, body, signal })
-    } catch (cause) {
-      if (cause?.name === 'AbortError') throw cause
-      throw new ErrorApi('No se pudo conectar con la API. Revisa tu conexión e inténtalo de nuevo', { cause })
+    for (let intento = 0; ; intento += 1) {
+      try {
+        // Cada intento tiene un tope de tiempo: un servidor que no contesta no deja la pantalla cargando para siempre
+        const tope = new AbortController()
+        let vencio = false
+        const alarma = setTimeout(() => { vencio = true; tope.abort() }, TOPE_RESPUESTA_MS)
+        const alAbortar = () => tope.abort()
+        signal?.addEventListener?.('abort', alAbortar, { once: true })
+        try {
+          respuesta = await fetchImpl(url.href, { method: metodo, headers, body, signal: tope.signal })
+        } catch (error) {
+          if (!vencio) throw error // cancelación pedida por quien llama
+          throw Object.assign(new Error('Sin respuesta'), { cause: error, name: 'SinRespuesta' })
+        } finally {
+          clearTimeout(alarma)
+          signal?.removeEventListener?.('abort', alAbortar)
+        }
+        estadoConexion.anotarExito()
+        break
+      } catch (cause) {
+        if (cause?.name === 'AbortError') throw cause
+        if (intento < esperas.length && !signal?.aborted) { await new Promise((listo) => setTimeout(listo, esperas[intento])); continue }
+        estadoConexion.anotarFallo()
+        throw new ErrorApi(MENSAJE_SIN_CONEXION, { cause })
+      }
     }
 
     // Un 401 atrasado no puede cerrar una sesión iniciada después de la petición
@@ -141,7 +193,7 @@ export function crearClienteApi({
       contenido = await respuesta.json()
     } catch (cause) {
       const mensaje = respuesta.ok
-        ? 'La API devolvió una respuesta que no se puede leer. Inténtalo de nuevo'
+        ? 'El servidor devolvió una respuesta que no se puede leer. Inténtalo de nuevo'
         : `No se pudo completar la solicitud (HTTP ${respuesta.status})`
       throw new ErrorApi(mensaje, { status: respuesta.status, cause })
     }
@@ -158,5 +210,10 @@ export function crearClienteApi({
     return contenido
   }
 
-  return { peticion, obtenerToken, guardarToken, cerrarSesion, tieneSesionGuardada: () => Boolean(obtenerToken()) }
+  return {
+    peticion, obtenerToken, guardarToken, cerrarSesion,
+    tieneSesionGuardada: () => Boolean(obtenerToken()),
+    /** Cambia al iniciar o cerrar sesión en esta pestaña; no cambia al renovar el token. */
+    revisionSesion: () => revisionSesion,
+  }
 }

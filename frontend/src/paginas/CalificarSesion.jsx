@@ -14,8 +14,6 @@ import Boton from '../componentes/ui/Boton.jsx'
 import Cargando from '../componentes/ui/Cargando.jsx'
 import MensajeError from '../componentes/ui/MensajeError.jsx'
 import EstadoVacio from '../componentes/ui/EstadoVacio.jsx'
-import Modal from '../componentes/ui/Modal.jsx'
-import MisSolicitudes from './sesiones/MisSolicitudes.jsx'
 import '../estilos/solicitante.css'
 
 /** @returns {import('react').ReactElement} Pantalla propia de valoración. */
@@ -51,11 +49,11 @@ export default function CalificarSesion() {
     finally { setEnviando(false) }
   }
   if (cargando) return <Cargando texto="Cargando sesión…" />
-  if (error) return <MensajeError mensaje={error} alReintentar={reintentar} />
+  if (error) return <MensajeError mensaje={error} alReintentar={reintentar} forma="formulario" />
   if (!sesion || sesion.getSolicitante().getId() !== usuario.getId()) return <EstadoVacio titulo="No encontramos esta solicitud" accion={{ etiqueta:'Mis sesiones', ruta:'/sesiones' }} />
   const tutor = sesion.getTutor().getEstudiante()
   const contenido = <section className="ct-calificar-pagina">
-    <Avatar nombre={tutor.getNombre()} tamano={72} />
+    <Avatar nombre={tutor.getNombre()} usuarioId={tutor.getId()} tamano={72} />
     <h1>¿Cómo te fue con {tutor.getNombre().split(' ')[0]}?</h1>
     <p>{sesion.getMateria().getNombre()}, {formatearFechaBreve(sesion.getFecha())}<br />{sesion.getFranja().getHoraInicio()}–{sesion.getFranja().getHoraFin()}</p>
     <form noValidate onSubmit={publicar}>
@@ -74,22 +72,7 @@ export default function CalificarSesion() {
       <Boton variante="secundario" anchoCompleto deshabilitado={enviando} alHacerClic={() => navigate('/sesiones?estado=finalizadas')}>Ahora no</Boton>
     </form>
   </section>
-  return escritorio ? 
-  <>
-      <div inert>
-          <header className="ct-sesiones-titular">
-              <h1>Tu espacio para seguir aprendiendo.
-        </h1>
-              <p>Gestiona tus solicitudes y comparte cómo fue tu experiencia.
-        </p>
-            </header>
-          <MisSolicitudes />
-        </div>
-      <Modal abierto
-      titulo={`¿Cómo te fue con ${tutor.getNombre().split(' ')[0]}?`}
-      alCerrar={() => { if (!enviando) navigate('/sesiones?estado=finalizadas') }}>
-      {contenido}
-    </Modal>
-    </> : contenido
+  // Se califica en la propia página, sin ventana encima.
+  return contenido
 }
 

@@ -240,7 +240,18 @@ describe('E2 · Autenticación', () => {
       const { body } = await ingresar(CORREO_ESTUDIANTE)
       const contenido = jwt.decode(body.token)
       assert.ok(contenido.exp > contenido.iat)
-      assert.deepEqual(Object.keys(contenido).sort(), ['exp', 'iat', 'ini', 'rol', 'sub'])
+      assert.deepEqual(Object.keys(contenido).sort(), ['exp', 'iat', 'ini', 'rol', 'sid', 'sub'])
+    })
+
+    it('solo una sesión a la vez: un ingreso nuevo invalida el token anterior', async () => {
+      const primero = (await ingresar(CORREO_ESTUDIANTE)).body.token
+      const conPrimero = () => request(app).get('/api/auth/yo').set('Authorization', `Bearer ${primero}`)
+      assert.equal((await conPrimero()).status, 200)
+      const segundo = (await ingresar(CORREO_ESTUDIANTE)).body.token
+      const rechazo = await conPrimero()
+      assert.equal(rechazo.status, 401)
+      assert.match(rechazo.body.mensaje ?? rechazo.body.error ?? '', /otro navegador o dispositivo/)
+      assert.equal((await request(app).get('/api/auth/yo').set('Authorization', `Bearer ${segundo}`)).status, 200)
     })
 
     describe('RQNF005: expiración por inactividad', () => {

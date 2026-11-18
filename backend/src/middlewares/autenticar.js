@@ -35,14 +35,18 @@ async function usuarioDelToken(req, res) {
   }
 
   // Se consulta la base en cada petición: si la cuenta ya no existe, el token deja de servir.
-  const usuario = await Usuario.findById(contenido.sub)
+  const usuario = await Usuario.findById(contenido.sub).select('+sesionActiva')
   if (!usuario) {
     throw new HttpError(401, 'La sesión no es válida. Inicia sesión de nuevo')
+  }
+  // Solo una sesión a la vez: si la cuenta ingresó en otro lado, este token ya no sirve.
+  if (usuario.sesionActiva && contenido.sid !== usuario.sesionActiva) {
+    throw new HttpError(401, 'Tu cuenta se abrió en otro navegador o dispositivo. Inicia sesión de nuevo')
   }
 
   const ahora = Math.floor(Date.now() / 1000)
   if (ahora - contenido.iat >= SEGUNDOS_ENTRE_RENOVACIONES) {
-    res.set(ENCABEZADO_TOKEN_RENOVADO, firmarToken(usuario, contenido.ini ?? contenido.iat))
+    res.set(ENCABEZADO_TOKEN_RENOVADO, firmarToken(usuario, contenido.ini ?? contenido.iat, contenido.sid))
   }
   return usuario
 }
@@ -53,8 +57,16 @@ async function usuarioDelToken(req, res) {
  */
 export async function autenticar(req, res, next) {
   req.usuario = await usuarioDelToken(req, res)
+  // Cuenta creada por Coordinación sin activar: puede consultar, pero no cambiar nada
+  // hasta crear su contraseña y aceptar el tratamiento de datos.
+  if (req.usuario.primerAccesoPendiente && req.method !== 'GET' && req.originalUrl.split('?')[0] !== RUTA_PRIMER_ACCESO) {
+    throw new HttpError(403, 'Antes de continuar crea tu contraseña y acepta el tratamiento de tus datos', undefined, 'PRIMER_ACCESO')
+  }
   next()
 }
+
+/** Única ruta que cambia datos permitida a una cuenta sin activar. */
+const RUTA_PRIMER_ACCESO = '/api/auth/yo/primer-acceso'
 
 /**
  * Para rutas públicas que muestran algo más a quien tiene sesión: si llega un

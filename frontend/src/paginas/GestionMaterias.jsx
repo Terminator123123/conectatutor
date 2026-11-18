@@ -117,7 +117,7 @@ export default function GestionMaterias() {
     <p className="ct-texto-secundario">
       {edicion ? edicion === 'nueva' ? 'La materia estará disponible en el catálogo después de guardar.' : 'Conserva un nombre claro y consistente para estudiantes y tutores.' : `${filtradas.length} materias activas. Puedes agregar o editar una materia.`}
     </p>
-    {cargando ? <Cargando texto="Cargando catálogo…" /> : errorCarga ? <MensajeError mensaje={errorCarga} alReintentar={() => setIntento((valor) => valor + 1)} /> : <>
+    {cargando ? <Cargando texto="Cargando catálogo…" /> : errorCarga ? <MensajeError mensaje={errorCarga} alReintentar={() => setIntento((valor) => valor + 1)} forma="lista" /> : <>
       {error && <MensajeError mensaje={error} alReintentar={() => setIntento((valor) => valor + 1)} />}
       {edicion ? <form className="ct-tutor-formulario" onSubmit={guardar}>
         <CampoFormulario

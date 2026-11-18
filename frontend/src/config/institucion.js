@@ -19,7 +19,7 @@ export const INSTITUCION = Object.freeze({
   tutoriasGratuitas: null,                       // PENDIENTE UNIGUAJIRA: true | false
   urlTratamientoDatos: 'https://uniguajira.edu.co/actualidad/acuerdo-no-010-de-2018/',
   logos: Object.freeze({
-    horizontal: '/logos/logo-horizontal.webp',   // Texto blanco: solo sobre fondo primario
+    horizontal: '/logos/logo-horizontal-menu.webp', // Texto blanco: solo sobre fondo primario. MenuLogo oficial del sitio, proporción 230 × 72
     vertical: '/logos/logo-vertical.webp',       // A todo color: sobre fondos claros
     favicon: '/favicon.png',
   }),
@@ -35,11 +35,11 @@ export const INSTITUCION = Object.freeze({
     texto: '#03090F',
     textoSecundario: '#4A5560',
     borde: '#DCECEF',
-    fondo: '#F9FAFB',
+    fondo: '#F4F8F9',
     superficie: '#FFFFFF',
     estrella: '#B8860B',
   }),
   tipografia: "'Montserrat', system-ui, sans-serif",
   tipografiaTitulos: "'Roboto', system-ui, sans-serif",
-  urlFuentes: 'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&family=Roboto:wght@600;700&display=swap',
+  urlFuentes: 'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Roboto:wght@500;700;900&display=swap',
 });

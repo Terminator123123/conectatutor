@@ -72,6 +72,7 @@ export const esquemasAuth = {
       sede: { type: 'string', enum: [...INSTITUCION.sedes], description: 'Solo estudiante' },
       programa: { $ref: '#/components/schemas/Programa' },
       quiereSerTutor: { type: 'boolean', description: 'Lo que eligió al registrarse. Solo estudiante' },
+      primerAccesoPendiente: { type: 'boolean', description: 'true en cuentas creadas por Coordinación que aún no completan el primer acceso' },
       favoritos: { type: 'array', items: { type: 'string' }, description: 'Ids de los perfiles de tutor guardados como favoritos. Solo estudiante' },
       dependencia: { type: 'string', description: 'Solo administrador' },
       perfilTutor: {
@@ -156,6 +157,157 @@ export const rutasAuth = {
       },
     },
   },
+  '/auth/recuperacion': {
+    post: {
+      tags: ['Autenticación'],
+      summary: 'Pide un enlace para crear una contraseña nueva',
+      description:
+        'Envía al correo institucional un enlace que vence en 30 minutos y sirve una sola vez. ' +
+        'La respuesta es la misma si el correo no está registrado, también si el envío falla. ' +
+        'Máximo 3 pedidos cada 15 minutos. En producción sin cuenta de correo configurada responde 503 y no genera enlaces.',
+      requestBody: {
+        required: true,
+        content: { 'application/json': { schema: {
+          type: 'object', required: ['correoInstitucional'],
+          properties: { correoInstitucional: { type: 'string', example: `elena.lozano@${INSTITUCION.dominioCorreo}` } },
+        } } },
+      },
+      responses: {
+        202: { description: 'Pedido recibido', content: { 'application/json': { schema: { type: 'object', properties: { mensaje: { type: 'string' } } } } } },
+        400: error('El correo no es institucional'),
+        429: error('Demasiados pedidos seguidos'),
+        500: { $ref: '#/components/responses/ErrorInterno' },
+        503: error('El servidor no tiene cómo enviar correos'),
+      },
+    },
+  },
+  '/auth/recuperacion/comprobar': {
+    post: {
+      tags: ['Autenticación'],
+      summary: 'Comprueba que un enlace de recuperación siga vigente',
+      requestBody: {
+        required: true,
+        content: { 'application/json': { schema: { type: 'object', required: ['token'], properties: { token: { type: 'string' } } } } },
+      },
+      responses: {
+        200: { description: 'Enlace vigente', content: { 'application/json': { schema: { type: 'object', properties: { vigente: { type: 'boolean' } } } } } },
+        400: error('El enlace venció o ya se usó'),
+        500: { $ref: '#/components/responses/ErrorInterno' },
+      },
+    },
+  },
+  '/auth/recuperacion/restablecer': {
+    post: {
+      tags: ['Autenticación'],
+      summary: 'Cambia la contraseña con un enlace de recuperación vigente',
+      description: 'El enlace queda inutilizado después de usarlo.',
+      requestBody: {
+        required: true,
+        content: { 'application/json': { schema: {
+          type: 'object', required: ['token', 'clave'],
+          properties: { token: { type: 'string' }, clave: { type: 'string', example: 'NuevaClave2' } },
+        } } },
+      },
+      responses: {
+        200: { description: 'Contraseña actualizada', content: { 'application/json': { schema: { type: 'object', properties: { mensaje: { type: 'string' } } } } } },
+        400: error('El enlace venció, ya se usó, o la contraseña no cumple las reglas'),
+        500: { $ref: '#/components/responses/ErrorInterno' },
+      },
+    },
+  },
+  '/auth/yo/primer-acceso': {
+    post: {
+      tags: ['Autenticación'],
+      summary: 'Activa una cuenta creada por Coordinación',
+      description:
+        'Primer ingreso con el documento como contraseña: crea la contraseña propia, elige si también quiere ' +
+        'enseñar (RQF002) y acepta el tratamiento de datos (RQNF009). Mientras no se complete, la cuenta solo ' +
+        'puede consultar: cualquier otra ruta que cambie datos responde 403 con la regla PRIMER_ACCESO.',
+      security: [{ tokenJWT: [] }],
+      requestBody: {
+        required: true,
+        content: { 'application/json': { schema: {
+          type: 'object', required: ['claveNueva', 'quiereSerTutor', 'aceptaTratamientoDatos'],
+          properties: {
+            claveNueva: { type: 'string', example: 'NuevaClave2', description: 'Distinta del documento de identidad' },
+            quiereSerTutor: { type: 'boolean', description: 'false = quiero aprender, true = también quiero enseñar' },
+            aceptaTratamientoDatos: { type: 'boolean', example: true, description: 'Debe ser true (Ley 1581 de 2012)' },
+          },
+        } } },
+      },
+      responses: {
+        200: { description: 'Cuenta activada', content: { 'application/json': { schema: { type: 'object', properties: { usuario: { $ref: '#/components/schemas/UsuarioConPerfil' } } } } } },
+        400: error('Contraseña débil o igual al documento, falta elegir el uso o falta el consentimiento'),
+        401: { $ref: '#/components/responses/NoAutenticado' },
+        409: error('La cuenta ya estaba activada'),
+        500: { $ref: '#/components/responses/ErrorInterno' },
+      },
+    },
+  },
+  '/auth/yo/clave': {
+    put: {
+      tags: ['Autenticación'],
+      summary: 'Cambia la contraseña de la cuenta propia',
+      description: 'Pide la contraseña actual. Si no coincide responde 400: la sesión sigue activa.',
+      security: [{ tokenJWT: [] }],
+      requestBody: {
+        required: true,
+        content: { 'application/json': { schema: {
+          type: 'object', required: ['claveActual', 'claveNueva'],
+          properties: { claveActual: { type: 'string' }, claveNueva: { type: 'string', example: 'NuevaClave2' } },
+        } } },
+      },
+      responses: {
+        200: { description: 'Contraseña actualizada', content: { 'application/json': { schema: { type: 'object', properties: { mensaje: { type: 'string' } } } } } },
+        400: error('La contraseña actual no es correcta o la nueva no cumple las reglas'),
+        401: { $ref: '#/components/responses/NoAutenticado' },
+        500: { $ref: '#/components/responses/ErrorInterno' },
+      },
+    },
+  },
+  '/auth/yo/foto': {
+    put: {
+      tags: ['Autenticación'],
+      summary: 'Cambia la foto de perfil',
+      description: 'Imagen JPG, PNG o WebP en data URL, máximo 200 KB. El formato se comprueba por el contenido del archivo.',
+      security: [{ tokenJWT: [] }],
+      requestBody: {
+        required: true,
+        content: { 'application/json': { schema: { type: 'object', required: ['imagen'], properties: { imagen: { type: 'string', example: 'data:image/webp;base64,UklGR...' } } } } },
+      },
+      responses: {
+        200: { description: 'Foto actualizada', content: { 'application/json': { schema: { type: 'object', properties: { mensaje: { type: 'string' } } } } } },
+        400: error('No es una imagen admitida o pesa demasiado'),
+        401: { $ref: '#/components/responses/NoAutenticado' },
+        500: { $ref: '#/components/responses/ErrorInterno' },
+      },
+    },
+    delete: {
+      tags: ['Autenticación'],
+      summary: 'Quita la foto de perfil',
+      security: [{ tokenJWT: [] }],
+      responses: {
+        204: { description: 'Foto quitada' },
+        401: { $ref: '#/components/responses/NoAutenticado' },
+        500: { $ref: '#/components/responses/ErrorInterno' },
+      },
+    },
+  },
+  '/usuarios/{id}/foto': {
+    get: {
+      tags: ['Autenticación'],
+      summary: 'Devuelve la foto de perfil de un usuario',
+      description: 'Pública. Responde 204 sin cuerpo si no tiene foto, para mostrar las iniciales.',
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', example: ID_EJEMPLO } }],
+      responses: {
+        200: { description: 'La imagen', content: { 'image/webp': {}, 'image/jpeg': {}, 'image/png': {} } },
+        204: { description: 'El usuario no tiene foto' },
+        400: error('El id no es válido'),
+        404: { $ref: '#/components/responses/NoEncontrado' },
+        500: { $ref: '#/components/responses/ErrorInterno' },
+      },
+    },
+  },
   '/auth/yo': {
     get: {
       tags: ['Autenticación'],
@@ -180,6 +332,8 @@ export const rutasAuth = {
     patch: {
       tags: ['Autenticación'],
       summary: 'Edita los datos de la cuenta propia',
+      description: 'El estudiante no puede cambiar nombre, programa, semestre ni sede: los actualiza la Universidad (403). ' +
+        'El administrador puede cambiar su nombre y su dependencia.',
       security: [{ tokenJWT: [] }],
       requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/CambiosCuenta' } } } },
       responses: {
@@ -193,6 +347,7 @@ export const rutasAuth = {
         },
         400: error('Datos no válidos o ningún campo para cambiar'),
         401: { $ref: '#/components/responses/NoAutenticado' },
+        403: error('Esos datos los actualiza la Universidad'),
         500: { $ref: '#/components/responses/ErrorInterno' },
       },
     },

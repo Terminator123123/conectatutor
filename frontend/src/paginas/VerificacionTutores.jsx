@@ -7,6 +7,7 @@ import { useAutenticacion } from '../contexto/useAutenticacion.js'
 import { repositorio } from '../servicios/instancias.js'
 import { EstadoVerificacion } from '../modelo/enums.js'
 import { metricasACsv } from '../servicios/metricas.js'
+import { MOTIVOS_CANCELACION } from '../servicios/motivosCancelacion.js'
 import { fechaEnColombia } from '../servicios/agenda.js'
 import Avatar from '../componentes/ui/Avatar.jsx'
 import CampoFormulario from '../componentes/ui/CampoFormulario.jsx'
@@ -187,7 +188,7 @@ export default function VerificacionTutores() {
     enviando={!!guardando}
     alConfirmar={() => revisar(perfilRechazo, true, Boolean(soporteId))}
     alCerrar={cerrar} />
-  if ((soporteId || perfilResultadoId) && errorReferencia) return <MensajeError mensaje={errorReferencia} alReintentar={() => setIntentoReferencia((valor) => valor + 1)} />
+  if ((soporteId || perfilResultadoId) && errorReferencia) return <MensajeError mensaje={errorReferencia} alReintentar={() => setIntentoReferencia((valor) => valor + 1)} forma="perfil" />
   if ((soporteId || perfilResultadoId) && sinReferencia) return <EstadoVacio icono="bi-person" titulo="No encontramos este perfil" texto="Vuelve a pendientes para consultar los perfiles disponibles." />
   if ((soporteId && soporteDetalle?.getId() !== soporteId) || (perfilResultadoId && (!revision?.detallada || revision.perfil.getId() !== perfilResultadoId))) return <Cargando texto="Cargando revisión…" />
   if (soporteId && soporteDetalle) {
@@ -311,14 +312,14 @@ export default function VerificacionTutores() {
         {errorPerfil && !filtrados.some((perfil) => perfil.getId() === errorPerfil.id) && <MensajeError mensaje={errorPerfil.mensaje} />}
         {cargando ? 
         <Cargando texto="Cargando perfiles…" /> : errorCarga ? 
-        <MensajeError mensaje={errorCarga} alReintentar={() => setIntento((valor) => valor + 1)} /> : !filtrados.length ? 
+        <MensajeError mensaje={errorCarga} alReintentar={() => setIntento((valor) => valor + 1)} forma="tarjetas" /> : !filtrados.length ? 
         <EstadoVacio icono="bi-shield-check" titulo="No hay perfiles por verificar" texto="Cuando un estudiante active su perfil de tutor, aparecerá aquí." /> : 
         <div className="ct-lista-perfiles">
           {filtrados.map((perfil) => {
           const estudiante = perfil.getEstudiante()
           return <article key={perfil.getId()} className="ct-revision-perfil">
             <header className="ct-perfil-encabezado">
-                <Avatar nombre={estudiante.getNombre()} />
+                <Avatar nombre={estudiante.getNombre()} usuarioId={estudiante.getId()} />
                 <div className="ct-perfil-identidad">
                     <h3>
                   {estudiante.getNombre()}
@@ -356,7 +357,7 @@ export default function VerificacionTutores() {
         <h2>Panel de permanencia</h2>
         <p className="ct-texto-secundario">{INSTITUCION.dependenciaVerificadora}</p>
         <p>Cifras agregadas de ConectaTutor. No se muestran datos de estudiantes individuales.</p>
-        {cargando ? <Cargando texto="Cargando cifras…" /> : errorCarga ? <MensajeError mensaje={errorCarga} alReintentar={() => setIntento((valor) => valor + 1)} /> : metricas && <>
+        {cargando ? <Cargando texto="Cargando cifras…" /> : errorCarga ? <MensajeError mensaje={errorCarga} alReintentar={() => setIntento((valor) => valor + 1)} forma="tarjetas" /> : metricas && <>
           <div className="ct-indicadores">
             {[['solicitudes', 'Solicitudes'], ['finalizadas', 'Tutorías realizadas'], ['estudiantesAtendidos', 'Estudiantes atendidos'], ['tutoresVerificados', 'Tutores verificados']].map(([clave, etiqueta]) => <div key={clave} className="ct-indicador">
                   <strong>
@@ -382,6 +383,18 @@ export default function VerificacionTutores() {
               <tfoot><tr><th scope="row">Total</th>{columnas.map(([clave]) => <td key={clave}>{presentarValor(metricas.total, clave)}</td>)}</tr></tfoot>
             </table>
           </div>
+          {metricas.motivosCancelacion && <section className="ct-motivos-cancelacion" aria-labelledby="titulo-motivos">
+            <h3 id="titulo-motivos">¿Por qué se cancelan las tutorías?</h3>
+            <p className="ct-texto-secundario">Respuestas de la encuesta al cancelar. Una cancelación puede marcar varias razones.</p>
+            {(() => {
+              const filas = Object.entries(MOTIVOS_CANCELACION).map(([clave, texto]) => [texto, metricas.motivosCancelacion[clave] ?? 0])
+              const mayor = Math.max(1, ...filas.map(([, cantidad]) => cantidad))
+              return <ul>{filas.sort((x, y) => y[1] - x[1]).map(([texto, cantidad]) => <li key={texto}>
+                <span>{texto}</span><strong>{cantidad}</strong>
+                <span className="ct-barra-motivo" aria-hidden="true"><span style={{ width: `${(cantidad / mayor) * 100}%` }} /></span>
+              </li>)}</ul>
+            })()}
+          </section>}
           <Boton variante="secundario" icono="bi-download" alHacerClic={descargarCsv}>Descargar CSV</Boton>
         </>}
       </>}

@@ -20,6 +20,10 @@ export async function rechazarPerfil(req, res) {
   res.status(200).json(await servicio.rechazarPerfil(req.params.id, req.body.motivo))
 }
 
+export async function crearCuenta(req, res) {
+  res.status(201).json({ usuario: await servicio.crearCuenta(req.body) })
+}
+
 export async function calcularMetricas(_req, res) {
   res.status(200).json(await servicio.calcularMetricas())
 }

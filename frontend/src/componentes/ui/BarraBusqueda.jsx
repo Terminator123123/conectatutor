@@ -10,9 +10,10 @@ import { useId } from 'react'
  * @param {string} props.etiqueta Etiqueta para lectores de pantalla.
  * @param {string} [props.placeholder] Texto orientativo del campo vacío.
  * @param {boolean} [props.sinBoton=false] Lupa integrada y envío por Enter.
+ * @param {boolean} [props.anidada=false] Va dentro de otro formulario: se dibuja sin <form> propio.
  * @returns {import('react').ReactElement} Formulario de búsqueda.
  */
-export default function BarraBusqueda({ valor = '', alCambiar, alBuscar, etiqueta, placeholder, sinBoton = false }) {
+export default function BarraBusqueda({ valor = '', alCambiar, alBuscar, etiqueta, placeholder, sinBoton = false, anidada = false }) {
   const id = useId()
 
   function buscar(evento) {
@@ -20,8 +21,9 @@ export default function BarraBusqueda({ valor = '', alCambiar, alBuscar, etiquet
     alBuscar()
   }
 
+  const Contenedor = anidada ? 'div' : 'form'
   return (
-    <form className={`ct-busqueda${sinBoton ? ' ct-busqueda-integrada' : ''}`} role="search" onSubmit={buscar}>
+    <Contenedor className={`ct-busqueda${sinBoton ? ' ct-busqueda-integrada' : ''}`} role="search" onSubmit={anidada ? undefined : buscar}>
       <label htmlFor={id} className="visually-hidden">{etiqueta}</label>
       {sinBoton && <i className="bi bi-search ct-busqueda-icono" aria-hidden="true" />}
       <input
@@ -32,9 +34,9 @@ export default function BarraBusqueda({ valor = '', alCambiar, alBuscar, etiquet
         onChange={(evento) => alCambiar(evento.target.value)}
         placeholder={placeholder}
       />
-      {!sinBoton && <button className="ct-busqueda-boton btn-ct-primario" type="submit" aria-label="Buscar">
+      {!sinBoton && <button className="ct-busqueda-boton btn-ct-primario" type={anidada ? 'button' : 'submit'} onClick={anidada ? alBuscar : undefined} aria-label="Buscar">
         <i className="bi bi-search" aria-hidden="true" />
       </button>}
-    </form>
+    </Contenedor>
   )
 }

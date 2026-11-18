@@ -1,4 +1,4 @@
-import { crearClienteApi, ErrorApi } from './api.js'
+import { crearClienteApi, ErrorApi, sesionDelToken } from './api.js'
 import { fechaEnColombia } from './agenda.js'
 import { materiaDesdeApi, perfilDesdeApi, programaDesdeApi, reprogramacionDesdeApi, sesionDesdeApi, usuarioDesdeApi } from './mapeoApi.js'
 import { EstadoSesion, EstadoVerificacion, RolUsuario } from '../modelo/enums.js'
@@ -186,7 +186,8 @@ export function crearRepositorioApi({ cliente = crearClienteApi() } = {}) {
       return convertirSesiones(datos.filter((sesion) => sesion.tutor.id === perfilId))
     },
 
-    async guardarSesion(sesion) {
+    // `encuesta` ({ motivos, otro }) acompaña una cancelación: las razones marcadas se cuentan en los reportes.
+    async guardarSesion(sesion, { encuesta } = {}) {
       if (!esIdPersistido(sesion.getId())) {
         return convertirSesion(await pedir('/sesiones', {
           metodo: 'POST', datos: {
@@ -212,7 +213,8 @@ export function crearRepositorioApi({ cliente = crearClienteApi() } = {}) {
         }
         const accion = acciones[estado]
         if (!accion) throw new ErrorApi('La transición de la sesión no es válida', { status: 409, regla: 'R5' })
-        return convertirSesion(await pedir(`${ruta}/${accion}`, { metodo: 'PATCH', datos: ['rechazar', 'cancelar'].includes(accion) ? { motivo: sesion.getMotivo() } : undefined }), [sesion.getMateria()])
+        return convertirSesion(await pedir(`${ruta}/${accion}`, { metodo: 'PATCH', datos: accion === 'cancelar' && encuesta ? { motivos: encuesta.motivos, ...(encuesta.motivos.includes('OTRO') ? { motivo: encuesta.otro.trim() } : {}) }
+          : ['rechazar', 'cancelar'].includes(accion) ? { motivo: sesion.getMotivo() } : undefined }), [sesion.getMateria()])
       }
       const nota = sesion.getCalificacion()
       if (nota && !actual.calificacion) {
@@ -258,12 +260,49 @@ export function crearRepositorioApi({ cliente = crearClienteApi() } = {}) {
       return (await pedir(`/favoritos/${idValido(perfilId)}`, { metodo: 'DELETE' })).map((perfil) => perfil.id)
     },
 
+    // Campana (RQF022): avisos guardados por la API y recordatorios de las sesiones.
+    async listarNotificaciones() {
+      return pedir('/notificaciones')
+    },
+
+    async marcarNotificacionesLeidas() {
+      await pedir('/notificaciones/leidas', { metodo: 'PATCH' })
+    },
+
     async obtenerMetricas() {
       return pedir('/coordinacion/metricas')
     },
 
     async obtenerUsuario(id) {
       return conPerfilPropio(await exigirCuenta(id))
+    },
+
+    // Primer ingreso de una cuenta creada por Coordinación (RQF001, RQF002, RQNF009).
+    async completarPrimerAcceso({ claveNueva, quiereSerTutor, aceptaTratamientoDatos }) {
+      const { usuario } = await pedir('/auth/yo/primer-acceso', {
+        metodo: 'POST', datos: { claveNueva, quiereSerTutor: quiereSerTutor === true, aceptaTratamientoDatos: aceptaTratamientoDatos === true },
+      })
+      return conPerfilPropio(usuario)
+    },
+
+    // Coordinación crea la cuenta de un estudiante; la contraseña inicial es su documento.
+    async crearCuentaEstudiante({ nombre, correoInstitucional, documento, semestre, sede, programa }) {
+      const { usuario } = await pedir('/coordinacion/cuentas', {
+        metodo: 'POST', datos: { nombre, correoInstitucional, documento, semestre: Number(semestre), sede, programa },
+      })
+      return usuarioDesdeApi(usuario)
+    },
+
+    async cambiarClave(claveActual, claveNueva) {
+      await pedir('/auth/yo/clave', { metodo: 'PUT', datos: { claveActual, claveNueva } })
+    },
+
+    async guardarFoto(imagen) {
+      await pedir('/auth/yo/foto', { metodo: 'PUT', datos: { imagen } })
+    },
+
+    async quitarFoto() {
+      await pedir('/auth/yo/foto', { metodo: 'DELETE' })
     },
 
     async guardarUsuario(usuario) {
@@ -285,12 +324,29 @@ export function crearRepositorioApi({ cliente = crearClienteApi() } = {}) {
       return autenticar('/auth/ingreso', { correoInstitucional, clave })
     },
 
+    // Recuperación de acceso por correo: no usa ni envía la sesión actual.
+    async pedirRecuperacion(correoInstitucional) {
+      await pedir('/auth/recuperacion', { metodo: 'POST', datos: { correoInstitucional }, autenticada: false })
+    },
+
+    async comprobarEnlaceRecuperacion(token) {
+      await pedir('/auth/recuperacion/comprobar', { metodo: 'POST', datos: { token }, autenticada: false })
+    },
+
+    async restablecerClave(token, clave) {
+      await pedir('/auth/recuperacion/restablecer', { metodo: 'POST', datos: { token, clave }, autenticada: false })
+    },
+
     async obtenerSesionActual() {
       const token = cliente.obtenerToken()
       if (!token) return null
+      const revision = cliente.revisionSesion?.()
       try {
         const usuario = await conPerfilPropio(await cuentaPropia())
-        return cliente.obtenerToken() === token ? usuario : null
+        // Una renovación cambia el token pero no la sesión; un cierre o un ingreso distinto sí la cambian.
+        const actual = cliente.obtenerToken()
+        const mismaSesion = actual === token || (actual && sesionDelToken(actual) !== null && sesionDelToken(actual) === sesionDelToken(token))
+        return mismaSesion && cliente.revisionSesion?.() === revision ? usuario : null
       } catch (error) {
         if (error.status === 401) return null
         throw error

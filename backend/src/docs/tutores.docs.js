@@ -90,8 +90,7 @@ export const rutasTutores = {
       summary: 'Busca tutores verificados',
       description:
         'Solo devuelve perfiles VERIFICADOS. Todos los filtros son opcionales y se combinan. ' +
-        'Ordena por promedio de calificaciones, de mayor a menor.',
-      ...conSesion,
+        'Ordena por promedio de calificaciones, de mayor a menor. Es pública: no exige sesión.',
       parameters: [
         { name: 'materia', in: 'query', description: 'Id de una materia que el tutor ofrece', schema: { type: 'string' } },
         { name: 'programa', in: 'query', description: 'Id del programa del tutor', schema: { type: 'string' } },
@@ -142,8 +141,7 @@ export const rutasTutores = {
     get: {
       tags: ['Tutores'],
       summary: 'Devuelve el perfil público de un tutor con sus reseñas',
-      description: 'Un perfil que no está verificado solo lo ven su dueño y el administrador; para los demás responde 404.',
-      ...conSesion,
+      description: 'Un perfil que no está verificado solo lo ven su dueño y el administrador; para los demás (también sin sesión) responde 404. Es pública.',
       parameters: [{ name: 'id', in: 'path', required: true, description: 'Id del perfil de tutor', schema: { type: 'string', example: ID_EJEMPLO } }],
       responses: {
         200: { description: 'Perfil del tutor', content: json({ $ref: '#/components/schemas/DetalleTutor' }) },

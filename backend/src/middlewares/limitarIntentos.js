@@ -56,4 +56,31 @@ export function olvidarIngresosFallidos(req) {
 /** Vacía el registro completo (lo usan las pruebas). */
 export function reiniciarIntentos() {
   intentos.clear()
+  pedidosRecuperacion.clear()
+}
+
+// Recuperación de acceso: máximo 3 enlaces por correo y dirección cada 15 minutos,
+// para que nadie llene de mensajes el buzón de otra persona.
+const PEDIDOS_RECUPERACION = 3
+const pedidosRecuperacion = new Map()
+
+/** Corta con 429 si ya se pidieron demasiados enlaces. Va después de validarSolicitudRecuperacion. */
+export function limitarRecuperacion(req, res, next) {
+  const ahora = Date.now()
+  const clave = `${req.ip}|${req.body.correoInstitucional}`
+  if (pedidosRecuperacion.size >= REGISTROS_MAXIMOS) {
+    for (const [otra, registro] of pedidosRecuperacion) if (registro.vence <= ahora) pedidosRecuperacion.delete(otra)
+  }
+  const registro = pedidosRecuperacion.get(clave)
+  if (registro && registro.vence > ahora) {
+    if (registro.pedidos >= PEDIDOS_RECUPERACION) {
+      const segundos = Math.ceil((registro.vence - ahora) / 1000)
+      res.set('Retry-After', String(segundos))
+      throw new HttpError(429, `Ya pediste varios enlaces. Espera ${Math.ceil(segundos / 60)} minutos e inténtalo de nuevo`)
+    }
+    registro.pedidos += 1
+  } else {
+    pedidosRecuperacion.set(clave, { pedidos: 1, vence: ahora + VENTANA_MS })
+  }
+  next()
 }

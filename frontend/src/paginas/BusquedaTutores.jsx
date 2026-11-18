@@ -2,7 +2,7 @@
 import { useTituloPagina } from '../hooks/useTituloPagina.js'
 import { useEscritorio } from '../hooks/useEscritorio.js'
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { INSTITUCION } from '../config/institucion.js'
 import { useAutenticacion } from '../contexto/useAutenticacion.js'
 import { repositorio } from '../servicios/instancias.js'
@@ -28,16 +28,22 @@ export default function BusquedaTutores({ soloFavoritos = false }) {
   const { usuario } = useAutenticacion()
   const [parametros, setParametros] = useSearchParams()
   const escritorio = useEscritorio()
-  const inicial = { sede: soloFavoritos ? '' : usuario.getSede(), programaId: '', materiaId: parametros.get('materia') ?? '', dia: '', tarifa: parametros.get('vista') === 'gratuitas' ? 'gratis' : '', valoracion: parametros.get('vista') === 'gratuitas' ? '4' : '', semana:'' }
+  const inicial = { sede: soloFavoritos || !usuario ? '' : usuario.getSede(), programaId: '', materiaId: parametros.get('materia') ?? '', dia: '', tarifa: parametros.get('vista') === 'gratuitas' ? 'gratis' : '', valoracion: '', semana:'' }
   const [filtros, setFiltros] = useState(inicial)
   const [borrador, setBorrador] = useState(inicial)
   const [panelAbierto, setPanelAbierto] = useState(false)
   const [busqueda, setBusqueda] = useState('')
-  const [datos, setDatos] = useState({ programas: [], materias: [], tutores: [] })
+  const [datos, setDatos] = useState({ programas: [], materias: [], tutores: [], favoritos: [] })
+  const [guardandoFavorito, setGuardandoFavorito] = useState('')
+  const [errorFavorito, setErrorFavorito] = useState('')
+  const navigate = useNavigate()
+  // «Solo favoritos» vive en la dirección (?favoritos=1) para poder enlazarlo y quitarlo con «Todas».
+  const verFavoritos = parametros.get('favoritos') === '1'
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
   const [intento, setIntento] = useState(0)
-  const usuarioId = usuario.getId()
+  // Sin sesión se explora igual; favoritos y saludo solo aplican con cuenta.
+  const usuarioId = usuario?.getId() ?? null
 
   useEffect(() => {
     let activo = true
@@ -47,7 +53,7 @@ export default function BusquedaTutores({ soloFavoritos = false }) {
       try {
         const [programas, materias, perfiles, favoritos] = await Promise.all([
           repositorio.listarProgramas(), repositorio.listarMaterias(),
-          repositorio.listarTutoresVerificados(filtros), repositorio.listarFavoritos(usuarioId),
+          repositorio.listarTutoresVerificados(filtros), usuarioId ? repositorio.listarFavoritos(usuarioId) : Promise.resolve([]),
         ])
         const tutores = await Promise.all(perfiles.filter((perfil) => perfil.getEstudiante().getId() !== usuarioId && (!soloFavoritos || favoritos.includes(perfil.getId()))).map(async (perfil) => {
           const [{ promedio, totalCalificaciones }, ocupaciones] = await Promise.all([
@@ -57,10 +63,10 @@ export default function BusquedaTutores({ soloFavoritos = false }) {
           const estudiante = perfil.getEstudiante()
           const hoy = new Date(`${fechaEnColombia(new Date())}T12:00:00-05:00`)
           const finSemana = new Date(hoy.getTime() + ((7 - hoy.getUTCDay()) % 7) * 86400000)
-          const tipoResumen = !perfil.getDisponibilidad().length ? 'sin-horarios' : totalCalificaciones === 0 ? 'nuevo' : ''
-          const ruta = `/tutores/${perfil.getId()}${tipoResumen ? '?vista=resumen&tipo=' + tipoResumen + '&nombre=' + encodeURIComponent(estudiante.getNombre().split(' ')[0]) : ''}`
+          // Siempre al perfil completo, con su diseño; la vista resumida quedaba sin estilos.
+          const ruta = `/tutores/${perfil.getId()}`
           return {
-            id: perfil.getId(), nombre: estudiante.getNombre(), programa: estudiante.getPrograma().getNombre(),
+            id: perfil.getId(), usuarioId: estudiante.getId(), sede: estudiante.getSede(), nombre: estudiante.getNombre(), programa: estudiante.getPrograma().getNombre(),
             semestre: estudiante.getSemestre(), materias: perfil.getMaterias().map((materia) => materia.getNombre()),
             promedio, totalCalificaciones,
             tarifaHora: perfil.getTarifaHora(), ruta,
@@ -68,7 +74,7 @@ export default function BusquedaTutores({ soloFavoritos = false }) {
               && !estaOcupadaEnAgenda(ocupaciones, franja, clave))),
           }
         }))
-        if (activo) setDatos({ programas, materias, tutores })
+        if (activo) setDatos({ programas, materias, tutores, favoritos })
       } catch (fallo) {
         if (activo) setError(fallo.message)
       } finally {
@@ -79,6 +85,25 @@ export default function BusquedaTutores({ soloFavoritos = false }) {
     return () => { activo = false }
   }, [filtros, usuarioId, intento, soloFavoritos])
 
+  function alternarVerFavoritos() {
+    setParametros((anteriores) => {
+      const siguientes = new URLSearchParams(anteriores)
+      if (verFavoritos) siguientes.delete('favoritos'); else siguientes.set('favoritos', '1')
+      return siguientes
+    })
+  }
+  async function alternarFavorito(id) {
+    if (!usuario) { navigate('/ingresar', { state: { desde: '/' } }); return }
+    if (guardandoFavorito) return
+    setGuardandoFavorito(id); setErrorFavorito('')
+    try {
+      const favoritos = await repositorio.alternarFavorito(usuarioId, id)
+      setDatos((anteriores) => ({ ...anteriores, favoritos }))
+    } catch (fallo) { setErrorFavorito(fallo.message) }
+    finally { setGuardandoFavorito('') }
+  }
+  const tarjeta = ({ id, ...tutor }) => <TarjetaTutor key={id} {...tutor}
+    favorito={datos.favoritos.includes(id)} guardando={guardandoFavorito === id} alAlternarFavorito={() => alternarFavorito(id)} />
   function cambiar(nombre, valor) {
     setBorrador((anteriores) => ({ ...anteriores, [nombre]: valor, ...(nombre === 'programaId' ? { materiaId: '' } : {}) }))
   }
@@ -92,16 +117,15 @@ export default function BusquedaTutores({ soloFavoritos = false }) {
     setBorrador((anteriores) => ({ ...anteriores, materiaId }))
   }
   function abrirFiltros() {
-    if (!panelAbierto && !filtros.tarifa && !filtros.valoracion && !filtros.semana) setBorrador((anterior) => ({ ...anterior, tarifa:'gratis' }))
     setPanelAbierto(!panelAbierto)
   }
-  function filtroRapido(cambios) { const nuevos = { ...borrador, tarifa:'', valoracion:'', semana:'', ...cambios }; setFiltros(nuevos); setBorrador(nuevos); setPanelAbierto(false) }
   const texto = normalizar(busqueda.trim())
   const resultados = datos.tutores.filter((tutor) => normalizar([tutor.nombre, ...tutor.materias].join(' ')).includes(texto)
     && (!filtros.tarifa || (filtros.tarifa === 'gratis' ? tutor.tarifaHora === null : tutor.tarifaHora !== null))
     && (!filtros.valoracion || tutor.promedio >= Number(filtros.valoracion))
-    && (!filtros.semana || tutor.disponibleEstaSemana))
-  const sede = filtros.sede || usuario.getSede()
+    && (!filtros.semana || tutor.disponibleEstaSemana)
+    && (!verFavoritos || datos.favoritos.includes(tutor.id)))
+  const sede = filtros.sede || usuario?.getSede() || INSTITUCION.sedes[0]
   const correo = INSTITUCION.canalesPermanencia[sede]
   const materiaActual = datos.materias.find((materia) => materia.getId() === filtros.materiaId)
   const materias = datos.materias.filter((materia) => !borrador.programaId || materia.getPrograma().getId() === borrador.programaId)
@@ -114,7 +138,7 @@ export default function BusquedaTutores({ soloFavoritos = false }) {
     <p className="ct-texto-secundario">Catálogo cerrado de la comunidad.<br />Selecciona la materia para ver sus tutores.</p>
     {cargando ? 
     <Cargando texto="Cargando materias…" /> : error ? 
-    <MensajeError mensaje={error} alReintentar={() => setIntento((valor) => valor + 1)} /> : !datos.materias.length ?
+    <MensajeError mensaje={error} alReintentar={() => setIntento((valor) => valor + 1)} forma="tarjetas" /> : !datos.materias.length ?
     <EstadoVacio titulo="No hay materias disponibles" /> : datos.materias.filter((materia, indice, lista) => lista.findIndex((otra) => otra.getNombre() === materia.getNombre()) === indice).map((materia) => <Boton
       key={materia.getId()}
       variante={filtros.materiaId === materia.getId() ? 'primario' : 'secundario'} anchoCompleto
@@ -126,17 +150,17 @@ export default function BusquedaTutores({ soloFavoritos = false }) {
   if (parametros.get('vista') === 'gratuitas') return (
     <section className="ct-busqueda-gratuita">
       <h1>Aprender también es compartir.</h1>
-      <span className="ct-chip-materia">Gratuita, 4+ estrellas</span>
+      <span className="ct-chip-materia">Tutorías gratuitas</span>
       {!cargando && !error && resultados.length > 0 && (
         <p className="ct-conteo">
           {resultados.length} {resultados.length === 1 ? 'tutor disponible' : 'tutores disponibles'}
         </p>
       )}
       {cargando ? <Cargando texto="Cargando tutores…" /> : error ? (
-        <MensajeError mensaje={error} alReintentar={() => setIntento((valor) => valor + 1)} />
+        <MensajeError mensaje={error} alReintentar={() => setIntento((valor) => valor + 1)} forma="tarjetas" />
       ) : resultados.length ? (
         <div className="ct-rejilla-tutores">
-          {resultados.map(({ id, ...tutor }) => <TarjetaTutor key={id} {...tutor} />)}
+          {resultados.map(tarjeta)}
         </div>
       ) : <ResultadoBusquedaVacia sede={sede} correo={correo} alQuitarFiltros={quitarFiltros} />}
       {resultados.length > 0 && (
@@ -149,20 +173,21 @@ export default function BusquedaTutores({ soloFavoritos = false }) {
   <form
     className="ct-filtro-formulario"
     aria-label="Filtros de tutores"
-    onSubmit={(evento) => { evento.preventDefault(); setFiltros({ ...borrador,
-       ...(borrador.tarifa === 'gratis' && !escritorio ? { valoracion:'4' } : {}) }); setPanelAbierto(false); if (borrador.tarifa === 'gratis' && !escritorio) setParametros({ vista:'gratuitas' }) }}>
+    onSubmit={(evento) => { evento.preventDefault(); setFiltros(borrador); setPanelAbierto(false) }}>
     <h1 className="ct-filtro-titular-movil">Encuentra tu mejor opción</h1>
     <div className="ct-opciones-filtro-movil">
-      <h2>Tarifa
-      </h2>
-      <Boton anchoCompleto
-        variante={borrador.tarifa === 'gratis' ? 'primario' : 'secundario'}
-        alHacerClic={() => setBorrador((anterior) => ({ ...anterior, tarifa:anterior.tarifa === 'gratis' ? '' : 'gratis', valoracion:'', semana:'' }))}>Solo tutorías gratuitas
-      </Boton>
-      <h2>Valoración mínima</h2><Boton anchoCompleto variante="secundario" alHacerClic={() => filtroRapido({ valoracion:'4' })}>4 estrellas o más</Boton>
-      <h2>Disponibilidad</h2><Boton anchoCompleto variante="secundario" alHacerClic={() => filtroRapido({ semana:'1' })}>Esta semana</Boton>
+      {/* Cada filtro es independiente: elegir uno no cambia los otros. */}
+      <CampoFormulario etiqueta="Tarifa" tipo="select" valor={borrador.tarifa} alCambiar={(valor) => cambiar('tarifa', valor)}
+        opciones={[{ valor:'', etiqueta:'Cualquier tarifa' }, { valor:'gratis', etiqueta:'Solo gratuitas' }, { valor:'pago', etiqueta:'Con tarifa informativa' }]} />
+      <CampoFormulario etiqueta="Valoración mínima" tipo="select" valor={borrador.valoracion} alCambiar={(valor) => cambiar('valoracion', valor)}
+        opciones={[{ valor:'', etiqueta:'Todas las valoraciones' }, { valor:'4', etiqueta:'4 estrellas o más' }, { valor:'5', etiqueta:'5 estrellas' }]} />
+      <CampoFormulario etiqueta="Disponibilidad" tipo="select" valor={borrador.semana} alCambiar={(valor) => cambiar('semana', valor)}
+        opciones={[{ valor:'', etiqueta:'Cualquier momento' }, { valor:'1', etiqueta:'Con horario esta semana' }]} />
     </div>
     <div className="ct-campos-filtro-escritorio">
+        <button type="button" className={`ct-boton ${verFavoritos ? 'btn-ct-primario' : 'btn-ct-secundario'} ct-boton-completo`} aria-pressed={verFavoritos} onClick={alternarVerFavoritos}>
+          <i className={`bi ${verFavoritos ? 'bi-heart-fill' : 'bi-heart'} ct-icono-favorito`} aria-hidden="true" />Solo mis favoritos
+        </button>
         <CampoFormulario
         etiqueta="Materia"
         tipo="select"
@@ -186,6 +211,7 @@ export default function BusquedaTutores({ soloFavoritos = false }) {
       <Link className="ct-enlace-texto" to="/tutores?elegir=1" onClick={() => setPanelAbierto(false)}>Elegir materia</Link>
       <div className="ct-busqueda-extra-tablet">
           <BarraBusqueda
+          anidada
           valor={busqueda}
           alCambiar={setBusqueda}
           alBuscar={() => {}}
@@ -222,7 +248,7 @@ export default function BusquedaTutores({ soloFavoritos = false }) {
     <p className="ct-filtro-ayuda-movil">Elige cómo quieres filtrar los tutores.
     </p>
     <Boton tipo="submit" anchoCompleto>
-      {escritorio || borrador.tarifa !== 'gratis' ? 'Aplicar filtros' : 'Ver tutorías gratuitas'}
+      Aplicar filtros
     </Boton>
     <div className="ct-filtro-limpiar-movil">
         <Boton variante="secundario" anchoCompleto alHacerClic={quitarFiltros}>Limpiar filtros
@@ -252,13 +278,13 @@ export default function BusquedaTutores({ soloFavoritos = false }) {
       </div>
     <header className="ct-buscar-saludo">
         <div>
-            <p>Hola, {usuario.getNombre().split(' ')[0]}
+            <p>{usuario ? `Hola, ${usuario.getNombre().split(' ')[0]}` : 'Tutorías entre pares'}
         </p>
             <h1>
-          {soloFavoritos ? 'Tutores favoritos' : '¿Qué aprendemos hoy?'}
+          {soloFavoritos ? 'Tutores favoritos' : usuario ? '¿Qué aprendemos hoy?' : 'Encuentra tu tutor'}
         </h1>
           </div>
-        <Avatar nombre={usuario.getNombre()} />
+        {usuario ? <Avatar nombre={usuario.getNombre()} usuarioId={usuario.getId()} /> : <Link className="ct-boton btn-ct-secundario ct-saludo-ingresar" to="/ingresar">Ingresar</Link>}
       </header>
     <header className="ct-buscar-titular">
         <h1>
@@ -289,6 +315,9 @@ export default function BusquedaTutores({ soloFavoritos = false }) {
             onClick={() => elegirMateria(materia.getId())}>
             {materia.getNombre().split(' ')[0]}
           </button>)}
+          <button className={`ct-filtro-chip ct-filtro-favoritos${verFavoritos ? ' ct-filtro-chip-activo' : ''}`} type="button" aria-pressed={verFavoritos} aria-label="Solo favoritos" title="Solo favoritos" onClick={alternarVerFavoritos}>
+            <i className={`bi ${verFavoritos ? 'bi-heart-fill' : 'bi-heart'}`} aria-hidden="true" />
+          </button>
           <button className="ct-filtro-chip" type="button" aria-expanded={panelAbierto} aria-controls="filtros-tutores" onClick={abrirFiltros}>Más filtros</button>
         </div>
         {resultados.length > 0 && !cargando && !error && 
@@ -300,11 +329,14 @@ export default function BusquedaTutores({ soloFavoritos = false }) {
             <small>Sobre este resultado
           </small>Perfil público con materias, disponibilidad y tarifa informativa. No se realizan pagos en la plataforma.
         </aside>}
+        {errorFavorito && <MensajeError mensaje={errorFavorito} />}
         {cargando ? 
         <Cargando texto="Cargando tutores…" /> : error ? 
-        <MensajeError mensaje={error} alReintentar={() => setIntento((anterior) => anterior + 1)} /> : resultados.length ? 
+        <MensajeError mensaje={error} alReintentar={() => setIntento((anterior) => anterior + 1)} forma="tarjetas" /> : verFavoritos && !usuario ?
+        <EstadoVacio icono="bi-heart" titulo="No has iniciado sesión" texto="Inicia sesión para guardar tutores con el corazón y verlos aquí." accion={{ etiqueta: 'Iniciar sesión', ruta: '/ingresar' }} /> : verFavoritos && !datos.favoritos.length ?
+        <EstadoVacio icono="bi-heart" titulo="Aún no tienes favoritos" texto="Toca el corazón de un tutor para guardarlo y encontrarlo aquí." accion={{ etiqueta: 'Ver todos los tutores', alHacerClic: alternarVerFavoritos }} /> : resultados.length ? 
         <div className="ct-rejilla-tutores">
-          {resultados.map(({ id, ...tutor }) => <TarjetaTutor key={id} {...tutor} />)}
+          {resultados.map(tarjeta)}
         </div> :
           <ResultadoBusquedaVacia sede={sede} correo={correo} alQuitarFiltros={quitarFiltros} />}
         {resultados.length > 0 && 
@@ -315,7 +347,7 @@ export default function BusquedaTutores({ soloFavoritos = false }) {
             </h2>
                 <p>Perfiles verificados, opiniones de estudiantes y horarios claros antes de solicitar una tutoría.
             </p>
-                <p>Permanencia {sede}: 
+                <p>Permanencia {sede}:{' '}
               <a href={`mailto:${correo}`}>
                 {correo}
               </a>

@@ -28,7 +28,7 @@ export default function ResumenSesionesTutor({ perfil }) {
     return () => { activo = false }
   }, [perfilId, intento])
   if (cargando) return <Cargando texto="Cargando tus tutorías…" />
-  if (error) return <MensajeError mensaje={error} alReintentar={() => setIntento((valor) => valor + 1)} />
+  if (error) return <MensajeError mensaje={error} alReintentar={() => setIntento((valor) => valor + 1)} forma="lista" />
   const lista = sesiones.filter((sesion) => sesion.getEstado() !== EstadoSesion.PENDIENTE).sort((a, b) => {
     const diferencia = Number(b.getEstado() === EstadoSesion.CONFIRMADA) - Number(a.getEstado() === EstadoSesion.CONFIRMADA)
     return diferencia || b.getFecha() - a.getFecha()

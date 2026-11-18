@@ -8,7 +8,8 @@ import { repositorio } from '../../servicios/instancias.js'
 import { estaOcupada, fechaEnColombia } from '../../servicios/agenda.js'
 import ItemSesion from '../../componentes/ui/ItemSesion.jsx'
 import Modal from '../../componentes/ui/Modal.jsx'
-import ModalMotivo from '../../componentes/sesiones/ModalMotivo.jsx'
+import EncuestaCancelacion from '../../componentes/sesiones/EncuestaCancelacion.jsx'
+import { revisarEncuesta, textoEncuesta } from '../../servicios/motivosCancelacion.js'
 import Boton from '../../componentes/ui/Boton.jsx'
 import Cargando from '../../componentes/ui/Cargando.jsx'
 import MensajeError from '../../componentes/ui/MensajeError.jsx'
@@ -30,6 +31,7 @@ export default function SesionesQueDoy({ perfil, alAnunciar }) {
   const [modal, setModal] = useState(null)
   const [motivo, setMotivo] = useState('')
   const [motivoTocado, setMotivoTocado] = useState(false)
+  const [encuesta, setEncuesta] = useState({ motivos: [], otro: '' })
   const [guardando, setGuardando] = useState('')
   const [errorAccion, setErrorAccion] = useState('')
   const [errorItem, setErrorItem] = useState(null)
@@ -58,6 +60,7 @@ export default function SesionesQueDoy({ perfil, alAnunciar }) {
     setModal({ tipo, id: sesion.getId() })
     setMotivo('')
     setMotivoTocado(false)
+    setEncuesta({ motivos: [], otro: '' })
     setErrorAccion('')
   }
   function cerrar() { if (!guardando) setModal(null) }
@@ -67,9 +70,13 @@ export default function SesionesQueDoy({ perfil, alAnunciar }) {
     if (guardando) return
     setErrorAccion('')
     setErrorItem(null)
-    if (tipo === 'rechazar' || tipo === 'cancelar') {
+    if (tipo === 'rechazar') {
       setMotivoTocado(true)
       if (errorMotivo) return
+    }
+    if (tipo === 'cancelar') {
+      const problema = revisarEncuesta(encuesta)
+      if (problema) { setErrorAccion(problema); return }
     }
     setGuardando(id)
     alAnunciar('')
@@ -84,9 +91,9 @@ export default function SesionesQueDoy({ perfil, alAnunciar }) {
           }
           sesion.confirmar()
         } else if (tipo === 'rechazar') sesion.rechazar(motivo.trim())
-        else if (tipo === 'cancelar') sesion.cancelar(motivo.trim())
+        else if (tipo === 'cancelar') sesion.cancelar(textoEncuesta(encuesta))
         else sesion.finalizar()
-        return repositorio.guardarSesion(sesion)
+        return repositorio.guardarSesion(sesion, tipo === 'cancelar' ? { encuesta } : {})
       }
       // Serializa las acciones del mismo tutor también entre pestañas.
       const actualizada = navigator.locks?.request ? await navigator.locks.request(`ct-agenda-${perfilId}`, modificar) : await modificar()
@@ -125,7 +132,7 @@ export default function SesionesQueDoy({ perfil, alAnunciar }) {
         <article className="ct-solicitud-recibida">
             <ChipEstado estado={sesion.getEstado()} />
             <header className="ct-item-identidad">
-                <Avatar nombre={solicitante.getNombre()} />
+                <Avatar nombre={solicitante.getNombre()} usuarioId={solicitante.getId()} />
                 <div>
                     <strong>
               {solicitante.getNombre()}
@@ -169,7 +176,7 @@ export default function SesionesQueDoy({ perfil, alAnunciar }) {
     <p className="ct-solicitudes-conteo">Tienes {pendientes} {pendientes === 1 ? 'solicitud' : 'solicitudes'} por revisar.</p>
     {cargando ? 
     <Cargando texto="Cargando tutorías…" /> : errorCarga ? 
-    <MensajeError mensaje={errorCarga} alReintentar={() => setIntento((valor) => valor + 1)} /> : !sesiones.length ? 
+    <MensajeError mensaje={errorCarga} alReintentar={() => setIntento((valor) => valor + 1)} forma="lista" /> : !sesiones.length ? 
     <EstadoVacio
       icono="bi-person-video3"
       titulo="Todavía no te han pedido tutorías"
@@ -194,7 +201,7 @@ export default function SesionesQueDoy({ perfil, alAnunciar }) {
           return <article className="ct-solicitud-recibida" key={sesion.getId()}>
             <ChipEstado estado={estado} />
             <header className="ct-item-identidad">
-                <Avatar nombre={solicitante.getNombre()} />
+                <Avatar nombre={solicitante.getNombre()} usuarioId={solicitante.getId()} />
                 <div>
                     <strong>
                   {solicitante.getNombre()}
@@ -243,17 +250,12 @@ export default function SesionesQueDoy({ perfil, alAnunciar }) {
         </ItemSesion>
       })}</div></section> : null
     })}
-    <ModalMotivo
-      abierto={modal?.tipo === 'cancelar'}
-      titulo="Cancelar tutoría"
-      etiquetaConfirmar="Cancelar tutoría"
-      motivo={motivo}
-      alCambiarMotivo={(valor) => { setMotivo(valor); setMotivoTocado(true) }}
-      errorMotivo={motivoTocado ? errorMotivo : ''}
-      errorAccion={errorAccion}
-      enviando={!!guardando}
-      alConfirmar={() => actuar(modal.tipo, modal.id)}
-      alCerrar={cerrar} />
+    <Modal abierto={modal?.tipo === 'cancelar'} titulo="Cancelar tutoría" alCerrar={cerrar} pie={<>
+      <Boton variante="secundario" alHacerClic={cerrar} deshabilitado={!!guardando}>Volver</Boton>
+      <Boton alHacerClic={() => actuar(modal.tipo, modal.id)} cargando={!!guardando}>Cancelar tutoría</Boton>
+    </>}>
+      <EncuestaCancelacion valor={encuesta} alCambiar={(valor) => { setEncuesta(valor); setErrorAccion('') }} deshabilitado={!!guardando} error={errorAccion} />
+    </Modal>
     <Modal abierto={modal?.tipo === 'rechazar'} titulo="Rechazar solicitud" conRegreso alCerrar={cerrar}>
         <form className="ct-rechazo-tutoria" noValidate onSubmit={(evento) => { evento.preventDefault(); actuar('rechazar', modal.id) }}>
             <h1>Cuéntale por qué

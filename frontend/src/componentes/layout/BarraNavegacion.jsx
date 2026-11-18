@@ -5,6 +5,8 @@ import { useAutenticacion } from '../../contexto/useAutenticacion.js'
 import { RolUsuario } from '../../modelo/enums.js'
 import Avatar from '../ui/Avatar.jsx'
 import EncabezadoPagina from './EncabezadoPagina.jsx'
+import SelectorIdioma from './SelectorIdioma.jsx'
+import Campana from './Campana.jsx'
 
 // Resuelve cada título sin cadenas de condiciones dentro del marcado.
 function tituloNavegacion(ruta, busqueda, usuario) {
@@ -33,13 +35,15 @@ function tituloNavegacion(ruta, busqueda, usuario) {
     if (parametros.has('horario')) return 'Disponibilidad'
     if (parametros.get('guardado') === '1') return tutor ? 'Perfil de tutor' : 'Perfil de estudiante'
     if (parametros.get('completar') === '1') return 'Completa tu perfil'
-    if (parametros.get('editar') === '1') return 'Editar perfil'
+    if (parametros.get('editar') === '1') return 'Configuración'
     return tutor ? 'Mi perfil de tutor' : 'Mi perfil'
   }
   if (ruta === '/solicitudes') return 'Solicitudes'
   if (ruta === '/admin/verificacion') return parametros.has('soporte') || parametros.has('resultado') ? 'Administración' : 'Verificación de tutores'
   if (ruta === '/admin/materias' || ruta === '/admin/reportes') return 'Administración'
   if (ruta === '/admin/perfil') return 'Mi perfil'
+  if (ruta === '/admin/cuentas') return 'Cuentas de estudiantes'
+  if (ruta === '/primer-acceso') return 'Activa tu cuenta'
   if (ruta === '/favoritos') return parametros.has('vacio') ? 'Favoritos' : 'Tutores favoritos'
   return ''
 }
@@ -49,7 +53,7 @@ export default function BarraNavegacion() {
   const { usuario, cargando } = useAutenticacion()
   const { pathname, search } = useLocation()
   const navigate = useNavigate()
-  const acceso = ['/registro', '/ingresar', '/recuperar-acceso'].some((ruta) => pathname.startsWith(ruta))
+  const acceso = ['/ingresar', '/recuperar-acceso', '/primer-acceso'].some((ruta) => pathname.startsWith(ruta))
   const expirada = pathname === '/sesion-expirada'
   const estudiante = usuario?.getRol() === RolUsuario.ESTUDIANTE
   const estadoSolicitud = pathname.includes('/solicitar') && new URLSearchParams(search).has('estado')
@@ -61,25 +65,29 @@ export default function BarraNavegacion() {
     ['/perfil', 'Perfil', 'bi-person'],
   ] : usuario ? [
     ['/admin/verificacion', 'Coordinación', 'bi-shield-check'],
+    ['/admin/cuentas', 'Cuentas', 'bi-person-plus'],
     ['/admin/perfil', 'Perfil', 'bi-person'],
-  ] : [['/', 'Inicio', 'bi-house'], ['/ingresar', 'Ingresar', 'bi-box-arrow-in-right'], ['/registro', 'Registrarse', 'bi-person-plus']]
+  ] : [['/', 'Buscar', 'bi-search'], ['/ingresar', 'Ingresar', 'bi-box-arrow-in-right']]
   const titulo = tituloNavegacion(pathname, search, usuario)
   function enlacesDe(barra) {
     return enlaces.map(([ruta, etiqueta, icono]) => <NavLink key={ruta} to={ruta} end={ruta === '/'}
-      className={({ isActive }) => `ct-enlace${isActive && !(ruta === '/tutores' && estadoSolicitud) || ruta === '/sesiones' && (estadoSolicitud || pathname === '/notificaciones') || ruta === '/tutores' && ['/favoritos', '/reportar'].includes(pathname) ? ' ct-enlace-activo' : ''}`}>
+      className={({ isActive }) => `ct-enlace${isActive && !(ruta === '/tutores' && estadoSolicitud) || ruta === '/sesiones' && (estadoSolicitud || pathname === '/notificaciones') || ruta === '/tutores' && ['/favoritos', '/reportar'].includes(pathname) || ruta === '/' && pathname.startsWith('/tutores') || ruta === '/tutores' && pathname === '/' ? ' ct-enlace-activo' : ''}`}>
       <i className={`bi ${icono}`} aria-hidden="true" />
       <span>{barra === 'superior' && etiqueta === 'Buscar' ? 'Buscar tutores' : barra === 'superior' && etiqueta === 'Sesiones' ? 'Mis sesiones' : etiqueta}</span>
     </NavLink>)
   }
   return <>
-    <header className={`ct-cabecera${acceso ? ' ct-cabecera-acceso' : ''}${pathname === '/tutores' ? ' ct-cabecera-buscar' : ''}`}>
-      <Link className="ct-identidad" to="/">
-        <span className="ct-simbolo"><img src={INSTITUCION.logos.favicon} alt="" width="20" height="20" /></span>
-        <span className="ct-nombre-app">{INSTITUCION.nombreApp}</span>
+    <header className={`ct-cabecera${acceso ? ' ct-cabecera-acceso' : ''}${['/', '/tutores'].includes(pathname) ? ' ct-cabecera-buscar' : ''}${!acceso && titulo ? ' ct-cabecera-con-titulo' : ''}`}>
+      <Link className="ct-identidad" to="/" aria-label={`${INSTITUCION.nombreApp}, inicio`}>
+        <img className="ct-logo-institucional" src={INSTITUCION.logos.horizontal} alt={INSTITUCION.nombre} width="128" height="40" />
+        <span className="ct-identidad-separador" aria-hidden="true" />
+        <span className="ct-nombre-app notranslate" translate="no">ConectaTutor<small>Tutorías entre pares</small></span>
       </Link>
       {!cargando && !expirada && <nav className="ct-navegacion-superior" aria-label="Navegación principal">{enlacesDe('superior')}</nav>}
+      <SelectorIdioma />
+      {estudiante && !acceso && !expirada && <Campana />}
       {usuario && <Link className="ct-cuenta" to={estudiante ? '/perfil' : '/admin/perfil'}>
-        <span>{usuario.getNombre().split(' ')[0]}</span><Avatar nombre={usuario.getNombre()} />
+        <span>{usuario.getNombre().split(' ')[0]}</span><Avatar nombre={usuario.getNombre()} usuarioId={usuario.getId()} />
       </Link>}
       <button className="ct-volver-tablet btn-ct-secundario" onClick={() => window.history.state?.idx > 0 ? navigate(-1) : navigate('/')} type="button">Volver</button>
     </header>

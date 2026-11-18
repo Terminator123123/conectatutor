@@ -426,7 +426,7 @@ describe('E4 · Sesiones', () => {
       assert.ok(respuesta.body.some((ocupada) => ocupada.fecha === lunes(4) && ocupada.franja.horaInicio === '08:00'))
       assert.ok(respuesta.body.every((ocupada) => Object.keys(ocupada).sort().join() === 'fecha,franja'))
       assert.equal((await felipe.get(`/tutores/${ID_INEXISTENTE}/ocupacion`)).status, 404)
-      assert.equal((await anonimo.get(`/tutores/${perfilAndrea.id}/ocupacion`)).status, 401)
+      assert.equal((await anonimo.get(`/tutores/${perfilAndrea.id}/ocupacion`)).status, 200)
     })
   })
 })

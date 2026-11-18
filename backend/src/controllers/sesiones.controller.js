@@ -27,7 +27,7 @@ export async function rechazar(req, res) {
 
 /** PATCH /api/sesiones/:id/cancelar */
 export async function cancelar(req, res) {
-  res.status(200).json(await servicioSesiones.cancelar(req.params.id, req.usuario, req.body.motivo))
+  res.status(200).json(await servicioSesiones.cancelar(req.params.id, req.usuario, req.body))
 }
 
 /** PATCH /api/sesiones/:id/finalizar */

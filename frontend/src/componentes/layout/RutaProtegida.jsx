@@ -15,7 +15,7 @@ export default function RutaProtegida({ roles, children }) {
   const { usuario, cargando, sesionExpirada, errorInicial, reintentarSesion } = useAutenticacion()
   const location = useLocation()
   if (cargando) return <Cargando texto="Verificando tu sesión…" />
-  if (errorInicial) return <MensajeError mensaje={errorInicial} alReintentar={reintentarSesion} />
+  if (errorInicial) return <MensajeError mensaje={errorInicial} alReintentar={reintentarSesion} forma="marca" />
   if (!usuario && sesionExpirada) return <Navigate to="/sesion-expirada" replace state={{ desde: location.pathname + location.search }} />
   if (!usuario) return <Navigate to="/ingresar" replace state={{ desde: location.pathname + location.search }} />
   if (!roles.includes(usuario.getRol())) return <Navigate to={rutaInicialDe(usuario)} replace />

@@ -9,13 +9,15 @@ import { useSesion } from '../hooks/useSesion.js'
 import { EstadoSesion } from '../modelo/enums.js'
 import { repositorio } from '../servicios/instancias.js'
 import { formatearFechaBreve } from '../componentes/ui/fechaBreve.js'
+import { enlaceGoogleCalendar } from '../servicios/calendario.js'
 import ChipEstado from '../componentes/ui/ChipEstado.jsx'
-import CampoFormulario from '../componentes/ui/CampoFormulario.jsx'
 import Boton from '../componentes/ui/Boton.jsx'
 import Cargando from '../componentes/ui/Cargando.jsx'
 import MensajeError from '../componentes/ui/MensajeError.jsx'
 import EstadoVacio from '../componentes/ui/EstadoVacio.jsx'
 import '../estilos/solicitante.css'
+import EncuestaCancelacion from '../componentes/sesiones/EncuestaCancelacion.jsx'
+import { revisarEncuesta, textoEncuesta } from '../servicios/motivosCancelacion.js'
 
 /** @returns {import('react').ReactElement} Detalle protegido de una sesión. */
 export default function DetalleSesion() {
@@ -28,14 +30,15 @@ export default function DetalleSesion() {
   const [parametros, setParametros] = useSearchParams()
   const abierto = parametros.has('cancelar')
   function setAbierto(valor) { setParametros(valor ? { cancelar:sesion.getEstado() === EstadoSesion.CONFIRMADA ? 'confirmada' : 'pendiente' } : {}, { replace:true }); window.scrollTo(0, 0) }
-  const [motivo, setMotivo] = useState('')
+  const [encuesta, setEncuesta] = useState({ motivos: [], otro: '' })
   const [enviando, setEnviando] = useState(false)
   const [errorAccion, setErrorAccion] = useState('')
   const [aviso, setAviso] = useState('')
   async function cancelar() {
     if (enviando) return
     setErrorAccion('')
-    if (motivo.trim().length < 5) { setErrorAccion('Escribe el motivo (al menos 5 caracteres).'); return }
+    const problema = revisarEncuesta(encuesta)
+    if (problema) { setErrorAccion(problema); return }
     setEnviando(true)
     try {
       const actuar = async () => {
@@ -43,8 +46,8 @@ export default function DetalleSesion() {
         const actual = actuales.find((item) => item.getId() === id)
         if (!actual) throw new Error('No encontramos esta sesión.')
         const eraConfirmada = actual.getEstado() === EstadoSesion.CONFIRMADA
-        actual.cancelar(motivo.trim())
-        await repositorio.guardarSesion(actual)
+        actual.cancelar(textoEncuesta(encuesta))
+        await repositorio.guardarSesion(actual, { encuesta })
         return eraConfirmada
       }
       const eraConfirmada = navigator.locks?.request ? await navigator.locks.request(`ct-sesion-${id}`, actuar) : await actuar()
@@ -54,7 +57,7 @@ export default function DetalleSesion() {
     finally { setEnviando(false) }
   }
   if (cargando) return <Cargando texto="Cargando solicitud…" />
-  if (error) return <MensajeError mensaje={error} alReintentar={reintentar} />
+  if (error) return <MensajeError mensaje={error} alReintentar={reintentar} forma="perfil" />
   if (!sesion) return <EstadoVacio icono="bi-calendar-event" titulo="No encontramos esta solicitud" accion={{ etiqueta:'Mis sesiones', ruta:'/sesiones' }} />
   const solicitante = sesion.getSolicitante().getId() === usuario.getId()
   const persona = solicitante ? sesion.getTutor().getEstudiante() : sesion.getSolicitante()
@@ -173,14 +176,7 @@ export default function DetalleSesion() {
         {formatearFechaBreve(sesion.getFecha())}, {sesion.getFranja().getHoraInicio()}–{sesion.getFranja().getHoraFin()}
       </div>
       </>}
-    <CampoFormulario
-      etiqueta="Motivo"
-      nombre="motivo"
-      valor={motivo}
-      alCambiar={setMotivo}
-      ayuda={confirmada ? 'Debes indicar el motivo para continuar.' : ''}
-      deshabilitado={enviando}
-      error={errorAccion} />
+    <EncuestaCancelacion valor={encuesta} alCambiar={(valor) => { setEncuesta(valor); setErrorAccion('') }} deshabilitado={enviando} error={errorAccion} />
     <div className="ct-estado-formulario-acciones">
         <Boton anchoCompleto cargando={enviando} alHacerClic={cancelar}>Confirmar cancelación
       </Boton>
@@ -198,6 +194,10 @@ export default function DetalleSesion() {
     {!confirmada && <strong className="ct-tarifa">{horas} horas, {tarifa === null ? 'Tutoría gratuita' : 'Tarifa informativa: ' + formatearMoneda(tarifa * horas)}</strong>}
     {sesion.getMotivo() && <div className="ct-dato"><small>Motivo</small>{sesion.getMotivo()}</div>}
     {sesion.getCalificacion() && <p>Calificaste con {sesion.getCalificacion().getPuntaje()} de 5</p>}
+    {confirmada && <a className="ct-boton btn-ct-primario" target="_blank" rel="noreferrer" href={enlaceGoogleCalendar({
+      fecha: sesion.getFecha(), horaInicio: sesion.getFranja().getHoraInicio(), horaFin: sesion.getFranja().getHoraFin(),
+      materia: sesion.getMateria().getNombre(), persona: persona.getNombre(), tema: sesion.getTema(),
+    })}><i className="bi bi-calendar-plus" aria-hidden="true" />Añadir a Google Calendar<span className="visually-hidden"> (se abre en otra pestaña)</span></a>}
     {confirmada && <Link className="ct-boton btn-ct-secundario" to={`/sesiones/${id}/reprogramar`}>Proponer otro horario</Link>}
     {mutable && 
     <Boton variante="secundario" anchoCompleto alHacerClic={() => { setErrorAccion(''); setAbierto(true) }}>

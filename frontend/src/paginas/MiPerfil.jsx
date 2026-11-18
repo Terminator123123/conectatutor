@@ -1,7 +1,7 @@
 import { formatearMoneda, interpretarMoneda } from '../componentes/ui/moneda.js'
 // Administra la oferta del estudiante tutor y su revisión por Coordinación.
 import { useTituloPagina } from '../hooks/useTituloPagina.js'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { INSTITUCION } from '../config/institucion.js'
 import { useAutenticacion } from '../contexto/useAutenticacion.js'
@@ -17,6 +17,8 @@ import Cargando from '../componentes/ui/Cargando.jsx'
 import MensajeError from '../componentes/ui/MensajeError.jsx'
 import EstadoVacio from '../componentes/ui/EstadoVacio.jsx'
 import Avatar from '../componentes/ui/Avatar.jsx'
+import FotoPerfil from '../componentes/cuenta/FotoPerfil.jsx'
+import CambioClave from '../componentes/cuenta/CambioClave.jsx'
 import '../estilos/solicitante.css'
 import '../estilos/tutor.css'
 
@@ -48,8 +50,6 @@ export default function MiPerfil() {
     setParametros((anteriores) => { const nuevos = new URLSearchParams(anteriores); if (valor) nuevos.set('editar', '1'); else nuevos.delete('editar'); return nuevos })
   }
   const [editandoMaterias, setEditandoMaterias] = useState(false)
-  const [foto, setFoto] = useState('')
-  const fotoRef = useRef(null)
   const [guardando, setGuardando] = useState('')
   const [errores, setErrores] = useState({})
   const [aviso, setAviso] = useState('')
@@ -99,12 +99,6 @@ export default function MiPerfil() {
     return () => { activo = false }
   }, [programaId, intentoMaterias])
 
-  useEffect(() => () => { if (foto) URL.revokeObjectURL(foto) }, [foto])
-
-  function editarFoto(evento) {
-    const archivo = evento.target.files?.[0]
-    if (archivo && archivo.type.startsWith('image/')) setFoto(URL.createObjectURL(archivo))
-  }
 
   const errorBiografia = biografia.trim().length >= 20 && biografia.trim().length <= 500 ? '' : 'Escribe entre 20 y 500 caracteres.'
 
@@ -164,7 +158,7 @@ export default function MiPerfil() {
   }
 
   if (cargando) return <Cargando texto="Cargando tu perfil…" />
-  if (errorCarga) return <MensajeError mensaje={errorCarga} alReintentar={() => setIntento((valor) => valor + 1)} />
+  if (errorCarga) return <MensajeError mensaje={errorCarga} alReintentar={() => setIntento((valor) => valor + 1)} forma="perfil" />
   if (!datos) return <EstadoVacio icono="bi-person" titulo="No encontramos tu perfil" texto="Vuelve a ingresar para consultar tus datos." />
   const { estudiante, programas } = datos
   const perfil = estudiante.getPerfilTutor()
@@ -296,7 +290,7 @@ export default function MiPerfil() {
     <span className="ct-etiqueta-admin">PASO 2 DE 2</span>
     <h1>Hagámoslo personal.</h1>
     <p className="ct-texto-secundario">Cuéntanos qué estudias para encontrar el apoyo que necesitas.</p>
-    <Avatar nombre={estudiante.getNombre()} tamano={72} />
+    <Avatar nombre={estudiante.getNombre()} usuarioId={estudiante.getId()} tamano={72} />
     <div className="ct-completar-campos">
       {[['Nombre completo', estudiante.getNombre()], ['Programa académico', estudiante.getPrograma().getNombre()], ['Semestre', estudiante.getSemestre() + '.º semestre']].map(([etiqueta, valor], indice) => <div className="ct-campo" key={etiqueta}>
             <label htmlFor={'completar-' + indice} className="ct-campo-etiqueta">
@@ -316,10 +310,11 @@ export default function MiPerfil() {
   </section>
 
   if (editando) return <section className="ct-editar-perfil">
-    <h1>{perfil ? 'Actualiza lo que enseñas' : 'Tu perfil de estudiante'}</h1>
-    <p>{perfil ? 'Tus materias, semestre y tarifa aparecen en tu perfil público.' : 'Revisa tus datos académicos.'}</p>
+    <h1>Configuración de la cuenta</h1>
+    <p className="ct-nota-universidad"><i className="bi bi-bank" aria-hidden="true" /> Tu nombre, correo, programa, semestre y sede los registra la Universidad de La Guajira. Aquí puedes cambiar tu foto y tu contraseña{perfil ? ', y tu biografía y tarifa de tutor' : ''}.</p>
     <div className="ct-editar-campos">{[
       ['nombre','Nombre completo',estudiante.getNombre()],
+      ['correo','Correo institucional (tu usuario)',estudiante.getCorreo()],
       ['programa','Programa académico',estudiante.getPrograma().getNombre()],
       ['semestre','Semestre',estudiante.getSemestre() + '.º semestre'],
       ['sede','Sede',estudiante.getSede()],
@@ -328,11 +323,9 @@ export default function MiPerfil() {
         {etiqueta}
       </label>
         <input id={'perfil-' + clave} className="ct-campo-control" value={valor} readOnly />
-        <p className="ct-campo-ayuda">Dato académico de solo lectura.
-      </p>
       </div>)}
     </div>
-    <p>Para corregir estos datos, escribe a Permanencia: <a className="ct-enlace-texto" href={`mailto:${correo}`}>{correo}</a></p>
+    <p>Estos datos los actualiza la Universidad. Si algo está mal, escribe a Permanencia: <a className="ct-enlace-texto" href={`mailto:${correo}`}>{correo}</a></p>
     {perfil && <CampoFormulario etiqueta="Biografía" tipo="textarea" valor={biografia} alCambiar={setBiografia} error={biografiaTocada ? errorBiografia : ''} deshabilitado={!!guardando} />}
     {perfil && 
     <>
@@ -350,26 +343,25 @@ export default function MiPerfil() {
         ayuda="Déjala vacía si tus tutorías son gratuitas."
         deshabilitado={!!guardando} />
       </>}
-    <input ref={fotoRef} type="file" accept="image/*" hidden aria-label="Foto del perfil" onChange={editarFoto} />
-    {foto && <img className="ct-foto-perfil" src={foto} alt="Vista previa de tu foto" width="72" height="72" />}
-    <Boton variante="secundario" alHacerClic={() => fotoRef.current?.click()}>Editar foto (vista previa)</Boton>
+    <FotoPerfil usuario={estudiante} />
+    <CambioClave />
     <Boton variante="secundario" anchoCompleto alHacerClic={() => { cerrarSesion(); navigate('/') }}>Cerrar sesión</Boton>
     {errores.perfil && <MensajeError mensaje={errores.perfil} />}
-    <div className="ct-editar-acciones">
+    {perfil ? <div className="ct-editar-acciones">
         <Boton anchoCompleto
         cargando={!!guardando}
         alHacerClic={async () => { if (!perfil || await guardarPerfil()) { setParametros({ guardado:'1' }, { replace:true }); window.scrollTo(0, 0) } }}>Guardar cambios
       </Boton>
         <Boton anchoCompleto variante="secundario" alHacerClic={() => setEditando(false)}>Cancelar edición
       </Boton>
-      </div>
+      </div> : <Boton anchoCompleto variante="secundario" alHacerClic={() => setEditando(false)}>Volver a mi perfil</Boton>}
   </section>
 
   return <section className="ct-solicitante ct-tutor">
     <h1 className="ct-solo-escritorio">{perfil ? 'Mi perfil de tutor' : 'Mi perfil'}</h1>
     <div role="status" className={aviso ? 'ct-aviso' : undefined}>{aviso}</div>
     <header className="ct-mi-identidad">
-      {foto ? <img className="ct-foto-perfil" src={foto} alt="Vista previa de tu foto" width="72" height="72" /> : <Avatar nombre={estudiante.getNombre()} tamano={72} />}
+      <Avatar nombre={estudiante.getNombre()} usuarioId={estudiante.getId()} tamano={72} />
       <div>
           <h1>
           {estudiante.getNombre()}
@@ -538,6 +530,7 @@ export default function MiPerfil() {
     <Link className="ct-enlace-texto" to="/favoritos">Tutores favoritos</Link>
     <Link className="ct-enlace-texto" to="/notificaciones">Notificaciones</Link>
     <a className="ct-enlace-texto" href={INSTITUCION.urlTratamientoDatos} target="_blank" rel="noreferrer">Aviso de privacidad</a>
+    <Link className="ct-boton btn-ct-secundario ct-boton-completo" to="/perfil?editar=1"><i className="bi bi-gear" aria-hidden="true" /> Configuración de la cuenta</Link>
     <Boton variante="secundario" anchoCompleto alHacerClic={() => { cerrarSesion(); navigate('/') }}>Salir</Boton>
   </section>
 }

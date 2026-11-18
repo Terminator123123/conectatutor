@@ -42,6 +42,16 @@ export const env = Object.freeze({
   jwtDuracion: (process.env.JWT_DURACION ?? '').trim() || '2h',
   // Tiempo sin usar la aplicación tras el cual la sesión expira (RQNF005): "30m", "15m"...
   sesionInactividad: (process.env.SESION_INACTIVIDAD ?? '').trim() || '30m',
+  // Dirección del frontend para armar el enlace de recuperación de acceso.
+  urlFrontend: ((process.env.FRONTEND_URL ?? '').trim() || (process.env.CORS_ORIGIN ?? 'http://localhost:5173').split(',')[0].trim()).replace(/\/$/, ''),
+  // Correo de salida (Gmail con contraseña de aplicación). Vacío: el enlace se escribe en la consola.
+  correo: Object.freeze({
+    usuario: (process.env.CORREO_USUARIO ?? '').trim(),
+    claveApp: (process.env.CORREO_CLAVE_APP ?? '').replace(/\s/g, ''),
+    remitente: (process.env.CORREO_REMITENTE ?? '').trim() || 'ConectaTutor Uniguajira',
+    // Solo para demostraciones: todos los correos van a esta dirección en lugar del destinatario real.
+    desvio: (process.env.CORREO_DESVIO ?? '').trim(),
+  }),
 })
 
 /**

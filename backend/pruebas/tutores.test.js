@@ -30,8 +30,12 @@ describe('E3 · Tutores', () => {
   after(detenerBaseDePrueba)
 
   describe('GET /api/tutores (búsqueda)', () => {
-    it('exige sesión', async () => {
-      assert.equal((await anonimo.get('/tutores')).status, 401)
+    it('es pública: un visitante ve los tutores verificados', async () => {
+      const respuesta = await anonimo.get('/tutores')
+      assert.equal(respuesta.status, 200)
+      assert.ok(respuesta.body.length > 0)
+      assert.ok(respuesta.body.every((tutor) => tutor.estadoVerificacion === 'VERIFICADO'))
+      assert.ok(respuesta.body.every((tutor) => !('correo' in tutor.estudiante) && !('telefono' in tutor.estudiante)))
     })
 
     it('solo devuelve tutores verificados, mejor calificados primero', async () => {
@@ -119,10 +123,11 @@ describe('E3 · Tutores', () => {
       assert.equal((await administrador.get(`/tutores/${pendiente.id}`)).status, 200)
     })
 
-    it('responde 404 si no existe, 400 si el id está mal formado y 401 sin sesión', async () => {
+    it('responde 404 si no existe y 400 si el id está mal formado; el visitante no ve perfiles pendientes', async () => {
       assert.equal((await elena.get(`/tutores/${ID_INEXISTENTE}`)).status, 404)
       assert.equal((await elena.get('/tutores/123')).status, 400)
-      assert.equal((await anonimo.get(`/tutores/${ID_INEXISTENTE}`)).status, 401)
+      assert.equal((await anonimo.get(`/tutores/${ID_INEXISTENTE}`)).status, 404)
+      assert.equal((await anonimo.get(`/tutores/${(await perfilDe(CORREOS.diego)).id}`)).status, 404)
     })
   })
 
@@ -293,34 +298,32 @@ describe('E3 · Tutores', () => {
   })
 
   describe('PATCH /api/auth/yo (edición de la cuenta, RQF026)', () => {
-    it('el estudiante cambia nombre, semestre, sede y programa', async () => {
+    it('el estudiante no puede cambiar nombre, semestre, sede ni programa: los pone la Universidad', async () => {
       const biologia = await Programa.findOne({ nombre: 'Biología' })
-      const respuesta = await elena.patch('/auth/yo', { nombre: 'Elena Lozano Pérez', semestre: 3, sede: 'Maicao', programa: biologia.id })
-      assert.equal(respuesta.status, 200)
-      const { usuario } = respuesta.body
-      assert.deepEqual([usuario.nombre, usuario.semestre, usuario.sede, usuario.programa.nombre], ['Elena Lozano Pérez', 3, 'Maicao', 'Biología'])
+      for (const cambio of [{ nombre: 'Elena Lozano Pérez' }, { semestre: 3 }, { sede: 'Maicao' }, { programa: biologia.id }]) {
+        assert.equal((await elena.patch('/auth/yo', cambio)).status, 403)
+      }
+      const cuenta = (await elena.get('/auth/yo')).body.usuario
+      assert.deepEqual([cuenta.nombre, cuenta.sede], ['Elena Lozano', 'Riohacha'])
     })
 
     it('no deja cambiar el correo, el rol ni la contraseña', async () => {
-      const respuesta = await elena.patch('/auth/yo', {
-        nombre: 'Elena Lozano',
+      const respuesta = await administrador.patch('/auth/yo', {
+        nombre: 'Gabriela Montes',
         correoInstitucional: 'otra@uniguajira.edu.co',
-        tipo: 'ADMINISTRADOR',
+        tipo: 'ESTUDIANTE',
         claveHash: 'x',
-        dependencia: 'Rectoría',
       })
       assert.equal(respuesta.status, 200)
-      assert.equal(respuesta.body.usuario.correoInstitucional, CORREOS.elena)
-      assert.equal(respuesta.body.usuario.tipo, 'ESTUDIANTE')
-      assert.equal(respuesta.body.usuario.dependencia, undefined)
+      assert.equal(respuesta.body.usuario.correoInstitucional, CORREOS.administrador)
+      assert.equal(respuesta.body.usuario.tipo, 'ADMINISTRADOR')
     })
 
     it('rechaza con 400 datos no válidos o un cuerpo sin cambios', async () => {
       assert.equal((await elena.patch('/auth/yo', {})).status, 400)
-      assert.equal((await elena.patch('/auth/yo', { semestre: 0 })).status, 400)
-      assert.equal((await elena.patch('/auth/yo', { sede: 'Bogotá' })).status, 400)
-      assert.equal((await elena.patch('/auth/yo', { programa: ID_INEXISTENTE })).status, 400)
-      assert.equal((await elena.patch('/auth/yo', { nombre: 'ab' })).status, 400)
+      assert.equal((await administrador.patch('/auth/yo', {})).status, 400)
+      assert.equal((await administrador.patch('/auth/yo', { nombre: 'ab' })).status, 400)
+      assert.equal((await administrador.patch('/auth/yo', { dependencia: 'x' })).status, 400)
     })
 
     it('el administrador cambia su nombre y dependencia; sin sesión responde 401', async () => {

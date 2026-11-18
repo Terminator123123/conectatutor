@@ -1,4 +1,4 @@
-// Reserva las pantallas de acceso y registro para usuarios sin sesión.
+// Reserva las pantallas de acceso para usuarios sin sesión.
 import { Navigate } from 'react-router-dom'
 import { useAutenticacion } from '../../contexto/useAutenticacion.js'
 import { rutaInicialDe } from '../../servicios/rutasPorRol.js'
@@ -13,7 +13,7 @@ import MensajeError from '../ui/MensajeError.jsx'
 export default function RutaSoloInvitados({ children }) {
   const { usuario, cargando, errorInicial, reintentarSesion } = useAutenticacion()
   if (cargando) return <Cargando texto="Verificando tu sesión…" />
-  if (errorInicial) return <MensajeError mensaje={errorInicial} alReintentar={reintentarSesion} />
+  if (errorInicial) return <MensajeError mensaje={errorInicial} alReintentar={reintentarSesion} forma="marca" />
   if (usuario) return <Navigate to={rutaInicialDe(usuario)} replace />
   return children
 }

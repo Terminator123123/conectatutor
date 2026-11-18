@@ -1,4 +1,4 @@
-import { DiaSemana, EstadoSesion } from '../utils/enums.js'
+import { DiaSemana, EstadoSesion, MotivoCancelacion } from '../utils/enums.js'
 import { esDiaValido } from '../utils/fechas.js'
 import { HttpError } from '../utils/HttpError.js'
 import { esIdValido } from './validarId.js'
@@ -119,5 +119,31 @@ export function validarFiltrosSesiones(req, _res, next) {
   }
   if (errores.length > 0) throw new HttpError(400, 'Los filtros no son válidos', errores)
   req.filtros = filtros
+  next()
+}
+
+/**
+ * Valida la encuesta de PATCH /api/sesiones/:id/cancelar (RQF016): una o varias razones
+ * de MotivoCancelacion y, si se marca OTRO, una explicación de al menos 5 caracteres.
+ * Por compatibilidad acepta también solo `motivo` (texto), que se cuenta como OTRO.
+ */
+export function validarCancelacion(req, _res, next) {
+  const cuerpo = req.body ?? {}
+  const errores = []
+  let motivos = cuerpo.motivos
+  if (motivos === undefined && typeof cuerpo.motivo === 'string') motivos = ['OTRO']
+  if (!Array.isArray(motivos) || motivos.length === 0) {
+    errores.push('Marca al menos una razón de la cancelación')
+    motivos = []
+  }
+  const validos = Object.keys(MotivoCancelacion)
+  if (motivos.some((motivo) => !validos.includes(motivo))) errores.push(`Las razones deben ser: ${validos.join(', ')}`)
+  const unicos = [...new Set(motivos)]
+  const conOtro = unicos.includes('OTRO')
+  const texto = leerMotivo(cuerpo.motivo, errores, { obligatorio: conOtro })
+  if (errores.length > 0) throw new HttpError(400, 'La encuesta de cancelación no es válida', errores)
+  const etiquetas = unicos.filter((motivo) => motivo !== 'OTRO').map((motivo) => MotivoCancelacion[motivo])
+  if (conOtro && texto) etiquetas.push(texto)
+  req.body = { motivos: unicos, motivo: etiquetas.join('. ').slice(0, 300) }
   next()
 }

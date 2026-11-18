@@ -93,6 +93,12 @@ export function validarEdicionCuenta(req, _res, next) {
   const errores = []
   const cambios = {}
 
+  // El nombre, el correo, el programa, el semestre y la sede del estudiante los registra
+  // la Universidad de La Guajira: se muestran en la cuenta, pero no se cambian desde aquí.
+  if (esEstudiante && ['nombre', 'semestre', 'sede', 'programa'].some((campo) => cuerpo[campo] !== undefined)) {
+    throw new HttpError(403, 'Tu nombre y tus datos académicos los actualiza la Universidad de La Guajira')
+  }
+
   if (cuerpo.nombre !== undefined) {
     const nombre = esTexto(cuerpo.nombre) ? cuerpo.nombre.trim().replace(/\s+/g, ' ') : ''
     if (nombre.replace(/\s/g, '').length < 3 || nombre.length > 80) {
@@ -134,5 +140,69 @@ export function validarEdicionCuenta(req, _res, next) {
   if (errores.length > 0) throw new HttpError(400, 'Los datos de la cuenta no son válidos', errores)
 
   req.body = cambios
+  next()
+}
+
+/** Valida el cambio de contraseña desde la cuenta: la actual y una nueva aceptable y distinta. */
+export function validarCambioClave(req, _res, next) {
+  const { claveActual, claveNueva } = req.body ?? {}
+  if (!esTexto(claveActual) || !claveActual) throw new HttpError(400, 'Escribe tu contraseña actual')
+  if (!esClaveAceptable(claveNueva)) throw new HttpError(400, MENSAJE_CLAVE)
+  if (claveNueva === claveActual) throw new HttpError(400, 'La contraseña nueva debe ser distinta de la actual')
+  next()
+}
+
+/** Valida la petición de un enlace de recuperación: correo institucional. */
+export function validarSolicitudRecuperacion(req, _res, next) {
+  const correo = esTexto(req.body?.correoInstitucional) ? req.body.correoInstitucional.trim().toLowerCase() : ''
+  if (!esCorreoInstitucional(correo)) throw new HttpError(400, `Usa tu correo institucional (@${INSTITUCION.dominioCorreo})`)
+  req.body = { correoInstitucional: correo }
+  next()
+}
+
+/** Valida el cambio de contraseña con enlace: token y una contraseña aceptable. */
+export function validarRestablecimiento(req, _res, next) {
+  const { token, clave } = req.body ?? {}
+  if (!esTexto(token) || !token) throw new HttpError(400, 'El enlace venció o ya se usó. Pide uno nuevo para continuar')
+  if (!esClaveAceptable(clave)) throw new HttpError(400, MENSAJE_CLAVE)
+  next()
+}
+
+/**
+ * Revisa el cuerpo de POST /api/coordinacion/cuentas: los datos con que Uniguajira crea la
+ * cuenta de un estudiante. La contraseña inicial es el documento de identidad.
+ */
+export function validarNuevaCuenta(req, _res, next) {
+  const cuerpo = req.body ?? {}
+  const errores = []
+  const nombre = esTexto(cuerpo.nombre) ? cuerpo.nombre.trim().replace(/\s+/g, ' ') : ''
+  if (nombre.replace(/\s/g, '').length < 3 || nombre.length > 80) errores.push('Escribe el nombre completo (entre 3 y 80 caracteres)')
+  const correoInstitucional = esTexto(cuerpo.correoInstitucional) ? cuerpo.correoInstitucional.trim().toLowerCase() : ''
+  if (!esCorreoInstitucional(correoInstitucional)) errores.push(`El correo debe ser institucional (@${INSTITUCION.dominioCorreo})`)
+  const documento = esTexto(cuerpo.documento) ? cuerpo.documento.trim() : ''
+  if (!/^\d{6,12}$/.test(documento)) errores.push('El documento de identidad debe tener entre 6 y 12 dígitos, sin puntos ni espacios')
+  const semestre = cuerpo.semestre
+  if (!Number.isInteger(semestre) || semestre < 1 || semestre > INSTITUCION.semestreMaximo) {
+    errores.push(`El semestre debe ser un número entero entre 1 y ${INSTITUCION.semestreMaximo}`)
+  }
+  if (!INSTITUCION.sedes.includes(cuerpo.sede)) errores.push(`Selecciona una sede: ${INSTITUCION.sedes.join(', ')}`)
+  if (!esTexto(cuerpo.programa) || !mongoose.isValidObjectId(cuerpo.programa)) errores.push('Selecciona un programa académico')
+  if (errores.length > 0) throw new HttpError(400, 'Los datos de la cuenta no son válidos', errores)
+  req.body = { nombre, correoInstitucional, documento, semestre, sede: cuerpo.sede, programa: cuerpo.programa }
+  next()
+}
+
+/**
+ * Revisa el cuerpo de POST /api/auth/yo/primer-acceso: contraseña propia, uso elegido
+ * (RQF002) y consentimiento expreso del tratamiento de datos (RQNF009).
+ */
+export function validarPrimerAcceso(req, _res, next) {
+  const cuerpo = req.body ?? {}
+  const errores = []
+  if (!esClaveAceptable(cuerpo.claveNueva)) errores.push(MENSAJE_CLAVE)
+  if (typeof cuerpo.quiereSerTutor !== 'boolean') errores.push('Elige si quieres aprender o también enseñar')
+  if (cuerpo.aceptaTratamientoDatos !== true) errores.push('Debes aceptar el tratamiento de tus datos personales para usar ConectaTutor')
+  if (errores.length > 0) throw new HttpError(400, 'Los datos del primer acceso no son válidos', errores)
+  req.body = { claveNueva: cuerpo.claveNueva, quiereSerTutor: cuerpo.quiereSerTutor }
   next()
 }

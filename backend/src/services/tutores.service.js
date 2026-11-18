@@ -180,8 +180,9 @@ export async function obtenerDetalle(perfilId, usuario) {
   const perfil = await PerfilTutor.findById(perfilId).populate(DATOS_DEL_PERFIL)
   if (!perfil) throw new HttpError(404, 'El tutor no existe')
 
-  const esDueno = perfil.estudiante._id.equals(usuario._id)
-  const esAdministrador = usuario.tipo === RolUsuario.ADMINISTRADOR
+  // Sin sesión (visitante) solo se ven perfiles verificados.
+  const esDueno = Boolean(usuario) && perfil.estudiante._id.equals(usuario._id)
+  const esAdministrador = usuario?.tipo === RolUsuario.ADMINISTRADOR
   if (perfil.estadoVerificacion !== EstadoVerificacion.VERIFICADO && !esDueno && !esAdministrador) {
     throw new HttpError(404, 'El tutor no existe')
   }

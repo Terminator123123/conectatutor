@@ -8,11 +8,12 @@ import { documentacion } from './docs/openapi.js'
 import { ENCABEZADO_TOKEN_RENOVADO } from './middlewares/autenticar.js'
 import { manejarErrores, rutaNoEncontrada } from './middlewares/manejarErrores.js'
 import { registrarPeticiones } from './middlewares/registrarPeticiones.js'
-import { authRouter } from './routes/auth.routes.js'
+import { authRouter, usuariosRouter } from './routes/auth.routes.js'
 import { materiasRouter, programasRouter } from './routes/catalogo.routes.js'
 import { coordinacionRouter } from './routes/coordinacion.routes.js'
 import { favoritosRouter } from './routes/favoritos.routes.js'
 import { sesionesRouter } from './routes/sesiones.routes.js'
+import { notificacionesRouter } from './routes/notificaciones.routes.js'
 import { tutoresRouter } from './routes/tutores.routes.js'
 
 /**
@@ -33,6 +34,8 @@ app.use(helmet())
 app.use(cors({ origin: env.corsOrigenes, exposedHeaders: [ENCABEZADO_TOKEN_RENOVADO] }))
 
 // El límite evita que un cuerpo enorme ocupe la memoria del servidor
+// La foto de perfil llega en base64 (máximo 200 KB de imagen): esa ruta admite un cuerpo mayor.
+app.use('/api/auth/yo/foto', express.json({ limit: '300kb' }))
 app.use(express.json({ limit: '100kb' }))
 
 app.get('/api/docs.json', (_req, res) => res.json(documentacion))
@@ -49,10 +52,12 @@ app.get('/api/salud', (_req, res) => {
 })
 
 app.use('/api/auth', authRouter)
+app.use('/api/usuarios', usuariosRouter)
 app.use('/api/programas', programasRouter)
 app.use('/api/materias', materiasRouter)
 app.use('/api/tutores', tutoresRouter)
 app.use('/api/sesiones', sesionesRouter)
+app.use('/api/notificaciones', notificacionesRouter)
 app.use('/api/favoritos', favoritosRouter)
 app.use('/api/coordinacion', coordinacionRouter)
 

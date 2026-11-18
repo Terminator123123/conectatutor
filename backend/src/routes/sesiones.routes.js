@@ -15,6 +15,7 @@ import { autenticar, exigirRol } from '../middlewares/autenticar.js'
 import { validarId } from '../middlewares/validarId.js'
 import {
   validarCalificacion,
+  validarCancelacion,
   validarFiltrosSesiones,
   validarMotivo,
   validarPropuesta,
@@ -38,7 +39,7 @@ sesionesRouter.get('/:id', validarId(), obtener)
 sesionesRouter.post('/', soloEstudiante, validarSolicitud, solicitar)
 sesionesRouter.patch('/:id/confirmar', soloEstudiante, validarId(), confirmar)
 sesionesRouter.patch('/:id/rechazar', soloEstudiante, validarId(), validarMotivo, rechazar)
-sesionesRouter.patch('/:id/cancelar', soloEstudiante, validarId(), validarMotivo, cancelar)
+sesionesRouter.patch('/:id/cancelar', soloEstudiante, validarId(), validarCancelacion, cancelar)
 sesionesRouter.patch('/:id/finalizar', soloEstudiante, validarId(), finalizar)
 sesionesRouter.post('/:id/calificacion', soloEstudiante, validarId(), validarCalificacion, calificar)
 sesionesRouter.put('/:id/reprogramacion', soloEstudiante, validarId(), validarPropuesta, proponerReprogramacion)

@@ -51,7 +51,7 @@ export default function Reportar() {
     window.scrollTo(0, 0)
   }
   if (cargando) return <Cargando texto="Cargando contenido…" />
-  if (error) return <MensajeError mensaje={error} alReintentar={() => setIntento((valor) => valor + 1)} />
+  if (error) return <MensajeError mensaje={error} alReintentar={() => setIntento((valor) => valor + 1)} forma="formulario" />
   if (!contexto) return <EstadoVacio icono="bi-flag" titulo="No encontramos el contenido seleccionado" texto="Vuelve al perfil para seleccionar el contenido." />
   return <>
     <p className="ct-demostracion">Demostración: este formulario no envía ni guarda reportes.</p>

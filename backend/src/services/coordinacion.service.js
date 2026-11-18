@@ -1,6 +1,8 @@
 import { INSTITUCION } from '../config/institucion.js'
-import { PerfilTutor, Sesion } from '../models/index.js'
-import { EstadoSesion, EstadoVerificacion } from '../utils/enums.js'
+import { Estudiante, PerfilTutor, Programa, Sesion } from '../models/index.js'
+import { cifrarClave } from '../utils/claves.js'
+import { presentarUsuario } from './auth.service.js'
+import { EstadoSesion, EstadoVerificacion, MotivoCancelacion } from '../utils/enums.js'
 import { HttpError } from '../utils/HttpError.js'
 import { calcularEstadisticas, presentarPerfil } from './tutores.service.js'
 
@@ -85,7 +87,7 @@ function filaVacia() {
  */
 export async function calcularMetricas() {
   const [sesiones, perfiles] = await Promise.all([
-    Sesion.find().select('estado calificacion solicitante').populate('solicitante', 'tipo sede'),
+    Sesion.find().select('estado calificacion solicitante motivosCancelacion').populate('solicitante', 'tipo sede'),
     PerfilTutor.find().select('estadoVerificacion estudiante').populate('estudiante', 'tipo sede'),
   ])
 
@@ -93,7 +95,10 @@ export async function calcularMetricas() {
   const total = filaVacia()
   const filasDe = (sede) => [total, porSede[sede]].filter(Boolean)
 
+  // Encuesta de cancelación: cuántas veces se marcó cada razón.
+  const motivosCancelacion = Object.fromEntries(Object.keys(MotivoCancelacion).map((clave) => [clave, 0]))
   for (const sesion of sesiones) {
+    for (const motivo of sesion.motivosCancelacion ?? []) if (motivo in motivosCancelacion) motivosCancelacion[motivo] += 1
     for (const fila of filasDe(sesion.solicitante?.sede)) {
       fila.solicitudes += 1
       fila[CLAVE_POR_ESTADO[sesion.estado]] += 1
@@ -115,5 +120,27 @@ export async function calcularMetricas() {
     delete fila.atendidos
     delete fila.puntajes
   }
-  return { porSede, total }
+  return { porSede, total, motivosCancelacion }
+}
+
+/**
+ * Crea la cuenta de un estudiante con los datos de Uniguajira (RQF001). La contraseña inicial
+ * es su documento de identidad; al primer ingreso debe cambiarla, elegir si quiere enseñar
+ * (RQF002) y aceptar el tratamiento de datos (RQNF009).
+ */
+export async function crearCuenta({ nombre, correoInstitucional, documento, semestre, sede, programa }) {
+  if (!(await Programa.exists({ _id: programa }))) {
+    throw new HttpError(400, 'Los datos de la cuenta no son válidos', ['El programa seleccionado no existe'])
+  }
+  try {
+    const estudiante = await Estudiante.create({
+      nombre, correoInstitucional, semestre, sede, programa,
+      claveHash: await cifrarClave(documento),
+      primerAccesoPendiente: true,
+    })
+    return presentarUsuario(estudiante)
+  } catch (error) {
+    if (error?.code === 11000) throw new HttpError(409, 'Ya existe una cuenta con este correo institucional')
+    throw error
+  }
 }

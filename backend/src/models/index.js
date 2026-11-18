@@ -1,10 +1,11 @@
 import { Materia } from './materia.model.js'
+import { Notificacion } from './notificacion.model.js'
 import { PerfilTutor } from './perfilTutor.model.js'
 import { Programa } from './programa.model.js'
 import { prepararReservas, Sesion } from './sesion.model.js'
 import { Administrador, Estudiante, Usuario } from './usuario.model.js'
 
-export { Administrador, Estudiante, Materia, PerfilTutor, Programa, Sesion, Usuario }
+export { Administrador, Estudiante, Materia, Notificacion, PerfilTutor, Programa, Sesion, Usuario }
 
 /**
  * Espera a que MongoDB termine de crear los índices de todas las colecciones.
@@ -12,6 +13,6 @@ export { Administrador, Estudiante, Materia, PerfilTutor, Programa, Sesion, Usua
  * materia, franja ocupada) son los que impiden duplicados y dobles reservas.
  */
 export async function asegurarIndices() {
-  await Promise.all([Usuario, Programa, Materia, PerfilTutor, Sesion].map((modelo) => modelo.init()))
+  await Promise.all([Usuario, Programa, Materia, PerfilTutor, Sesion, Notificacion].map((modelo) => modelo.init()))
   await prepararReservas()
 }

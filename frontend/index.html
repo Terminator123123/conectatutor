@@ -4,9 +4,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ConectaTutor · Universidad de La Guajira</title>
+    <meta name="description" content="Tutorías entre estudiantes de la Universidad de La Guajira." />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Mientras llega la aplicación: escudo de la universidad. React lo reemplaza al iniciar. -->
+      <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F4F8F9" role="status" aria-label="Cargando ConectaTutor">
+        <img src="/logos/logo-vertical.webp" alt="" width="84" height="125" style="animation:ct-latir 1.6s ease-in-out infinite alternate" />
+      </div>
+      <style>@keyframes ct-latir{from{transform:scale(.94);opacity:.7}to{transform:scale(1.03);opacity:1}}@media (prefers-reduced-motion:reduce){#root img{animation:none!important}}</style>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

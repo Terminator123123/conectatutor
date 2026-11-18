@@ -155,7 +155,7 @@ test('un error de red permite reintentar sin perder la sesión ni duplicar autom
   await assert.rejects(cliente.peticion('/sesiones', { metodo: 'POST', datos: {} }), (error) => {
     assert.ok(error instanceof ErrorApi)
     assert.equal(error.status, 0)
-    assert.match(error.message, /No se pudo conectar con la API/)
+    assert.match(error.message, /No pudimos conectarnos con ConectaTutor/)
     return true
   })
   assert.equal(peticiones, 1)
@@ -192,7 +192,7 @@ test('la cancelación propaga AbortError y conserva el token', async () => {
   const controller = new AbortController()
   const cancelacion = new DOMException('Petición cancelada', 'AbortError')
   const { cliente } = preparar(async (_url, opciones) => {
-    assert.equal(opciones.signal, controller.signal)
+    assert.ok(opciones.signal instanceof AbortSignal)
     throw cancelacion
   })
   cliente.guardarToken('token-valido')
@@ -246,4 +246,18 @@ test('un ingreso anterior no reemplaza el token de un acceso más reciente', asy
   respuestas[0](json({ usuario: cuentaDeAcceso, token: 'token-anterior' }))
   await assert.rejects(anterior, /solicitud de acceso ya no está vigente/)
   assert.equal(cliente.obtenerToken(), 'token-reciente')
+})
+
+test('una petición que no recibe respuesta termina como falta de conexión en vez de cargar para siempre', async () => {
+  const relojes = []
+  const original = globalThis.setTimeout
+  globalThis.setTimeout = (fn, ms) => original(fn, ms > 1000 ? 5 : 0) // acorta el tope de 15 s y las esperas
+  try {
+    const { cliente } = preparar((_url, opciones) => new Promise((_ok, fallo) => {
+      opciones.signal.addEventListener('abort', () => fallo(new DOMException('abort', 'AbortError')))
+      relojes.push(1)
+    }))
+    await assert.rejects(cliente.peticion('/tutores'), /conectarnos/)
+    assert.ok(relojes.length >= 1)
+  } finally { globalThis.setTimeout = original }
 })

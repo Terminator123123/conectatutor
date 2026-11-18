@@ -165,7 +165,8 @@ describe('Preparación E5/E6 · Cliente frontend con HTTP y MongoDB temporales',
       const api = cliente({ temporizador })
       const ingreso = await ingresar(api, CORREOS.elena)
       const ahora = Math.floor(Date.now() / 1000)
-      const usado = jwt.sign({ rol: 'ESTUDIANTE', ini: ahora - 300, iat: ahora - 120 }, env.jwtSecreto, {
+      // Se conserva el identificador de la sesión única que abrió el ingreso
+      const usado = jwt.sign({ rol: 'ESTUDIANTE', ini: ahora - 300, iat: ahora - 120, sid: jwt.decode(api.obtenerToken()).sid }, env.jwtSecreto, {
         subject: ingreso.id, expiresIn: aSegundos(env.sesionInactividad),
       })
       api.guardarToken(usado)
@@ -201,7 +202,7 @@ describe('Preparación E5/E6 · Cliente frontend con HTTP y MongoDB temporales',
       const pestanaB = cliente({ almacen, temporizador: relojB, alExpirarSesion: () => { avisosB += 1 } })
       // B renueva la sesión compartida (token emitido hace 2 min)
       const ahora = Math.floor(Date.now() / 1000)
-      almacen.setItem('ct.token', jwt.sign({ rol: 'ESTUDIANTE', ini: ahora - 120, iat: ahora - 120 }, env.jwtSecreto, {
+      almacen.setItem('ct.token', jwt.sign({ rol: 'ESTUDIANTE', ini: ahora - 120, iat: ahora - 120, sid: jwt.decode(almacen.getItem('ct.token')).sid }, env.jwtSecreto, {
         subject: usuario.id, expiresIn: aSegundos(env.sesionInactividad),
       }))
       await pestanaB.peticion('/auth/yo')
@@ -235,7 +236,7 @@ describe('Preparación E5/E6 · Cliente frontend con HTTP y MongoDB temporales',
     assert.equal((await api.peticion('/salud')).baseDeDatos, 'conectada')
     await cerrarServidor(temporal)
     for (let intento = 0; intento < 2; intento += 1) {
-      await assert.rejects(api.peticion('/salud', { signal: AbortSignal.timeout(3000) }), (error) => error instanceof ErrorApi && error.status === 0 && /No se pudo conectar/.test(error.message))
+      await assert.rejects(api.peticion('/salud', { signal: AbortSignal.timeout(3000) }), (error) => error instanceof ErrorApi && error.status === 0 && /No pudimos conectarnos/.test(error.message))
       assert.equal(api.obtenerToken(), 'token-local-de-prueba')
     }
   })

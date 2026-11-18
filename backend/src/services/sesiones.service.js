@@ -1,8 +1,9 @@
 import { franjasSonIguales, minutosDeFranja } from '../models/franja.schema.js'
 import { Materia, PerfilTutor, Sesion } from '../models/index.js'
-import { ESTADOS_QUE_OCUPAN_FRANJA, EstadoSesion, EstadoVerificacion, RolUsuario } from '../utils/enums.js'
+import { ESTADOS_QUE_OCUPAN_FRANJA, EstadoSesion, EstadoVerificacion, RolUsuario, TipoNotificacion } from '../utils/enums.js'
 import { aFechaGuardada, aTextoDia, diaDeLaSemana, hoyEnColombia, momentoDeInicio } from '../utils/fechas.js'
 import { HttpError } from '../utils/HttpError.js'
+import { avisarAccionDe, avisarCambio } from './notificaciones.service.js'
 
 // Sesiones de tutoría: solicitud (RQF012, RQF013), respuesta del tutor (RQF014),
 // panel "Mis sesiones" (RQF015), cancelación (RQF016), calificación (RQF017),
@@ -40,6 +41,15 @@ function papelDe(sesion, usuario) {
  * El correo de la otra parte solo aparece cuando la sesión ya fue confirmada:
  * antes de eso nadie recibe datos de contacto de nadie.
  */
+/** Crea el aviso sin que un fallo de la campana deshaga la acción ya guardada. */
+async function avisar(crearAviso) {
+  try {
+    await crearAviso()
+  } catch (error) {
+    console.error(`[Notificaciones] No se pudo crear el aviso: ${error.message}`)
+  }
+}
+
 function presentarSesion(sesion, usuario) {
   const papel = papelDe(sesion, usuario)
   const esParticipante = papel === 'SOLICITANTE' || papel === 'TUTOR'
@@ -63,6 +73,7 @@ function presentarSesion(sesion, usuario) {
     tema: sesion.tema,
     estado: sesion.estado,
     motivo: sesion.motivo,
+    motivosCancelacion: sesion.motivosCancelacion ?? [],
     calificacion: sesion.calificacion,
     reprogramacion: sesion.reprogramacion && {
       propuestaPor: String(sesion.reprogramacion.propuestaPor),
@@ -171,7 +182,9 @@ export async function solicitar(usuario, { tutor, materia, fecha, franja, tema }
     if (error?.code === 11000) throw new HttpError(409, MENSAJE_FRANJA_OCUPADA, undefined, 'RQNF012')
     throw error
   }
-  return presentarSesion(await sesion.populate(DATOS_DE_LA_SESION), usuario)
+  await sesion.populate(DATOS_DE_LA_SESION)
+  await avisar(() => avisarCambio(TipoNotificacion.SOLICITUD_NUEVA, sesion))
+  return presentarSesion(sesion, usuario)
 }
 
 /**
@@ -207,25 +220,36 @@ export async function obtener(id, usuario) {
 /** El tutor acepta la solicitud (RQF014): PENDIENTE -> CONFIRMADA. */
 export async function confirmar(id, usuario) {
   await cargarSesionComo(id, usuario, ['TUTOR'])
-  return presentarSesion(await cambiarEstado(id, [EstadoSesion.PENDIENTE], { estado: EstadoSesion.CONFIRMADA }), usuario)
+  const sesion = await cambiarEstado(id, [EstadoSesion.PENDIENTE], { estado: EstadoSesion.CONFIRMADA })
+  await avisar(() => avisarCambio(TipoNotificacion.SOLICITUD_ACEPTADA, sesion))
+  return presentarSesion(sesion, usuario)
 }
 
 /** El tutor rechaza la solicitud con un motivo (RQF014): PENDIENTE -> RECHAZADA. */
 export async function rechazar(id, usuario, motivo) {
   await cargarSesionComo(id, usuario, ['TUTOR'])
-  return presentarSesion(await cambiarEstado(id, [EstadoSesion.PENDIENTE], { estado: EstadoSesion.RECHAZADA, motivo }), usuario)
+  const sesion = await cambiarEstado(id, [EstadoSesion.PENDIENTE], { estado: EstadoSesion.RECHAZADA, motivo })
+  await avisar(() => avisarCambio(TipoNotificacion.SOLICITUD_RECHAZADA, sesion))
+  return presentarSesion(sesion, usuario)
 }
 
-/** Cualquiera de las dos partes cancela con un motivo (RQF016): PENDIENTE o CONFIRMADA -> CANCELADA. */
-export async function cancelar(id, usuario, motivo) {
+/**
+ * Cualquiera de las dos partes cancela (RQF016): PENDIENTE o CONFIRMADA -> CANCELADA.
+ * Guarda las razones marcadas en la encuesta y el texto que se muestra.
+ */
+export async function cancelar(id, usuario, { motivo, motivos = ['OTRO'] }) {
   await cargarSesionComo(id, usuario, ['SOLICITANTE', 'TUTOR'])
-  return presentarSesion(await cambiarEstado(id, ESTADOS_QUE_OCUPAN_FRANJA, { estado: EstadoSesion.CANCELADA, motivo }), usuario)
+  const sesion = await cambiarEstado(id, ESTADOS_QUE_OCUPAN_FRANJA, { estado: EstadoSesion.CANCELADA, motivo, motivosCancelacion: motivos })
+  await avisar(() => avisarAccionDe(TipoNotificacion.SESION_CANCELADA, sesion, usuario))
+  return presentarSesion(sesion, usuario)
 }
 
 /** El tutor marca la tutoría como realizada: CONFIRMADA -> FINALIZADA. */
 export async function finalizar(id, usuario) {
   await cargarSesionComo(id, usuario, ['TUTOR'])
-  return presentarSesion(await cambiarEstado(id, [EstadoSesion.CONFIRMADA], { estado: EstadoSesion.FINALIZADA }), usuario)
+  const sesion = await cambiarEstado(id, [EstadoSesion.CONFIRMADA], { estado: EstadoSesion.FINALIZADA })
+  await avisar(() => avisarCambio(TipoNotificacion.SESION_FINALIZADA, sesion))
+  return presentarSesion(sesion, usuario)
 }
 
 /**
@@ -240,6 +264,7 @@ export async function calificar(id, usuario, { puntaje, resena }) {
     { returnDocument: 'after' },
   ).populate(DATOS_DE_LA_SESION)
   if (!sesion) throw errorDeRegla('R6', 'Solo puedes calificar una sesión finalizada y una sola vez')
+  await avisar(() => avisarCambio(TipoNotificacion.CALIFICACION_RECIBIDA, sesion))
   return presentarSesion(sesion, usuario)
 }
 
@@ -266,6 +291,7 @@ export async function proponerReprogramacion(id, usuario, { fecha, franja, motiv
     }
     throw errorDeRegla('R5', 'Solo se puede reprogramar una sesión pendiente o confirmada')
   }
+  await avisar(() => avisarAccionDe(TipoNotificacion.REPROGRAMACION_PROPUESTA, sesion, usuario))
   return presentarSesion(sesion, usuario)
 }
 
@@ -300,6 +326,7 @@ export async function responderReprogramacion(id, usuario, acepta) {
     throw error
   }
   if (!sesion) throw new HttpError(409, 'La propuesta de reprogramación ya no está vigente')
+  await avisar(() => avisarAccionDe(TipoNotificacion.REPROGRAMACION_RESPONDIDA, sesion, usuario, acepta))
   return presentarSesion(sesion, usuario)
 }
 

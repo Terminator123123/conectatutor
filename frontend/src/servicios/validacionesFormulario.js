@@ -30,3 +30,18 @@ export function validarCorreo(correo, dominioCorreo) {
   return servicioAutenticacion.validarCorreoInstitucional(correo)
     ? '' : `Usa tu correo institucional (@${dominioCorreo}).`
 }
+
+/**
+ * Compara la confirmación con la contraseña desde la primera letra escrita.
+ * Mientras lo escrito va coincidiendo con el inicio de la contraseña no marca error.
+ * @param {string} confirmacion Texto del campo de confirmación.
+ * @param {string} clave Contraseña escrita.
+ * @param {boolean} [tocado=false] Si el campo ya perdió el foco o se intentó enviar.
+ * @returns {{error: string, ayuda: string}} Mensaje para el campo.
+ */
+export function estadoConfirmacion(confirmacion, clave, tocado = false) {
+  if (!confirmacion) return { error: tocado ? 'Confirma tu contraseña.' : '', ayuda: '' }
+  if (confirmacion === clave) return { error: '', ayuda: '✓ Las contraseñas coinciden.' }
+  if (!tocado && clave.startsWith(confirmacion)) return { error: '', ayuda: 'Va coincidiendo…' }
+  return { error: 'Las contraseñas no coinciden.', ayuda: '' }
+}

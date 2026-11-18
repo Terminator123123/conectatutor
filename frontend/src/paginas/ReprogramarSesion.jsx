@@ -144,7 +144,7 @@ export default function ReprogramarSesion() {
   }
 
   if (cargando) return <Cargando texto="Cargando sesión…" />
-  if (error) return <MensajeError mensaje={error} alReintentar={reintentar} />
+  if (error) return <MensajeError mensaje={error} alReintentar={reintentar} forma="formulario" />
   if (!vigente || vigente.getEstado() !== EstadoSesion.CONFIRMADA) {
     return <EstadoVacio titulo="La sesión debe estar confirmada" texto="Consulta tus sesiones para proponer otro horario." accion={{ etiqueta: 'Mis sesiones', ruta: '/sesiones' }} />
   }

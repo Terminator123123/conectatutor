@@ -49,16 +49,33 @@ const usuarioSchema = new mongoose.Schema(
     },
     // Resultado de bcrypt. `select: false`: no viaja en las consultas salvo que se pida a propósito.
     claveHash: { type: String, required: [true, 'La contraseña es obligatoria'], select: false },
+    // Sesión activa: solo una a la vez. Un ingreso nuevo la cambia y los tokens anteriores dejan de servir.
+    sesionActiva: { type: String, default: null, select: false },
+    // Foto de perfil: la imagen va aparte (select: false); `actualizada` sirve para saber si existe
+    // y para que el navegador no muestre una versión vieja.
+    foto: {
+      datos: { type: Buffer, default: null, select: false },
+      tipo: { type: String, default: null, select: false },
+      actualizada: { type: Date, default: null },
+    },
+    // Recuperación de acceso: se guarda solo el hash SHA-256 del enlace y su vencimiento.
+    recuperacion: {
+      tokenHash: { type: String, default: null, select: false },
+      vence: { type: Date, default: null, select: false },
+    },
     // Ley 1581 de 2012: se guarda cuándo aceptó el tratamiento de sus datos.
     consentimientoDatos: {
       aceptado: { type: Boolean, default: false },
       fecha: { type: Date, default: null },
     },
+    // Cuentas creadas por Coordinación: la contraseña inicial es el documento de identidad.
+    // Mientras sea true, la persona debe crear su contraseña y aceptar el tratamiento de datos.
+    primerAccesoPendiente: { type: Boolean, default: false },
   },
   { timestamps: true, collection: 'usuarios', discriminatorKey: 'tipo' },
 )
 
-aplicarSalidaJson(usuarioSchema, ['claveHash'])
+aplicarSalidaJson(usuarioSchema, ['claveHash', 'recuperacion', 'foto', 'sesionActiva'])
 
 export const Usuario = mongoose.model('Usuario', usuarioSchema)
 
