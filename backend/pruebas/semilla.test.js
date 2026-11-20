@@ -66,14 +66,16 @@ describe('E1 · Datos de demostración (seed)', () => {
 /** Doble de la conexión y de la carga: registra cada llamada para comprobar qué se intentó. */
 function crearDoble() {
   const llamadas = []
+  const uris = []
   const registrar = (nombre, resultado) => async (...args) => {
     llamadas.push(nombre)
     return resultado ?? args[0]
   }
   return {
     llamadas,
+    uris,
     conexion: {
-      conectarBaseDeDatos: registrar('conectarBaseDeDatos'),
+      conectarBaseDeDatos: async (uri) => { llamadas.push('conectarBaseDeDatos'); uris.push(uri) },
       conectarBaseEnMemoria: registrar('conectarBaseEnMemoria'),
       desconectarBaseDeDatos: registrar('desconectarBaseDeDatos'),
       asegurarIndices: registrar('asegurarIndices'),
@@ -166,7 +168,7 @@ describe('D01 · El seed no corre en producción', () => {
 describe('D01 · El seed solo acepta bases en loopback', () => {
   const sembrar = async (mongodbUri) => {
     const { ejecutar } = await import('../src/scripts/seed.js')
-    const { llamadas, conexion } = crearDoble()
+    const { llamadas, uris, conexion } = crearDoble()
     const salidas = []
     const mensajes = []
     await ejecutar({
@@ -176,13 +178,20 @@ describe('D01 · El seed solo acepta bases en loopback', () => {
       salir: (codigo) => salidas.push(codigo),
       registro: { log() {}, error: (...partes) => mensajes.push(partes.join(' ')) },
     })
-    return { llamadas, salidas, mensajes }
+    return { llamadas, salidas, mensajes, uris }
   }
 
   for (const uri of [
     'mongodb+srv://usuario:clave@cluster.example.test/conectatutor',
     'mongodb://usuario:clave@nodo1.example.test:27017,nodo2.example.test:27017/conectatutor',
     'mongodb://127.0.0.1:27017,nodo2.example.test:27017/conectatutor',
+    'mongodb://127.0.0.1:27017,localhost:27018/conectatutor_pruebas',
+    'mongodb://127.0.0.1:27017/conectatutor_pruebas?replicaSet=rs0',
+    'mongodb://127.0.0.1:27017/conectatutor_pruebas?directConnection=false',
+    'mongodb://127.0.0.1:27017/conectatutor_pruebas?loadBalanced=true',
+    'mongodb://localhost:65536/conectatutor_pruebas',
+    'mongodb://localhost:0/conectatutor_pruebas',
+    'mongodb://usuario?x:clave@localhost:27017/conectatutor_pruebas',
     'mongodb://localhost.example.test:27017/conectatutor',
     'no es una uri',
   ]) {
@@ -191,7 +200,7 @@ describe('D01 · El seed solo acepta bases en loopback', () => {
       assert.deepEqual(salidas, [1])
       assert.deepEqual(llamadas, [])
       assert.ok(mensajes.length > 0)
-      assert.ok(mensajes.every((mensaje) => !mensaje.includes('clave') && !mensaje.includes('example.test')))
+      assert.ok(mensajes.every((mensaje) => !/clave|usuario|example.test/.test(mensaje)))
     })
   }
 
@@ -199,11 +208,13 @@ describe('D01 · El seed solo acepta bases en loopback', () => {
     'mongodb://127.0.0.1:27017/conectatutor_pruebas',
     'mongodb://localhost:27017/conectatutor_pruebas',
     'mongodb://usuario:clave@[::1]:27017/conectatutor_pruebas?authSource=admin',
-    'mongodb://127.0.0.1:27017,localhost:27018/conectatutor_pruebas?replicaSet=rs0',
+    'mongodb://127.0.0.1:27017/conectatutor_pruebas?directConnection=true',
   ]) {
-    it(`acepta ${uri.split('@').pop()}`, async () => {
-      const { llamadas, salidas } = await sembrar(uri)
+    it(`acepta ${uri.split('@').pop()} y fuerza la conexión directa`, async () => {
+      const { llamadas, salidas, uris } = await sembrar(uri)
       assert.deepEqual(salidas, [])
+      assert.equal(uris.length, 1)
+      assert.equal(new URL(uris[0]).searchParams.getAll('directConnection').join(), 'true')
       assert.deepEqual(llamadas, ['conectarBaseDeDatos', 'asegurarIndices', 'cargarSemilla', 'desconectarBaseDeDatos'])
     })
   }

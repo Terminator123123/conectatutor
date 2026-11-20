@@ -4,17 +4,35 @@ import { env, revisarConfiguracion } from '../config/env.js'
 import { asegurarIndices } from '../models/index.js'
 import { cargarSemilla } from '../services/semilla.service.js'
 
-const HOSTS_LOCALES = new Set(['localhost', '127.0.0.1', '[::1]'])
+// Un solo servidor local, sin usuario ni contraseña con caracteres sin codificar y sin opciones que cambien el destino
+const FORMA_URI_LOCAL = /^mongodb:\/\/(?:[^:@/?#[\]]+(?::[^@/?#[\]]*)?@)?(localhost|127\.0\.0\.1|\[::1\])(?::(\d{1,5}))?(?:\/([^?#]*))?(?:\?([^#]*))?$/i
+const OPCIONES_PERMITIDAS = new Set(['authsource', 'appname', 'retrywrites', 'w', 'serverselectiontimeoutms', 'connecttimeoutms', 'directconnection'])
 
 /**
- * Indica si todos los servidores de la URI son de esta misma máquina.
+ * Indica si la URI apunta a un único servidor de esta misma máquina.
  * La semilla pisa datos de demostración: solo se permite sobre una base local.
+ * Rechaza varios servidores, mongodb+srv, replicaSet y cualquier opción desconocida, porque con ellas
+ * el controlador podría terminar escribiendo en un servidor remoto anunciado por el local.
  * @param {string} uri Cadena de conexión mongodb://
  */
 export function esUriLocal(uri) {
-  const partes = /^mongodb:\/\/(?:[^@/]*@)?([^/?]+)/.exec(uri)
+  const partes = FORMA_URI_LOCAL.exec(uri)
   if (!partes) return false
-  return partes[1].split(',').every((servidor) => HOSTS_LOCALES.has(servidor.replace(/:\d+$/, '').toLowerCase()))
+  const puerto = partes[2]
+  if (puerto !== undefined && !(Number(puerto) >= 1 && Number(puerto) <= 65535)) return false
+  for (const opcion of (partes[4] ?? '').split('&').filter(Boolean)) {
+    const [nombre, valor = ''] = opcion.split('=')
+    const clave = nombre.toLowerCase()
+    if (!OPCIONES_PERMITIDAS.has(clave)) return false
+    if (clave === 'directconnection' && valor.toLowerCase() !== 'true') return false
+  }
+  return true
+}
+
+/** Agrega directConnection=true: el controlador no descubre ni cambia de servidor. */
+function conConexionDirecta(uri) {
+  if (/[?&]directConnection=true(&|$)/i.test(uri)) return uri
+  return uri + (uri.includes('?') ? '&' : '?') + 'directConnection=true'
 }
 
 /**
@@ -50,14 +68,14 @@ export async function ejecutar({
   }
 
   if (configuracion.mongodbUri && !esUriLocal(configuracion.mongodbUri)) {
-    registro.error('[Seed] MONGODB_URI no apunta a una base local (localhost, 127.0.0.1 o [::1]): la semilla no se carga en servidores remotos.')
+    registro.error('[Seed] MONGODB_URI no es válida para la semilla: debe apuntar a un único servidor local (localhost, 127.0.0.1 o [::1]): la semilla solo se carga en un servidor local, sin replicaSet ni opciones que cambien el destino.')
     salir(1)
     return
   }
 
   try {
     if (configuracion.mongodbUri) {
-      await conexion.conectarBaseDeDatos(configuracion.mongodbUri)
+      await conexion.conectarBaseDeDatos(conConexionDirecta(configuracion.mongodbUri))
       await conexion.asegurarIndices()
       const totales = await conexion.cargarSemilla(configuracion.claveDemo)
       registro.log('[Seed] Datos de demostración cargados:', totales)
