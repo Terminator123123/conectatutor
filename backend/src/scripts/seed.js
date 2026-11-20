@@ -7,10 +7,20 @@ import { cargarSemilla } from '../services/semilla.service.js'
 // Un solo servidor local, con usuario y contraseña bien codificados y sin opciones que cambien el destino
 const CARACTER_URI = '(?:[^:@/?#[\\]%]|%[0-9A-Fa-f]{2})'
 const FORMA_URI_LOCAL = new RegExp(
-  `^mongodb://(?:${CARACTER_URI}+(?::${CARACTER_URI}*)?@)?(localhost|127\\.0\\.0\\.1|\\[::1\\])(?::(\\d{1,5}))?(?:/([^?#]*))?(?:\\?([^#]*))?$`,
+  `^mongodb://(?:(${CARACTER_URI}+(?::${CARACTER_URI}*)?)@)?(localhost|127\\.0\\.0\\.1|\\[::1\\])(?::(\\d{1,5}))?(?:/([^?#]*))?(?:\\?([^#]*))?$`,
   'i',
 )
-const OPCIONES_PERMITIDAS = new Set(['authsource', 'appname', 'retrywrites', 'w', 'serverselectiontimeoutms', 'connecttimeoutms', 'directconnection'])
+const OPCIONES_PERMITIDAS = new Set(['authsource', 'appname', 'retrywrites', 'w', 'serverselectiontimeoutms', 'connecttimeoutms', 'directconnection', 'tls'])
+
+/** El controlador decodifica usuario y contraseña como UTF-8: se rechazan aquí las secuencias que no lo son (p. ej. %FF). */
+function credencialesDecodificables(credenciales) {
+  try {
+    decodeURIComponent(credenciales)
+    return true
+  } catch {
+    return false
+  }
+}
 
 /**
  * Indica si la URI apunta a un único servidor de esta misma máquina.
@@ -22,9 +32,10 @@ const OPCIONES_PERMITIDAS = new Set(['authsource', 'appname', 'retrywrites', 'w'
 export function esUriLocal(uri) {
   const partes = FORMA_URI_LOCAL.exec(uri)
   if (!partes) return false
-  const puerto = partes[2]
+  if (partes[1] !== undefined && !credencialesDecodificables(partes[1])) return false
+  const puerto = partes[3]
   if (puerto !== undefined && !(Number(puerto) >= 1 && Number(puerto) <= 65535)) return false
-  for (const opcion of (partes[4] ?? '').split('&').filter(Boolean)) {
+  for (const opcion of (partes[5] ?? '').split('&').filter(Boolean)) {
     const [nombre, valor = ''] = opcion.split('=')
     const clave = nombre.toLowerCase()
     if (!OPCIONES_PERMITIDAS.has(clave)) return false

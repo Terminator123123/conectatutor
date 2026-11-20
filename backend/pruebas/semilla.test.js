@@ -195,6 +195,8 @@ describe('D01 · El seed solo acepta bases en loopback', () => {
     'mongodb://usuario?x:clave@localhost:27017/conectatutor_pruebas',
     'mongodb://usuario:cla:ve@localhost:27017/conectatutor_pruebas',
     'mongodb://usu%ZZario:clave@localhost:27017/conectatutor_pruebas',
+    'mongodb://usu%FFario:clave@localhost:27017/conectatutor_pruebas',
+    'mongodb://usuario:cla%C3@localhost:27017/conectatutor_pruebas',
     'mongodb://localhost.example.test:27017/conectatutor',
     'no es una uri',
   ]) {
@@ -215,6 +217,9 @@ describe('D01 · El seed solo acepta bases en loopback', () => {
     'mongodb://127.0.0.1:27017/conectatutor_pruebas?appName=directConnection=true',
     'mongodb://127.0.0.1:27017/conectatutor_pruebas?appName=x&directConnection=TRUE&w=1',
     'mongodb://usu%40ario:cl%3Ave@localhost:27017/conectatutor_pruebas',
+    'mongodb://usu%C3%B1ario:clave@localhost:27017/conectatutor_pruebas',
+    'mongodb://localhost:27017/conectatutor_pruebas?tls=true',
+    'mongodb://localhost:27017/conectatutor_pruebas?tls=true&authSource=admin',
     'mongodb://127.0.0.1:27017/conectatutor_pruebas?appName=x?directConnection=true',
   ]) {
     it(`acepta ${uri.split('@').pop()} y fuerza la conexión directa`, async () => {
