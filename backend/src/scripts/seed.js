@@ -1,4 +1,5 @@
 import { pathToFileURL } from 'node:url'
+import mongoose from 'mongoose'
 import { conectarBaseDeDatos, conectarBaseEnMemoria, desconectarBaseDeDatos } from '../config/database.js'
 import { env, revisarConfiguracion } from '../config/env.js'
 import { asegurarIndices } from '../models/index.js'
@@ -7,7 +8,7 @@ import { cargarSemilla } from '../services/semilla.service.js'
 // Un solo servidor local, con usuario y contraseña bien codificados y sin opciones que cambien el destino
 const CARACTER_URI = '(?:[^:@/?#[\\]%]|%[0-9A-Fa-f]{2})'
 const FORMA_URI_LOCAL = new RegExp(
-  `^mongodb://(?:(${CARACTER_URI}+(?::${CARACTER_URI}*)?)@)?(localhost|127\\.0\\.0\\.1|\\[::1\\])(?::(\\d{1,5}))?(?:/([^?#]*))?(?:\\?([^#]*))?$`,
+  `^mongodb://(?:(${CARACTER_URI}+(?::${CARACTER_URI}*)?)@)?(localhost|127\\.0\\.0\\.1|\\[::1\\])(?::(\\d+))?(?:/([^?#]*))?(?:\\?([^#]*))?$`,
   'i',
 )
 // Opciones con las que el controlador puede terminar en otro servidor: descubrir réplicas, balanceador, SRV o un proxy
@@ -47,6 +48,8 @@ function credencialesDecodificables(credenciales) {
  * @param {string} uri Cadena de conexión mongodb://
  */
 export function esUriLocal(uri) {
+  // Espacios y caracteres de control no tienen cabida en una URI local y el controlador los trata de forma imprevisible
+  if (typeof uri !== 'string' || /[\u0000-\u0020\u007f-\u009f]/.test(uri)) return false
   const partes = FORMA_URI_LOCAL.exec(uri)
   if (!partes) return false
   if (partes[1] !== undefined && !credencialesDecodificables(partes[1])) return false
@@ -57,7 +60,25 @@ export function esUriLocal(uri) {
     if (OPCIONES_QUE_CAMBIAN_DESTINO.has(clave)) return false
     if (clave === 'directconnection' && valor.trim().toLowerCase() !== 'true') return false
   }
-  return true
+  return destinoDirectoLocal(conConexionDirecta(uri))
+}
+
+const SERVIDORES_LOCALES = new Set(['localhost', '127.0.0.1', '::1', '[::1]'])
+
+/**
+ * Comprobación final con el analizador del propio controlador, sin conectar: lo que cuenta es cómo entiende la URI,
+ * no su texto. Exige un solo servidor local, conexión directa y ninguna opción de réplica, balanceador, SRV o proxy.
+ */
+function destinoDirectoLocal(uri) {
+  try {
+    const opciones = new mongoose.mongo.MongoClient(uri).options
+    if (opciones.hosts.length !== 1) return false
+    const { host, socketPath } = opciones.hosts[0]
+    if (socketPath || !SERVIDORES_LOCALES.has(String(host).toLowerCase())) return false
+    return opciones.directConnection === true && !opciones.loadBalanced && !opciones.replicaSet && !opciones.srvHost && !opciones.proxyHost
+  } catch {
+    return false
+  }
 }
 
 /**

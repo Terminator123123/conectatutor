@@ -194,6 +194,11 @@ describe('D01 · El seed solo acepta bases en loopback', () => {
     'mongodb://127.0.0.1:27017/conectatutor_pruebas?ReplicaSet=rs0',
     'mongodb://127.0.0.1:27017/conectatutor_pruebas?directConnection=%66alse',
     'mongodb://127.0.0.1:27017/conectatutor_pruebas?srvServiceName=otro',
+    'mongodb://127.0.0.1:27017/conectatutor_pruebas?appName=x\u0001&directConnection=false',
+    'mongodb://127.0.0.1:27017/conectatutor_pruebas?\u0001directConnection=false',
+    'mongodb://127.0.0.1:27017/conectatutor_pruebas?directConnection\u0000=false',
+    'mongodb://127.0.0.1:27017/conectatutor_pruebas?appName=a b',
+    'mongodb://127.0.0.1:27017/conectatutor_pruebas?opcionInventada=1',
     'mongodb://127.0.0.1:27017/conectatutor_pruebas?srvMaxHosts=2',
     'mongodb://127.0.0.1:27017/conectatutor_pruebas?proxyHost=proxy.example.test&proxyPort=1080',
     'mongodb://localhost:65536/conectatutor_pruebas',
@@ -229,6 +234,7 @@ describe('D01 · El seed solo acepta bases en loopback', () => {
     'mongodb://127.0.0.1:27017/conectatutor_pruebas?appName=x?directConnection=true',
     'mongodb://127.0.0.1:27017/conectatutor_pruebas?directConnectio%6E=true',
     'mongodb://127.0.0.1:27017/conectatutor_pruebas?maxPoolSize=5&readPreference=primary',
+    'mongodb://localhost:027017/conectatutor_pruebas',
   ]) {
     it(`acepta ${uri.split('@').pop()} y fuerza la conexión directa`, async () => {
       const { llamadas, salidas, uris } = await sembrar(uri)
