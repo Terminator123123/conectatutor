@@ -39,15 +39,36 @@ export function crearRepositorioApi({ cliente = crearClienteApi() } = {}) {
     return usuarioDesdeApi(datos)
   }
 
+  /**
+   * Indica si el token guardado sigue siendo de la misma sesión que `token` (sin token: si sigue sin sesión).
+   * Renovar el token no cambia la sesión (cuenta, sesión e inicio); cerrarla, que expire o iniciar otra, sí.
+   */
+  function sigueLaSesion(token) {
+    const guardado = cliente.obtenerToken()
+    if (!token || !guardado) return !token && !guardado
+    return guardado === token || (sesionDelToken(guardado) !== null && sesionDelToken(guardado) === sesionDelToken(token))
+  }
+
+  const accesoVencido = () => new ErrorApi('La solicitud de acceso ya no está vigente. Vuelve a iniciar sesión')
+
   async function autenticar(ruta, datos) {
     const revision = ++revisionAcceso
-    const resultado = await pedir(ruta, { metodo: 'POST', datos, autenticada: false })
-    if (revision !== revisionAcceso) throw new ErrorApi('La solicitud de acceso ya no está vigente. Vuelve a iniciar sesión')
-    usuarioDesdeApi(resultado.usuario)
-    cliente.guardarToken(resultado.token)
-    const usuario = await conPerfilPropio(resultado.usuario)
-    if (revision !== revisionAcceso) throw new ErrorApi('La solicitud de acceso ya no está vigente. Vuelve a iniciar sesión')
-    return usuario
+    // El almacenamiento lo comparten todas las pestañas. Si mientras esta espera la respuesta otra pestaña
+    // (o esta) empieza otro ingreso, completa uno o cierra la sesión, esta respuesta llegó tarde y no puede
+    // deshacer lo que pasó después, aunque el token haya vuelto a quedar como estaba.
+    const turno = cliente.iniciarAcceso()
+    const tokenAlEmpezar = cliente.obtenerToken()
+    try {
+      const resultado = await pedir(ruta, { metodo: 'POST', datos, autenticada: false })
+      if (revision !== revisionAcceso || !cliente.accesoVigente(turno) || !sigueLaSesion(tokenAlEmpezar)) throw accesoVencido()
+      usuarioDesdeApi(resultado.usuario)
+      cliente.guardarToken(resultado.token)
+      const usuario = await conPerfilPropio(resultado.usuario)
+      if (revision !== revisionAcceso || !sigueLaSesion(resultado.token)) throw accesoVencido()
+      return usuario
+    } finally {
+      cliente.terminarAcceso(turno)
+    }
   }
 
   async function convertirSesiones(datos, respaldo = []) {
@@ -277,12 +298,37 @@ export function crearRepositorioApi({ cliente = crearClienteApi() } = {}) {
       return conPerfilPropio(await exigirCuenta(id))
     },
 
-    // Primer ingreso de una cuenta creada por Coordinación (RQF001, RQF002, RQNF009).
+    // Primer ingreso de una cuenta creada por Coordinación (RQF001, RQF002, RQNF009). Devuelve la cuenta ya
+    // activada, o null si mientras tanto la sesión guardada expiró, se cerró o pasó a ser otra: esa
+    // confirmación llegó tarde y no debe reemplazar la sesión vigente.
     async completarPrimerAcceso({ claveNueva, quiereSerTutor, aceptaTratamientoDatos }) {
-      const { usuario } = await pedir('/auth/yo/primer-acceso', {
-        metodo: 'POST', datos: { claveNueva, quiereSerTutor: quiereSerTutor === true, aceptaTratamientoDatos: aceptaTratamientoDatos === true },
-      })
-      return conPerfilPropio(usuario)
+      const token = cliente.obtenerToken()
+      const revision = cliente.revisionSesion?.()
+      const vigente = () => Boolean(token) && sigueLaSesion(token) && cliente.revisionSesion?.() === revision
+      let cuenta
+      try {
+        ({ usuario: cuenta } = await pedir('/auth/yo/primer-acceso', {
+          metodo: 'POST', datos: { claveNueva, quiereSerTutor: quiereSerTutor === true, aceptaTratamientoDatos: aceptaTratamientoDatos === true },
+        }))
+      } catch (error) {
+        if (error.status !== 409) throw error
+        // 409: si la activación ya había quedado guardada (por ejemplo, se perdió la respuesta de un intento
+        // anterior), se relee la cuenta y el intento se da por cumplido. Si sigue sin activar, el conflicto es
+        // otro y se informa el mensaje de la API.
+        if (!vigente()) return null
+        cuenta = await cuentaPropia()
+        if (!vigente()) return null
+        if (cuenta.primerAccesoPendiente === true) throw error
+      }
+      if (!vigente()) return null
+      // La activación ya quedó guardada: si falla la lectura auxiliar del perfil, se devuelve la cuenta confirmada
+      let activada
+      try {
+        activada = await conPerfilPropio(cuenta)
+      } catch {
+        activada = usuarioDesdeApi(cuenta)
+      }
+      return vigente() ? activada : null
     },
 
     // Coordinación crea la cuenta de un estudiante; la contraseña inicial es su documento.

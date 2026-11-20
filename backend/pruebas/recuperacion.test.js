@@ -1,14 +1,17 @@
 import { CLAVE_DE_PRUEBA, detenerBaseDePrueba, iniciarBaseDePrueba, vaciarBaseDePrueba } from './ayudas/base.js'
 
 import assert from 'node:assert/strict'
+import bcrypt from 'bcryptjs'
 import { after, before, beforeEach, describe, it } from 'node:test'
 import request from 'supertest'
 import { app } from '../src/app.js'
 import { reiniciarIntentos } from '../src/middlewares/limitarIntentos.js'
-import { Usuario } from '../src/models/index.js'
+import { Programa, Usuario } from '../src/models/index.js'
 import { bandejaDePrueba, correoDisponible } from '../src/services/correo.service.js'
 import { cargarSemilla } from '../src/services/semilla.service.js'
 import { afirmarContrato } from './ayudas/contrato.js'
+import { crearRetencion } from './ayudas/retencion.js'
+import { clienteDe, CORREOS } from './ayudas/sesion.js'
 
 const CORREO = 'elena.lozano@uniguajira.edu.co'
 const tokenDelCorreo = () => /token=([\w-]+)/.exec(bandejaDePrueba.at(-1).texto)[1]
@@ -98,6 +101,94 @@ describe('Recuperación de acceso por correo', () => {
     assert.equal(comprobar.status, 400)
     const usar = await request(app).post('/api/auth/recuperacion/restablecer').send({ token, clave: 'ClaveDelEnlace9' })
     assert.equal(usar.status, 400)
+  })
+
+  it('un cambio desde la cuenta que quedó a medias no sobrescribe un restablecimiento terminado', async () => {
+    await request(app).post('/api/auth/recuperacion').send({ correoInstitucional: CORREO })
+    const token = tokenDelCorreo()
+    const ingreso = await request(app).post('/api/auth/ingreso').send({ correoInstitucional: CORREO, clave: CLAVE_DE_PRUEBA })
+    const CLAVE_CAMBIO = 'ClaveDelCambio9'
+    const CLAVE_ENLACE = 'ClaveDelEnlace9'
+
+    // Se detiene el cambio justo después de comprobar la contraseña actual, mientras cifra la nueva
+    const retencion = crearRetencion()
+    const hashOriginal = bcrypt.hash
+    bcrypt.hash = async function (clave, ...resto) {
+      if (clave === CLAVE_CAMBIO) await retencion.detener()
+      return hashOriginal.call(this, clave, ...resto)
+    }
+    let cambioPendiente
+    try {
+      cambioPendiente = request(app).put('/api/auth/yo/clave').set('Authorization', `Bearer ${ingreso.body.token}`)
+        .send({ claveActual: CLAVE_DE_PRUEBA, claveNueva: CLAVE_CAMBIO })
+        .then((respuesta) => respuesta)
+      // Si el cambio terminara sin llegar al cifrado, la prueba falla en vez de quedarse esperando
+      await retencion.esperarLlegada(cambioPendiente)
+      const restablecer = await request(app).post('/api/auth/recuperacion/restablecer').send({ token, clave: CLAVE_ENLACE })
+      assert.equal(restablecer.status, 200)
+      retencion.soltar()
+      const cambio = await cambioPendiente
+      assert.equal(cambio.status, 409)
+      await afirmarContrato(cambio, '/auth/yo/clave', 'put')
+    } finally {
+      // Pase lo que pase, el cambio retenido se libera y termina antes de seguir
+      retencion.soltar()
+      bcrypt.hash = hashOriginal
+      await cambioPendiente?.catch(() => {})
+    }
+
+    reiniciarIntentos()
+    const conEnlace = await request(app).post('/api/auth/ingreso').send({ correoInstitucional: CORREO, clave: CLAVE_ENLACE })
+    const conCambio = await request(app).post('/api/auth/ingreso').send({ correoInstitucional: CORREO, clave: CLAVE_CAMBIO })
+    assert.equal(conEnlace.status, 200)
+    assert.equal(conCambio.status, 401)
+  })
+
+  it('si una recuperación termina mientras se activa la cuenta, el 409 lo dice y la cuenta sigue sin activar', async () => {
+    const coordinacion = await clienteDe(CORREOS.administrador)
+    const NUEVA = 'cuenta.recuperada@uniguajira.edu.co'
+    const DOCUMENTO = '1033445566'
+    const CLAVE_ACTIVACION = 'ClaveDeActivacion9'
+    const CLAVE_ENLACE = 'ClaveDelEnlace9'
+    const creada = await coordinacion.post('/coordinacion/cuentas', {
+      nombre: 'Cuenta Recuperada', correoInstitucional: NUEVA, documento: DOCUMENTO, semestre: 1, sede: 'Riohacha', programa: (await Programa.findOne()).id,
+    })
+    assert.equal(creada.status, 201)
+    const ingreso = await request(app).post('/api/auth/ingreso').send({ correoInstitucional: NUEVA, clave: DOCUMENTO })
+    await request(app).post('/api/auth/recuperacion').send({ correoInstitucional: NUEVA })
+    const token = tokenDelCorreo()
+
+    // La activación se detiene mientras cifra la contraseña nueva; entretanto se usa el enlace de recuperación
+    const retencion = crearRetencion()
+    const hashOriginal = bcrypt.hash
+    bcrypt.hash = async function (clave, ...resto) {
+      if (clave === CLAVE_ACTIVACION) await retencion.detener()
+      return hashOriginal.call(this, clave, ...resto)
+    }
+    let activacion
+    try {
+      activacion = request(app).post('/api/auth/yo/primer-acceso').set('Authorization', `Bearer ${ingreso.body.token}`)
+        .send({ claveNueva: CLAVE_ACTIVACION, quiereSerTutor: false, aceptaTratamientoDatos: true })
+        .then((respuesta) => respuesta)
+      await retencion.esperarLlegada(activacion)
+      assert.equal((await request(app).post('/api/auth/recuperacion/restablecer').send({ token, clave: CLAVE_ENLACE })).status, 200)
+      retencion.soltar()
+      const respuesta = await activacion
+      assert.equal(respuesta.status, 409)
+      assert.match(respuesta.body.mensaje, /restableció con un enlace de recuperación/)
+      assert.doesNotMatch(respuesta.body.mensaje, /ya está activada/)
+      await afirmarContrato(respuesta, '/auth/yo/primer-acceso', 'post')
+    } finally {
+      retencion.soltar()
+      bcrypt.hash = hashOriginal
+      await activacion?.catch(() => {})
+    }
+
+    reiniciarIntentos()
+    const conEnlace = await request(app).post('/api/auth/ingreso').send({ correoInstitucional: NUEVA, clave: CLAVE_ENLACE })
+    assert.equal(conEnlace.status, 200)
+    assert.equal(conEnlace.body.usuario.primerAccesoPendiente, true, 'la cuenta sigue pidiendo la activación')
+    assert.equal((await request(app).post('/api/auth/ingreso').send({ correoInstitucional: NUEVA, clave: CLAVE_ACTIVACION })).status, 401)
   })
 
   it('en producción sin cuenta de correo no hay recuperación (no se escriben enlaces en el registro)', () => {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { repositorio, servicioAutenticacion, suscribirExpiracionSesion } from '../servicios/instancias.js'
+import { aplicarConfirmacion } from './confirmacionCuenta.js'
 import { ContextoAutenticacion } from './ContextoAutenticacion.js'
 
 export default function ProveedorAutenticacion({ children }) {
@@ -78,9 +79,18 @@ export default function ProveedorAutenticacion({ children }) {
     return restaurado
   }, [])
 
+  // Muestra la cuenta que devuelve una mutación ya guardada (p. ej. el primer acceso) sin otra consulta.
+  // Si mientras se esperaba la sesión expiró, se cerró o cambió, esa confirmación no se muestra.
+  const confirmarCuenta = useCallback((mutacion) => aplicarConfirmacion({
+    mutacion,
+    revision: () => revision.current,
+    publicar: (cuenta) => flushSync(() => { setUsuario(cuenta); setSesionExpirada(false); setErrorInicial(''); setCargando(false) }),
+    releer: restaurarSesion,
+  }), [restaurarSesion])
+
   const valor = useMemo(() => ({
-    usuario, cargando, errorInicial, sesionExpirada, iniciarSesion, registrar, cerrarSesion, actualizarUsuario, reintentarSesion,
-  }), [usuario, cargando, errorInicial, sesionExpirada, iniciarSesion, registrar, cerrarSesion, actualizarUsuario, reintentarSesion])
+    usuario, cargando, errorInicial, sesionExpirada, iniciarSesion, registrar, cerrarSesion, actualizarUsuario, confirmarCuenta, reintentarSesion,
+  }), [usuario, cargando, errorInicial, sesionExpirada, iniciarSesion, registrar, cerrarSesion, actualizarUsuario, confirmarCuenta, reintentarSesion])
 
   return <ContextoAutenticacion.Provider value={valor}>{children}</ContextoAutenticacion.Provider>
 }

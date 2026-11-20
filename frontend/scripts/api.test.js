@@ -248,6 +248,32 @@ test('un ingreso anterior no reemplaza el token de un acceso más reciente', asy
   assert.equal(cliente.obtenerToken(), 'token-reciente')
 })
 
+test('entrar y salir en otra pestaña durante un ingreso pendiente impide que su respuesta restaure el token', async () => {
+  let responder
+  const almacen = crearAlmacen()
+  const cliente = crearClienteApi({ urlBase: 'http://localhost:3000/api/', almacen, fetchImpl: () => new Promise((resolver) => { responder = resolver }) })
+  const otraPestana = crearClienteApi({ urlBase: 'http://localhost:3000/api/', almacen, fetchImpl: async () => json({}) })
+  const pendiente = crearRepositorioApi({ cliente }).iniciarSesion('estudiante@uniguajira.edu.co', 'clave-de-prueba')
+  // El almacenamiento vuelve a quedar sin token, igual que al empezar el ingreso
+  otraPestana.guardarToken('token-de-otra-pestana')
+  otraPestana.cerrarSesion()
+  responder(json({ usuario: cuentaDeAcceso, token: 'token-atrasado' }))
+  await assert.rejects(pendiente, /solicitud de acceso ya no está vigente/)
+  assert.equal(cliente.obtenerToken(), null)
+  assert.equal(almacen.getItem('ct.acceso'), null)
+})
+
+test('un ingreso rechazado o completado no deja su marca en el almacenamiento', async () => {
+  const respuestas = [json({ mensaje: 'Correo o contraseña incorrectos' }, 401), json({ usuario: cuentaDeAcceso, token: 'token-valido' })]
+  const { cliente, almacen } = preparar(async () => respuestas.shift())
+  const repositorio = crearRepositorioApi({ cliente })
+  await assert.rejects(repositorio.iniciarSesion('estudiante@uniguajira.edu.co', 'clave-mala'), { status: 401 })
+  assert.equal(almacen.getItem('ct.acceso'), null)
+  assert.equal((await repositorio.iniciarSesion('estudiante@uniguajira.edu.co', 'clave-buena')).getId(), cuentaDeAcceso.id)
+  assert.equal(almacen.getItem('ct.acceso'), null)
+  assert.equal(cliente.obtenerToken(), 'token-valido')
+})
+
 test('una petición que no recibe respuesta termina como falta de conexión en vez de cargar para siempre', async () => {
   const relojes = []
   const original = globalThis.setTimeout

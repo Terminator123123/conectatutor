@@ -5,6 +5,10 @@ export function urlFotoDe(usuarioId, version = 0) {
   return `${URL_API.replace(/\/+$/, '')}/usuarios/${encodeURIComponent(usuarioId)}/foto${version ? `?v=${version}` : ''}`
 }
 const CLAVE_TOKEN = 'ct.token'
+// Ingreso en curso en alguna pestaña. Empezar otro, completar uno o cerrar la sesión la cambia o la borra:
+// así la respuesta atrasada de un ingreso sabe si después pasó algo en el almacenamiento compartido,
+// aunque el token haya vuelto a quedar como estaba (por ejemplo, otra pestaña entró y salió).
+const CLAVE_ACCESO = 'ct.acceso'
 
 /** Mensaje de error de red; MensajeError lo reconoce para reconectar solo, sin botón. */
 export const MENSAJE_SIN_CONEXION = 'No pudimos conectarnos con ConectaTutor. Estamos intentando de nuevo'
@@ -116,13 +120,30 @@ export function crearClienteApi({
   function guardarToken(token) {
     if (typeof token !== 'string' || !token.trim()) throw new TypeError('El token debe ser un texto no vacío')
     almacen.setItem(CLAVE_TOKEN, token)
+    almacen.removeItem(CLAVE_ACCESO)
     revisionSesion += 1
     programarVencimiento(token)
   }
   function cerrarSesion() {
     almacen.removeItem(CLAVE_TOKEN)
+    almacen.removeItem(CLAVE_ACCESO)
     revisionSesion += 1
     programarVencimiento(null)
+  }
+
+  let ingresosEmpezados = 0
+  /** Anota que empieza un ingreso; deja sin vigencia el que estuviera en curso en otra pestaña. */
+  function iniciarAcceso() {
+    ingresosEmpezados += 1
+    const turno = `${reloj().toString(36)}.${ingresosEmpezados}.${Math.random().toString(36).slice(2)}`
+    almacen.setItem(CLAVE_ACCESO, turno)
+    return turno
+  }
+  /** Indica si desde que empezó el ingreso nadie inició otro, completó uno ni cerró la sesión. */
+  const accesoVigente = (turno) => almacen.getItem(CLAVE_ACCESO) === turno
+  /** Quita la marca del ingreso si sigue siendo la suya. */
+  function terminarAcceso(turno) {
+    if (accesoVigente(turno)) almacen.removeItem(CLAVE_ACCESO)
   }
 
   programarVencimiento(obtenerToken())
@@ -211,7 +232,7 @@ export function crearClienteApi({
   }
 
   return {
-    peticion, obtenerToken, guardarToken, cerrarSesion,
+    peticion, obtenerToken, guardarToken, cerrarSesion, iniciarAcceso, accesoVigente, terminarAcceso,
     tieneSesionGuardada: () => Boolean(obtenerToken()),
     /** Cambia al iniciar o cerrar sesión en esta pestaña; no cambia al renovar el token. */
     revisionSesion: () => revisionSesion,

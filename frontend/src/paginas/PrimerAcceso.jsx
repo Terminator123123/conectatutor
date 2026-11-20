@@ -16,7 +16,7 @@ import '../estilos/autenticacion.css'
 /** @returns {import('react').ReactElement} Activación de la cuenta. */
 export default function PrimerAcceso() {
   useTituloPagina('Activa tu cuenta')
-  const { usuario, actualizarUsuario, cerrarSesion } = useAutenticacion()
+  const { usuario, confirmarCuenta, cerrarSesion } = useAutenticacion()
   const navigate = useNavigate()
   const { state } = useLocation()
   const [campos, setCampos] = useState({ clave: '', confirmacion: '' })
@@ -45,9 +45,17 @@ export default function PrimerAcceso() {
     if (fallo) { setError(fallo); return }
     setEnviando(true)
     try {
-      await repositorio.completarPrimerAcceso({ claveNueva: campos.clave, quiereSerTutor: uso === 'tutor', aceptaTratamientoDatos: true })
-      const activado = await actualizarUsuario()
-      if (!activado) return
+      // Se muestra la cuenta que confirma la activación, sin otra lectura. Si un intento anterior ya la había
+      // guardado (este recibe 409), el repositorio relee la cuenta y la da por activada.
+      const activado = await confirmarCuenta(() => repositorio.completarPrimerAcceso({
+        claveNueva: campos.clave, quiereSerTutor: uso === 'tutor', aceptaTratamientoDatos: true,
+      }))
+      if (!activado) {
+        // La sesión cambió mientras tanto (expiró o se abrió otra): ya se muestra la vigente
+        setError('Tu sesión cambió mientras se activaba la cuenta. Revisa con qué cuenta sigues.')
+        setEnviando(false)
+        return
+      }
       const desde = state?.desde
       navigate(uso === 'tutor' ? '/perfil' : destinoPermitido(desde, activado) ? desde : rutaInicialDe(activado), { replace: true })
     } catch (problema) {
