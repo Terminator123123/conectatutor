@@ -18,7 +18,7 @@ El backend sigue el flujo rutas → middlewares de validación → controladores
 
 ## Requisitos
 
-- Node.js 20.19 o superior dentro de la rama 20, o 22.12 en adelante (la rama 21 no sirve: Vite y Mongoose no la admiten), y npm.
+- Node.js 20.19 o superior dentro de la rama 20, o 22.12 en adelante, y npm. Es el rango que exige Vite para el frontend y el que declaran los dos `package.json`; la rama 21 queda fuera por Vite (Mongoose pide al menos 20.19).
 - MongoDB es opcional en desarrollo. Si `MONGODB_URI` queda vacía, la API arranca con una base temporal en memoria y carga los datos de demostración. La primera vez descarga el binario de MongoDB para pruebas, así que tarda un poco.
 
 ## Instalación y arranque

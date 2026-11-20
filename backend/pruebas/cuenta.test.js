@@ -1,12 +1,14 @@
 import { CLAVE_DE_PRUEBA, detenerBaseDePrueba, iniciarBaseDePrueba, vaciarBaseDePrueba } from './ayudas/base.js'
 
 import assert from 'node:assert/strict'
+import bcrypt from 'bcryptjs'
 import { after, before, beforeEach, describe, it } from 'node:test'
 import request from 'supertest'
 import { app } from '../src/app.js'
 import { reiniciarIntentos } from '../src/middlewares/limitarIntentos.js'
 import { cargarSemilla } from '../src/services/semilla.service.js'
 import { afirmarContrato } from './ayudas/contrato.js'
+import { crearRetencion } from './ayudas/retencion.js'
 
 const CORREO = 'elena.lozano@uniguajira.edu.co'
 // PNG de 1 × 1 píxel
@@ -40,6 +42,35 @@ describe('Cuenta propia: contraseña y foto', () => {
     assert.ok(await tokenDe(CORREO, 'ClaveNueva22'))
     assert.equal(await tokenDe(CORREO), undefined)
     assert.equal((await request(app).put('/api/auth/yo/clave').send({ claveActual: 'a', claveNueva: 'ClaveNueva33' })).status, 401)
+  })
+
+  it('de dos cambios de contraseña simultáneos gana el primero en guardarse; el otro recibe 409 y no la pisa', async () => {
+    const con = () => request(app).put('/api/auth/yo/clave').set('Authorization', `Bearer ${token}`)
+    // El primer cambio se detiene mientras cifra su contraseña nueva; entretanto otro cambio termina
+    const retencion = crearRetencion()
+    const hashOriginal = bcrypt.hash
+    bcrypt.hash = async function (clave, ...resto) {
+      if (clave === 'ClavePrimera1') await retencion.detener()
+      return hashOriginal.call(this, clave, ...resto)
+    }
+    let primero
+    try {
+      primero = con().send({ claveActual: CLAVE_DE_PRUEBA, claveNueva: 'ClavePrimera1' }).then((respuesta) => respuesta)
+      await retencion.esperarLlegada(primero)
+      assert.equal((await con().send({ claveActual: CLAVE_DE_PRUEBA, claveNueva: 'ClaveSegunda2' })).status, 200)
+      retencion.soltar()
+      const atrasado = await primero
+      assert.equal(atrasado.status, 409)
+      assert.match(atrasado.body.mensaje, /cambió mientras se guardaba este cambio/)
+      await afirmarContrato(atrasado, '/auth/yo/clave', 'put')
+    } finally {
+      retencion.soltar()
+      bcrypt.hash = hashOriginal
+      await primero?.catch(() => {})
+    }
+    reiniciarIntentos()
+    assert.ok(await tokenDe(CORREO, 'ClaveSegunda2'))
+    assert.equal(await tokenDe(CORREO, 'ClavePrimera1'), undefined)
   })
 
   it('guarda, muestra y quita la foto de perfil', async () => {

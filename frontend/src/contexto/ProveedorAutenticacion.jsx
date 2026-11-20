@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { repositorio, servicioAutenticacion, suscribirExpiracionSesion } from '../servicios/instancias.js'
+import { aplicarConfirmacion } from './confirmacionCuenta.js'
 import { ContextoAutenticacion } from './ContextoAutenticacion.js'
 
 export default function ProveedorAutenticacion({ children }) {
@@ -67,12 +68,10 @@ export default function ProveedorAutenticacion({ children }) {
     flushSync(() => { setUsuario(null); setSesionExpirada(false); setErrorInicial(''); setCargando(false) })
   }, [])
 
-  // Con `confirmado` (la cuenta que devolvió una mutación ya guardada) se usa tal cual, sin otra consulta:
-  // si esa lectura fallara, la mutación ya hecha se presentaría como fallida.
-  const actualizarUsuario = useCallback(async (confirmado) => {
+  const actualizarUsuario = useCallback(async () => {
     const actual = revision.current
     const habiaSesion = repositorio.tieneSesionGuardada()
-    const restaurado = confirmado ?? await repositorio.obtenerSesionActual()
+    const restaurado = await repositorio.obtenerSesionActual()
     if (actual === revision.current) flushSync(() => {
       setUsuario(restaurado)
       setSesionExpirada(habiaSesion && !restaurado)
@@ -80,9 +79,18 @@ export default function ProveedorAutenticacion({ children }) {
     return restaurado
   }, [])
 
+  // Muestra la cuenta que devuelve una mutación ya guardada (p. ej. el primer acceso) sin otra consulta.
+  // Si mientras se esperaba la sesión expiró, se cerró o cambió, esa confirmación no se muestra.
+  const confirmarCuenta = useCallback((mutacion) => aplicarConfirmacion({
+    mutacion,
+    revision: () => revision.current,
+    publicar: (cuenta) => flushSync(() => { setUsuario(cuenta); setSesionExpirada(false); setErrorInicial(''); setCargando(false) }),
+    releer: restaurarSesion,
+  }), [restaurarSesion])
+
   const valor = useMemo(() => ({
-    usuario, cargando, errorInicial, sesionExpirada, iniciarSesion, registrar, cerrarSesion, actualizarUsuario, reintentarSesion,
-  }), [usuario, cargando, errorInicial, sesionExpirada, iniciarSesion, registrar, cerrarSesion, actualizarUsuario, reintentarSesion])
+    usuario, cargando, errorInicial, sesionExpirada, iniciarSesion, registrar, cerrarSesion, actualizarUsuario, confirmarCuenta, reintentarSesion,
+  }), [usuario, cargando, errorInicial, sesionExpirada, iniciarSesion, registrar, cerrarSesion, actualizarUsuario, confirmarCuenta, reintentarSesion])
 
   return <ContextoAutenticacion.Provider value={valor}>{children}</ContextoAutenticacion.Provider>
 }

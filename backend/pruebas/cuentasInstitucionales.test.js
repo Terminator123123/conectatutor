@@ -77,6 +77,7 @@ describe('Cuentas creadas por Coordinación y primer acceso (RQF001, RQF002, RQN
 
     const yaActivada = await primerAcceso({ claveNueva: 'MiClave2026', quiereSerTutor: false, aceptaTratamientoDatos: true })
     assert.equal(yaActivada.status, 409)
+    assert.equal(yaActivada.body.mensaje, 'Tu cuenta ya está activada')
     assert.equal((await ingresar()).status, 401, 'el documento deja de servir como contraseña')
     const conNueva = await ingresar(`${DOCUMENTO}a`)
     assert.equal(conNueva.status, 200)

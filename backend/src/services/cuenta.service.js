@@ -15,13 +15,13 @@ export async function cambiarClave(usuarioId, claveActual, claveNueva) {
     throw new HttpError(400, 'La contraseña actual no es correcta')
   }
   // Un enlace de recuperación pedido antes deja de servir: ya no podría pisar la contraseña nueva.
-  // Solo se escribe si la contraseña sigue siendo la que se comprobó: si entretanto se restableció
-  // por recuperación, este cambio ya no está autorizado y no puede sobrescribirla.
+  // Solo se escribe si la contraseña sigue siendo la que se comprobó: si entretanto cambió (otro cambio
+  // de la cuenta o un restablecimiento por recuperación), este cambio ya no está autorizado y no la pisa.
   const { modifiedCount } = await Usuario.updateOne({ _id: usuario._id, claveHash: usuario.claveHash }, {
     $set: { claveHash: await cifrarClave(claveNueva), 'recuperacion.tokenHash': null, 'recuperacion.vence': null },
   })
   if (modifiedCount !== 1) {
-    throw new HttpError(409, 'Tu contraseña cambió mientras se guardaba este cambio. Ingresa con la contraseña nueva')
+    throw new HttpError(409, 'Tu contraseña cambió mientras se guardaba este cambio, así que este no se aplicó. Usa la contraseña más reciente')
   }
 }
 
@@ -43,7 +43,12 @@ export async function completarPrimerAcceso(usuarioId, { claveNueva, quiereSerTu
       'recuperacion.tokenHash': null, 'recuperacion.vence': null,
     },
   })
-  if (modifiedCount !== 1) throw new HttpError(409, 'Tu cuenta ya está activada')
+  if (modifiedCount !== 1) {
+    // Otra petición se adelantó: se dice cuál. Sin activar, solo una recuperación puede cambiar la contraseña.
+    const actual = await Usuario.findById(usuario._id)
+    if (!actual?.primerAccesoPendiente) throw new HttpError(409, 'Tu cuenta ya está activada')
+    throw new HttpError(409, 'Tu contraseña se restableció con un enlace de recuperación mientras activabas la cuenta. Ingresa con la contraseña nueva para terminar la activación')
+  }
 }
 
 /**

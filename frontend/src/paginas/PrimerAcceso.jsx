@@ -5,7 +5,6 @@ import { INSTITUCION } from '../config/institucion.js'
 import { useAutenticacion } from '../contexto/useAutenticacion.js'
 import { useTituloPagina } from '../hooks/useTituloPagina.js'
 import { repositorio } from '../servicios/instancias.js'
-import { cuentaSinActivar } from '../servicios/mapeoApi.js'
 import { destinoPermitido, rutaInicialDe } from '../servicios/rutasPorRol.js'
 import { estadoConfirmacion, validarClave } from '../servicios/validacionesFormulario.js'
 import Boton from '../componentes/ui/Boton.jsx'
@@ -17,7 +16,7 @@ import '../estilos/autenticacion.css'
 /** @returns {import('react').ReactElement} Activación de la cuenta. */
 export default function PrimerAcceso() {
   useTituloPagina('Activa tu cuenta')
-  const { usuario, actualizarUsuario, cerrarSesion } = useAutenticacion()
+  const { usuario, confirmarCuenta, cerrarSesion } = useAutenticacion()
   const navigate = useNavigate()
   const { state } = useLocation()
   const [campos, setCampos] = useState({ clave: '', confirmacion: '' })
@@ -46,19 +45,17 @@ export default function PrimerAcceso() {
     if (fallo) { setError(fallo); return }
     setEnviando(true)
     try {
-      let activado
-      try {
-        // La cuenta que confirma la activación se usa directamente: no depende de otra lectura
-        activado = await actualizarUsuario(await repositorio.completarPrimerAcceso({
-          claveNueva: campos.clave, quiereSerTutor: uso === 'tutor', aceptaTratamientoDatos: true,
-        }))
-      } catch (problema) {
-        // 409: la activación ya quedó guardada (p. ej. se perdió la respuesta anterior). Se relee la cuenta.
-        if (problema.status !== 409) throw problema
-        activado = await actualizarUsuario()
-        if (cuentaSinActivar(activado)) throw problema
+      // Se muestra la cuenta que confirma la activación, sin otra lectura. Si un intento anterior ya la había
+      // guardado (este recibe 409), el repositorio relee la cuenta y la da por activada.
+      const activado = await confirmarCuenta(() => repositorio.completarPrimerAcceso({
+        claveNueva: campos.clave, quiereSerTutor: uso === 'tutor', aceptaTratamientoDatos: true,
+      }))
+      if (!activado) {
+        // La sesión cambió mientras tanto (expiró o se abrió otra): ya se muestra la vigente
+        setError('Tu sesión cambió mientras se activaba la cuenta. Revisa con qué cuenta sigues.')
+        setEnviando(false)
+        return
       }
-      if (!activado) return
       const desde = state?.desde
       navigate(uso === 'tutor' ? '/perfil' : destinoPermitido(desde, activado) ? desde : rutaInicialDe(activado), { replace: true })
     } catch (problema) {

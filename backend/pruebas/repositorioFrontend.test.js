@@ -7,6 +7,7 @@ import { after, before, beforeEach, describe, it } from 'node:test'
 import { crearClienteApi } from '../../frontend/src/servicios/api.js'
 import { crearRepositorioApi } from '../../frontend/src/servicios/repositorioApi.js'
 import { cuentaSinActivar } from '../../frontend/src/servicios/mapeoApi.js'
+import { aplicarConfirmacion } from '../../frontend/src/contexto/confirmacionCuenta.js'
 import ServicioAutenticacionApi from '../../frontend/src/servicios/ServicioAutenticacionApi.js'
 import Estudiante from '../../frontend/src/modelo/Estudiante.js'
 import Administrador from '../../frontend/src/modelo/Administrador.js'
@@ -15,8 +16,10 @@ import FranjaHoraria from '../../frontend/src/modelo/FranjaHoraria.js'
 import { app } from '../src/app.js'
 import { aSegundos, env } from '../src/config/env.js'
 import { reiniciarIntentos } from '../src/middlewares/limitarIntentos.js'
+import { Usuario } from '../src/models/index.js'
 import { cargarSemilla } from '../src/services/semilla.service.js'
 import { hoyEnColombia } from '../src/utils/fechas.js'
+import { crearRetencion } from './ayudas/retencion.js'
 import { CORREOS } from './ayudas/sesion.js'
 
 function crearAlmacen() {
@@ -28,6 +31,8 @@ function crearAlmacen() {
     claves: () => [...valores.keys()],
   }
 }
+
+const respuestaJson = (datos, status) => new Response(JSON.stringify(datos), { status, headers: { 'Content-Type': 'application/json' } })
 
 function lunes(n) {
   const dia = new Date(`${hoyEnColombia()}T00:00:00Z`)
@@ -305,53 +310,219 @@ describe('Preparación E5/E6 · Repositorio de dominio sobre la API temporal', (
     await assert.rejects(solicitante.repositorio.guardarUsuario(editado), (error) => error.status === 403)
   })
 
+  // fetch real que, al recibir la respuesta de `ruta`, la retiene hasta que la prueba la suelte
+  const retenerRespuesta = (ruta, retencion) => async (...argumentos) => {
+    const respuesta = await fetch(...argumentos)
+    if (new URL(String(argumentos[0])).pathname.endsWith(ruta)) await retencion.detener()
+    return respuesta
+  }
+
   it('un ingreso atrasado de otra pestaña no reemplaza la sesión iniciada después', async () => {
     // Dos pestañas (dos repositorios) con el mismo almacenamiento; la respuesta de la primera se retiene
     const almacen = crearAlmacen()
-    let avisarRecibida
-    let soltar
-    const recibida = new Promise((resolver) => { avisarRecibida = resolver })
-    const liberada = new Promise((resolver) => { soltar = resolver })
-    const fetchRetenido = async (...argumentos) => {
-      const respuesta = await fetch(...argumentos)
-      if (String(argumentos[0]).endsWith('/auth/ingreso')) {
-        avisarRecibida()
-        await liberada
-      }
-      return respuesta
-    }
-    const anterior = crearRepositorioApi({ cliente: crearClienteApi({ urlBase, almacen, fetchImpl: fetchRetenido }) })
+    const retencion = crearRetencion()
+    const anterior = crearRepositorioApi({ cliente: crearClienteApi({ urlBase, almacen, fetchImpl: retenerRespuesta('/auth/ingreso', retencion) }) })
     const nueva = crearRepositorioApi({ cliente: crearClienteApi({ urlBase, almacen }) })
 
     const pendiente = anterior.iniciarSesion(CORREOS.elena, CLAVE_DE_PRUEBA)
-    await recibida
-    const andrea = await nueva.iniciarSesion(CORREOS.andrea, CLAVE_DE_PRUEBA)
-    soltar()
+    let andrea
+    try {
+      await retencion.esperarLlegada(pendiente)
+      andrea = await nueva.iniciarSesion(CORREOS.andrea, CLAVE_DE_PRUEBA)
+    } finally {
+      retencion.soltar()
+    }
     await assert.rejects(pendiente, /ya no está vigente/)
 
     assert.equal((await nueva.obtenerSesionActual()).getId(), andrea.getId())
     await nueva.listarSesionesDe(andrea.getId())
   })
 
-  it('el primer acceso devuelve la cuenta activada y un reintento atrasado deja ver la cuenta activa', async () => {
-    const programa = (await coordinacion.repositorio.listarProgramas())[0]
-    const correo = `cuenta.activacion@uniguajira.edu.co`
-    await coordinacion.repositorio.crearCuentaEstudiante({
-      nombre: 'Cuenta Activación', correoInstitucional: correo, documento: '1098765432', semestre: 2, sede: 'Riohacha', programa: programa.getId(),
-    })
-    const nueva = preparar()
-    const pendiente = await nueva.repositorio.iniciarSesion(correo, '1098765432')
-    assert.equal(cuentaSinActivar(pendiente), true)
+  it('con el almacenamiento vacío, un ingreso atrasado no revive una sesión que otra pestaña abrió y cerró después', async () => {
+    const almacen = crearAlmacen()
+    const retencion = crearRetencion()
+    const anterior = crearRepositorioApi({ cliente: crearClienteApi({ urlBase, almacen, fetchImpl: retenerRespuesta('/auth/ingreso', retencion) }) })
+    const otra = crearRepositorioApi({ cliente: crearClienteApi({ urlBase, almacen }) })
 
-    const datos = { claveNueva: 'CuentaActivada2026', quiereSerTutor: false, aceptaTratamientoDatos: true }
-    const activada = await nueva.repositorio.completarPrimerAcceso(datos)
-    // La cuenta confirmada por la activación basta para seguir: no depende de otra lectura
+    const pendiente = anterior.iniciarSesion(CORREOS.elena, CLAVE_DE_PRUEBA)
+    try {
+      await retencion.esperarLlegada(pendiente)
+      await otra.iniciarSesion(CORREOS.andrea, CLAVE_DE_PRUEBA)
+      otra.cerrarSesion()
+    } finally {
+      retencion.soltar()
+    }
+    // Prevalece el cierre de la otra pestaña, aunque el almacenamiento volvió a quedar sin token
+    await assert.rejects(pendiente, /ya no está vigente/)
+    assert.equal(almacen.getItem('ct.token'), null)
+    assert.equal(await anterior.obtenerSesionActual(), null)
+    assert.deepEqual(almacen.claves(), ['otra.aplicacion'])
+  })
+
+  const DATOS_ACTIVACION = { claveNueva: 'CuentaActivada2026', quiereSerTutor: false, aceptaTratamientoDatos: true }
+
+  // Cuenta creada por Coordinación que aún debe hacer el primer acceso; su contraseña es el documento
+  async function crearCuentaPendiente(nombreCorreo, documento) {
+    const programa = (await coordinacion.repositorio.listarProgramas()).find((fila) => fila.getNombre() === 'Ingeniería de Sistemas')
+    const correo = `${nombreCorreo}@uniguajira.edu.co`
+    await coordinacion.repositorio.crearCuentaEstudiante({
+      nombre: 'Cuenta Por Activar', correoInstitucional: correo, documento, semestre: 2, sede: 'Riohacha', programa: programa.getId(),
+    })
+    return { correo, documento, programa }
+  }
+
+  // Lo que muestra el proveedor de autenticación, con sus mismos pasos (ProveedorAutenticacion.jsx): la
+  // expiración cambia la revisión y deja la pantalla sin cuenta; releer vuelve a leer la sesión guardada.
+  function crearPantalla(repositorio, cuenta) {
+    const pantalla = { usuario: cuenta, sesionExpirada: false, revision: 0 }
+    pantalla.expirar = () => { pantalla.revision += 1; pantalla.usuario = null; pantalla.sesionExpirada = true }
+    pantalla.confirmar = (mutacion) => aplicarConfirmacion({
+      mutacion,
+      revision: () => pantalla.revision,
+      publicar: (confirmada) => { pantalla.usuario = confirmada; pantalla.sesionExpirada = false },
+      releer: async () => {
+        pantalla.revision += 1
+        const habiaSesion = repositorio.tieneSesionGuardada()
+        pantalla.usuario = await repositorio.obtenerSesionActual()
+        pantalla.sesionExpirada = habiaSesion && !pantalla.usuario
+      },
+    })
+    return pantalla
+  }
+
+  it('la activación confirmada se muestra con la cuenta que devuelve, sin otra consulta', async () => {
+    const { correo, documento } = await crearCuentaPendiente('cuenta.activacion', '1098765430')
+    const peticiones = []
+    const repositorio = crearRepositorioApi({ cliente: crearClienteApi({ urlBase, almacen: crearAlmacen(), fetchImpl: async (url, opciones) => {
+      peticiones.push(`${opciones.method} ${new URL(url).pathname}`)
+      return fetch(url, opciones)
+    } }) })
+    const pendiente = await repositorio.iniciarSesion(correo, documento)
+    assert.equal(cuentaSinActivar(pendiente), true)
+    const pantalla = crearPantalla(repositorio, pendiente)
+    peticiones.length = 0
+
+    const activada = await pantalla.confirmar(() => repositorio.completarPrimerAcceso(DATOS_ACTIVACION))
     assert.equal(cuentaSinActivar(activada), false)
     assert.equal(activada.getId(), pendiente.getId())
+    assert.equal(pantalla.usuario, activada)
+    assert.equal(pantalla.sesionExpirada, false)
+    assert.deepEqual(peticiones, ['POST /api/auth/yo/primer-acceso'])
+  })
 
-    // Si la respuesta se hubiera perdido, el reintento recibe 409 y la relectura muestra la cuenta ya activa
-    await assert.rejects(nueva.repositorio.completarPrimerAcceso(datos), (error) => error.status === 409)
-    assert.equal(cuentaSinActivar(await nueva.repositorio.obtenerSesionActual()), false)
+  it('la activación confirmada se muestra aunque falle la lectura auxiliar del perfil de tutor', async () => {
+    // Una cuenta sin activar no puede crear su perfil por la API; para ejercitar la lectura auxiliar del
+    // perfil se marca como pendiente una cuenta que ya lo tiene
+    await Usuario.updateOne({ correoInstitucional: CORREOS.bruno }, { $set: { primerAccesoPendiente: true } })
+    let fallarPerfil = false
+    const peticiones = []
+    const repositorio = crearRepositorioApi({ cliente: crearClienteApi({ urlBase, almacen: crearAlmacen(), fetchImpl: async (url, opciones) => {
+      const peticion = `${opciones.method} ${new URL(url).pathname}`
+      peticiones.push(peticion)
+      if (fallarPerfil && peticion === 'GET /api/tutores/mi-perfil') return respuestaJson({ mensaje: 'Fallo simulado del perfil' }, 500)
+      return fetch(url, opciones)
+    } }) })
+    const pendiente = await repositorio.iniciarSesion(CORREOS.bruno, CLAVE_DE_PRUEBA)
+    assert.equal(cuentaSinActivar(pendiente), true)
+    const pantalla = crearPantalla(repositorio, pendiente)
+    fallarPerfil = true
+    peticiones.length = 0
+
+    const activada = await pantalla.confirmar(() => repositorio.completarPrimerAcceso(DATOS_ACTIVACION))
+    assert.equal(cuentaSinActivar(activada), false)
+    assert.equal(activada.getId(), pendiente.getId())
+    assert.equal(pantalla.usuario, activada)
+    assert.deepEqual(peticiones, ['POST /api/auth/yo/primer-acceso', 'GET /api/tutores/mi-perfil'])
+  })
+
+  it('un reintento que recibe 409 porque la activación ya se guardó muestra la cuenta activa aunque falle la lectura del perfil', async () => {
+    const { correo, documento, programa } = await crearCuentaPendiente('cuenta.reintento', '1098765431')
+    let perderRespuesta = true
+    let fallarPerfil = false
+    const cliente = crearClienteApi({ urlBase, almacen: crearAlmacen(), fetchImpl: async (url, opciones) => {
+      const peticion = `${opciones.method} ${new URL(url).pathname}`
+      if (fallarPerfil && peticion === 'GET /api/tutores/mi-perfil') return respuestaJson({ mensaje: 'Fallo simulado del perfil' }, 500)
+      const respuesta = await fetch(url, opciones)
+      // La primera activación queda guardada en la API, pero su respuesta se pierde en la red
+      if (perderRespuesta && peticion === 'POST /api/auth/yo/primer-acceso') {
+        perderRespuesta = false
+        throw new TypeError('fetch failed')
+      }
+      return respuesta
+    } })
+    const repositorio = crearRepositorioApi({ cliente })
+    const pendiente = await repositorio.iniciarSesion(correo, documento)
+    const pantalla = crearPantalla(repositorio, pendiente)
+    const datos = { ...DATOS_ACTIVACION, quiereSerTutor: true }
+
+    await assert.rejects(pantalla.confirmar(() => repositorio.completarPrimerAcceso(datos)), /conectarnos/)
+    assert.equal(pantalla.usuario, pendiente, 'sin respuesta, la pantalla sigue con la cuenta sin activar')
+
+    // Ya activa en la API, la cuenta crea su perfil de tutor; después falla la lectura de ese perfil
+    const [materia] = await cliente.peticion('/materias', { parametros: { programa: programa.getId() } })
+    await cliente.peticion('/tutores/mi-perfil', { metodo: 'PUT', datos: {
+      biografia: 'Explico programación con ejercicios resueltos.', tarifaHora: null, materias: [materia.id],
+      disponibilidad: [{ dia: 'MARTES', horaInicio: '08:00', horaFin: '10:00' }],
+    } })
+    fallarPerfil = true
+
+    const activada = await pantalla.confirmar(() => repositorio.completarPrimerAcceso(datos))
+    assert.equal(cuentaSinActivar(activada), false)
+    assert.equal(activada.getId(), pendiente.getId())
+    assert.equal(pantalla.usuario, activada)
+    assert.equal(pantalla.sesionExpirada, false)
+  })
+
+  it('una activación que se confirma después de que la sesión expiró no vuelve a mostrar la cuenta', async () => {
+    const { correo, documento } = await crearCuentaPendiente('cuenta.expirada', '1098765432')
+    const retencion = crearRetencion()
+    const alarmas = []
+    let alExpirar = () => {}
+    const cliente = crearClienteApi({
+      urlBase, almacen: crearAlmacen(), alExpirarSesion: () => alExpirar(), fetchImpl: retenerRespuesta('/auth/yo/primer-acceso', retencion),
+      // La alarma de inactividad se dispara a mano, mientras la respuesta está retenida
+      temporizador: { programar: (fn) => alarmas.push(fn), cancelar: () => {} },
+    })
+    const repositorio = crearRepositorioApi({ cliente })
+    const pantalla = crearPantalla(repositorio, await repositorio.iniciarSesion(correo, documento))
+    alExpirar = pantalla.expirar
+
+    const activacion = pantalla.confirmar(() => repositorio.completarPrimerAcceso(DATOS_ACTIVACION))
+    try {
+      await retencion.esperarLlegada(activacion)
+      alarmas.at(-1)()
+    } finally {
+      retencion.soltar()
+    }
+    assert.equal(await activacion, null)
+    assert.equal(pantalla.usuario, null)
+    assert.equal(pantalla.sesionExpirada, true, 'la pantalla sigue avisando que la sesión expiró')
+    assert.equal(cliente.obtenerToken(), null)
+  })
+
+  it('una activación que se confirma después de que otra pestaña abrió otra sesión no la reemplaza', async () => {
+    const { correo, documento } = await crearCuentaPendiente('cuenta.pestanas', '1098765433')
+    const almacen = crearAlmacen()
+    const retencion = crearRetencion()
+    const repositorio = crearRepositorioApi({ cliente: crearClienteApi({ urlBase, almacen, fetchImpl: retenerRespuesta('/auth/yo/primer-acceso', retencion) }) })
+    const otraPestana = crearRepositorioApi({ cliente: crearClienteApi({ urlBase, almacen }) })
+    const pendiente = await repositorio.iniciarSesion(correo, documento)
+    const pantalla = crearPantalla(repositorio, pendiente)
+
+    const activacion = pantalla.confirmar(() => repositorio.completarPrimerAcceso(DATOS_ACTIVACION))
+    let andrea
+    try {
+      await retencion.esperarLlegada(activacion)
+      andrea = await otraPestana.iniciarSesion(CORREOS.andrea, CLAVE_DE_PRUEBA)
+    } finally {
+      retencion.soltar()
+    }
+    assert.equal(await activacion, null)
+    // La pantalla pasa a la sesión que quedó guardada y la otra pestaña la sigue usando sin cambios
+    assert.equal(pantalla.usuario?.getId(), andrea.getId())
+    assert.notEqual(pantalla.usuario?.getId(), pendiente.getId())
+    assert.equal((await otraPestana.obtenerSesionActual()).getId(), andrea.getId())
+    await otraPestana.listarSesionesDe(andrea.getId())
   })
 
   it('una credencial inválida expira sin restaurar datos de demostración', async () => {
