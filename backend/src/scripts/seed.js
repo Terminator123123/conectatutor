@@ -4,8 +4,12 @@ import { env, revisarConfiguracion } from '../config/env.js'
 import { asegurarIndices } from '../models/index.js'
 import { cargarSemilla } from '../services/semilla.service.js'
 
-// Un solo servidor local, sin usuario ni contraseña con caracteres sin codificar y sin opciones que cambien el destino
-const FORMA_URI_LOCAL = /^mongodb:\/\/(?:[^:@/?#[\]]+(?::[^@/?#[\]]*)?@)?(localhost|127\.0\.0\.1|\[::1\])(?::(\d{1,5}))?(?:\/([^?#]*))?(?:\?([^#]*))?$/i
+// Un solo servidor local, con usuario y contraseña bien codificados y sin opciones que cambien el destino
+const CARACTER_URI = '(?:[^:@/?#[\\]%]|%[0-9A-Fa-f]{2})'
+const FORMA_URI_LOCAL = new RegExp(
+  `^mongodb://(?:${CARACTER_URI}+(?::${CARACTER_URI}*)?@)?(localhost|127\\.0\\.0\\.1|\\[::1\\])(?::(\\d{1,5}))?(?:/([^?#]*))?(?:\\?([^#]*))?$`,
+  'i',
+)
 const OPCIONES_PERMITIDAS = new Set(['authsource', 'appname', 'retrywrites', 'w', 'serverselectiontimeoutms', 'connecttimeoutms', 'directconnection'])
 
 /**
@@ -29,10 +33,14 @@ export function esUriLocal(uri) {
   return true
 }
 
-/** Agrega directConnection=true: el controlador no descubre ni cambia de servidor. */
+/**
+ * Deja directConnection=true como única opción de ese nombre: el controlador no descubre ni cambia de servidor.
+ * Se reconstruye la consulta opción por opción; buscar el texto suelto se dejaba engañar por otros valores.
+ */
 function conConexionDirecta(uri) {
-  if (/[?&]directConnection=true(&|$)/i.test(uri)) return uri
-  return uri + (uri.includes('?') ? '&' : '?') + 'directConnection=true'
+  const [base, ...resto] = uri.split('?')
+  const opciones = resto.join('?').split('&').filter((opcion) => opcion && opcion.split('=')[0].toLowerCase() !== 'directconnection')
+  return `${base}?${[...opciones, 'directConnection=true'].join('&')}`
 }
 
 /**

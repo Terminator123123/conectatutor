@@ -3,6 +3,7 @@ import { CLAVE_DE_PRUEBA, detenerBaseDePrueba, iniciarBaseDePrueba, vaciarBaseDe
 import assert from 'node:assert/strict'
 import { after, before, beforeEach, describe, it } from 'node:test'
 import bcrypt from 'bcryptjs'
+import { MongoClient } from 'mongodb'
 import { Administrador, Materia, PerfilTutor, Sesion, Usuario } from '../src/models/index.js'
 import { cargarSemilla } from '../src/services/semilla.service.js'
 import { ejecutarAislado } from './ayudas/procesoAislado.js'
@@ -192,6 +193,8 @@ describe('D01 · El seed solo acepta bases en loopback', () => {
     'mongodb://localhost:65536/conectatutor_pruebas',
     'mongodb://localhost:0/conectatutor_pruebas',
     'mongodb://usuario?x:clave@localhost:27017/conectatutor_pruebas',
+    'mongodb://usuario:cla:ve@localhost:27017/conectatutor_pruebas',
+    'mongodb://usu%ZZario:clave@localhost:27017/conectatutor_pruebas',
     'mongodb://localhost.example.test:27017/conectatutor',
     'no es una uri',
   ]) {
@@ -209,12 +212,17 @@ describe('D01 · El seed solo acepta bases en loopback', () => {
     'mongodb://localhost:27017/conectatutor_pruebas',
     'mongodb://usuario:clave@[::1]:27017/conectatutor_pruebas?authSource=admin',
     'mongodb://127.0.0.1:27017/conectatutor_pruebas?directConnection=true',
+    'mongodb://127.0.0.1:27017/conectatutor_pruebas?appName=directConnection=true',
+    'mongodb://127.0.0.1:27017/conectatutor_pruebas?appName=x&directConnection=TRUE&w=1',
+    'mongodb://usu%40ario:cl%3Ave@localhost:27017/conectatutor_pruebas',
+    'mongodb://127.0.0.1:27017/conectatutor_pruebas?appName=x?directConnection=true',
   ]) {
     it(`acepta ${uri.split('@').pop()} y fuerza la conexión directa`, async () => {
       const { llamadas, salidas, uris } = await sembrar(uri)
       assert.deepEqual(salidas, [])
       assert.equal(uris.length, 1)
-      assert.equal(new URL(uris[0]).searchParams.getAll('directConnection').join(), 'true')
+      // Lo que cuenta es lo que entiende el controlador de MongoDB, no el texto de la URI
+      assert.equal(new MongoClient(uris[0]).options.directConnection, true)
       assert.deepEqual(llamadas, ['conectarBaseDeDatos', 'asegurarIndices', 'cargarSemilla', 'desconectarBaseDeDatos'])
     })
   }
