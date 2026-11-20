@@ -4,14 +4,27 @@ import path from 'node:path'
 import { once } from 'node:events'
 import { finished } from 'node:stream/promises'
 import mongoose from 'mongoose'
-import { Materia, Notificacion, PerfilTutor, Programa, Sesion, Usuario } from '../models/index.js'
 
 const { EJSON } = mongoose.mongo.BSON
 
-/** Colecciones de la aplicación que entran en el respaldo (RQNF010). */
-export const COLECCIONES_RESPALDADAS = Object.freeze(
-  [Programa, Materia, Usuario, PerfilTutor, Sesion, Notificacion].map((modelo) => modelo.collection.collectionName),
-)
+/**
+ * Colecciones de la aplicación que entran en el respaldo (RQNF010). Se escriben aquí y no se toman de los
+ * modelos: importar los modelos y conectarse haría que Mongoose cree colecciones e índices en la base que se
+ * respalda. Una prueba comprueba que coinciden con las de los modelos.
+ */
+export const COLECCIONES_RESPALDADAS = Object.freeze(['programas', 'materias', 'usuarios', 'perfilesTutor', 'sesiones', 'notificaciones'])
+
+/**
+ * Lectura sin convertir los números a tipos de JavaScript: así un entero de 64 bits, uno de 32 y un decimal
+ * con el mismo valor siguen siendo distintos en el EJSON canónico y vuelven a la base con su tipo original.
+ */
+const LECTURA_SIN_CONVERSION = Object.freeze({ sort: { _id: 1 }, promoteLongs: false, promoteValues: false })
+
+/** Motivo de un fallo de lectura sin copiar el contenido del archivo, que puede tener datos personales. */
+function motivoDeLectura(error) {
+  if (error?.code) return `error del sistema de archivos ${error.code}`
+  return 'el contenido no es EJSON válido'
+}
 
 /** Nombre del manifiesto que describe cada respaldo. */
 export const MANIFIESTO = 'manifiesto.json'
@@ -52,7 +65,7 @@ async function volcar(ruta, partes) {
 /** Partes del archivo de una colección: un arreglo JSON con un documento por línea. Anota el total en `cuenta`. */
 async function* documentosDe(coleccion, cuenta) {
   yield '['
-  for await (const documento of coleccion.find({}, { sort: { _id: 1 } })) {
+  for await (const documento of coleccion.find({}, LECTURA_SIN_CONVERSION)) {
     yield `${cuenta.total === 0 ? '\n' : ',\n'}${EJSON.stringify(documento, { relaxed: false })}`
     cuenta.total += 1
   }
@@ -103,7 +116,7 @@ export async function leerRespaldo(carpeta) {
   try {
     manifiesto = JSON.parse(await readFile(path.join(carpeta, MANIFIESTO), 'utf8'))
   } catch (error) {
-    throw new Error(`No se pudo leer ${MANIFIESTO}: ${error.message}`)
+    throw new Error(`No se pudo leer ${MANIFIESTO}: ${motivoDeLectura(error)}`)
   }
   if (manifiesto?.formato !== FORMATO || typeof manifiesto.colecciones !== 'object' || manifiesto.colecciones === null) {
     throw new Error(`${MANIFIESTO} no describe un respaldo de ConectaTutor`)
@@ -116,7 +129,7 @@ export async function leerRespaldo(carpeta) {
     try {
       lista = EJSON.parse(await readFile(path.join(carpeta, `${nombre}.json`), 'utf8'), { relaxed: false })
     } catch (error) {
-      throw new Error(`No se pudo leer ${nombre}.json: ${error.message}`)
+      throw new Error(`No se pudo leer ${nombre}.json: ${motivoDeLectura(error)}`)
     }
     if (!Array.isArray(lista)) throw new Error(`${nombre}.json no contiene una lista de documentos`)
     if (lista.length !== esperado) throw new Error(`${nombre}.json tiene ${lista.length} documentos y el manifiesto dice ${esperado}`)

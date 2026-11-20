@@ -1,8 +1,25 @@
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { conectarBaseDeDatos, desconectarBaseDeDatos } from '../config/database.js'
+import mongoose from 'mongoose'
 import { env } from '../config/env.js'
 import { exportarRespaldo, leerRespaldo } from '../services/respaldo.service.js'
+
+/**
+ * Abre la base con el controlador de MongoDB, sin Mongoose ni modelos: así el respaldo no crea colecciones
+ * ni índices en la base que respalda. Solo lee.
+ * @param {string} uri
+ * @returns {Promise<{cliente: import('mongodb').MongoClient, name: string, db: import('mongodb').Db}>}
+ */
+export async function conectarSoloLectura(uri) {
+  const cliente = new mongoose.mongo.MongoClient(uri, { serverSelectionTimeoutMS: 8000 })
+  await cliente.connect()
+  const db = cliente.db()
+  return { cliente, name: db.databaseName, db }
+}
+
+async function cerrar(base) {
+  await base?.cliente?.close()
+}
 
 /** Carpeta de respaldos por defecto: backend/respaldos (ignorada por git). */
 export const CARPETA_POR_DEFECTO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'respaldos')
@@ -19,7 +36,7 @@ export const CARPETA_POR_DEFECTO = path.resolve(path.dirname(fileURLToPath(impor
 export async function ejecutar({
   entorno = process.env,
   configuracion = env,
-  conexion = { conectarBaseDeDatos, desconectarBaseDeDatos, exportarRespaldo, leerRespaldo },
+  conexion = { conectarBaseDeDatos: conectarSoloLectura, desconectarBaseDeDatos: cerrar, exportarRespaldo, leerRespaldo },
   registro = console,
 } = {}) {
   if (!configuracion.mongodbUri) {
@@ -27,9 +44,11 @@ export async function ejecutar({
     return 1
   }
   const carpetaBase = entorno.RESPALDO_CARPETA?.trim() ? path.resolve(entorno.RESPALDO_CARPETA.trim()) : CARPETA_POR_DEFECTO
+  let base
   try {
-    await conexion.conectarBaseDeDatos(configuracion.mongodbUri)
-    const { carpeta, colecciones } = await conexion.exportarRespaldo({ carpetaBase })
+    base = await conexion.conectarBaseDeDatos(configuracion.mongodbUri)
+    registro.log(`[Respaldo] Conectado a la base "${base?.name}"`)
+    const { carpeta, colecciones } = await conexion.exportarRespaldo({ carpetaBase, conexion: base })
     // Se comprueba lo escrito antes de darlo por bueno
     await conexion.leerRespaldo(carpeta)
     registro.log(`[Respaldo] Respaldo completo en ${carpeta}`)
@@ -40,7 +59,7 @@ export async function ejecutar({
     registro.error('[Respaldo] No se pudo completar el respaldo:', error.message)
     return 1
   } finally {
-    await conexion.desconectarBaseDeDatos().catch(() => {})
+    await Promise.resolve(conexion.desconectarBaseDeDatos(base)).catch(() => {})
   }
 }
 

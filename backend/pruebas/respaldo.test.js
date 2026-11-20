@@ -9,6 +9,7 @@ import { after, afterEach, before, beforeEach, describe, it } from 'node:test'
 import request from 'supertest'
 import { app } from '../src/app.js'
 import { reiniciarIntentos } from '../src/middlewares/limitarIntentos.js'
+import { Materia, Notificacion, PerfilTutor, Programa, Sesion, Usuario } from '../src/models/index.js'
 import { COLECCIONES_RESPALDADAS, exportarRespaldo, FORMATO, leerRespaldo, MANIFIESTO } from '../src/services/respaldo.service.js'
 import { cargarSemilla } from '../src/services/semilla.service.js'
 import { ejecutar as respaldar } from '../src/scripts/respaldar.js'
@@ -24,7 +25,11 @@ const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCA
 async function contenidoDeLaBase() {
   const contenido = {}
   for (const nombre of COLECCIONES_RESPALDADAS) {
-    const documentos = await mongoose.connection.db.collection(nombre).find({}, { sort: { _id: 1 } }).toArray()
+    // Sin convertir los números: un Long, un Int32 y un Double con el mismo valor deben verse distintos
+    const documentos = await mongoose.connection.db
+      .collection(nombre)
+      .find({}, { sort: { _id: 1 }, promoteLongs: false, promoteValues: false })
+      .toArray()
     contenido[nombre] = EJSON.stringify(documentos, { relaxed: false })
   }
   return contenido
@@ -85,6 +90,47 @@ describe('D04 · Respaldo de la base (RQNF010)', () => {
     assert.equal(foto.headers['content-type'], 'image/png')
   })
 
+  it('las colecciones respaldadas son las de los modelos de la aplicación', () => {
+    const deLosModelos = [Programa, Materia, Usuario, PerfilTutor, Sesion, Notificacion].map((modelo) => modelo.collection.collectionName)
+    assert.deepEqual([...COLECCIONES_RESPALDADAS].sort(), deLosModelos.sort())
+  })
+
+  it('conserva el tipo BSON de cada número al exportar y al restaurar', async () => {
+    const { Long, Int32, Double, Decimal128, ObjectId } = mongoose.mongo.BSON
+    const _id = new ObjectId()
+    const programas = mongoose.connection.db.collection('programas')
+    await programas.insertOne({
+      _id,
+      largo: Long.fromNumber(7),
+      entero: new Int32(7),
+      doble: new Double(7),
+      decimal: Decimal128.fromString('7'),
+      enteroGrande: Long.fromString('9007199254740993'),
+    })
+    const antes = await contenidoDeLaBase()
+    const { carpeta } = await exportarRespaldo({ carpetaBase })
+
+    const linea = readFileSync(path.join(carpeta, 'programas.json'), 'utf8').split('\n').find((texto) => texto.includes(_id.toHexString()))
+    assert.match(linea, /"largo":\{"\$numberLong":"7"\}/)
+    assert.match(linea, /"entero":\{"\$numberInt":"7"\}/)
+    assert.match(linea, /"doble":\{"\$numberDouble":"7\.0"\}/)
+    assert.match(linea, /"decimal":\{"\$numberDecimal":"7"\}/)
+    assert.match(linea, /"enteroGrande":\{"\$numberLong":"9007199254740993"\}/)
+
+    await vaciarBaseDePrueba()
+    const { documentos } = await leerRespaldo(carpeta)
+    for (const [nombre, lista] of Object.entries(documentos)) {
+      if (lista.length > 0) await mongoose.connection.db.collection(nombre).insertMany(lista)
+    }
+    assert.deepEqual(await contenidoDeLaBase(), antes)
+    // El tipo guardado en la base es el original ($type de MongoDB)
+    const tipos = await programas.aggregate([
+      { $match: { _id } },
+      { $project: { _id: 0, largo: { $type: '$largo' }, entero: { $type: '$entero' }, doble: { $type: '$doble' }, decimal: { $type: '$decimal' } } },
+    ]).toArray()
+    assert.deepEqual(tipos, [{ largo: 'long', entero: 'int', doble: 'double', decimal: 'decimal' }])
+  })
+
   it('una base vacía también se respalda y se lee', async () => {
     await vaciarBaseDePrueba()
     const { carpeta, colecciones } = await exportarRespaldo({ carpetaBase })
@@ -126,6 +172,22 @@ describe('D04 · Respaldo de la base (RQNF010)', () => {
     await assert.rejects(leerRespaldo(carpeta), /usuarios\.json tiene \d+ documentos y el manifiesto dice \d+/)
     writeFileSync(usuarios, '[{"_id": ')
     await assert.rejects(leerRespaldo(carpeta), /No se pudo leer usuarios\.json/)
+    // El mensaje dice qué archivo falló, pero no copia su contenido (puede tener datos personales)
+    writeFileSync(usuarios, '[alumna@example.test]')
+    await assert.rejects(leerRespaldo(carpeta), (error) => {
+      assert.match(error.message, /No se pudo leer usuarios\.json: el contenido no es EJSON válido/)
+      assert.doesNotMatch(error.message, /alumna|example/)
+      return true
+    })
+    writeFileSync(path.join(carpeta, MANIFIESTO + '.copia'), readFileSync(path.join(carpeta, MANIFIESTO)))
+    writeFileSync(path.join(carpeta, MANIFIESTO), '{"correo": "alumna@example.test"')
+    await assert.rejects(leerRespaldo(carpeta), (error) => {
+      assert.match(error.message, /No se pudo leer manifiesto\.json: el contenido no es EJSON válido/)
+      assert.doesNotMatch(error.message, /alumna|example/)
+      return true
+    })
+    writeFileSync(path.join(carpeta, MANIFIESTO), readFileSync(path.join(carpeta, MANIFIESTO + '.copia')))
+    rmSync(path.join(carpeta, MANIFIESTO + '.copia'))
     writeFileSync(usuarios, '{"no": "es una lista"}')
     await assert.rejects(leerRespaldo(carpeta), /no contiene una lista/)
     rmSync(usuarios)
@@ -155,6 +217,24 @@ describe('D04 · Respaldo de la base (RQNF010)', () => {
     assert.equal(verificacion.status, 0, verificacion.stderr)
     assert.match(verificacion.stdout, /Completo/)
   })
+
+  it('en un proceso aparte, respaldar no crea colecciones ni índices en la base que respalda', async () => {
+    const { host, port } = mongoose.connection
+    const nombre = 'conectatutor_respaldo_sin_cambios'
+    const otraBase = mongoose.connection.client.db(nombre)
+    await otraBase.dropDatabase()
+    try {
+      const respaldo = ejecutarAislado(`
+        const { ejecutar } = await import(new URL('src/scripts/respaldar.js', process.env.RAIZ_BACKEND))
+        process.exitCode = await ejecutar()
+      `, { MONGODB_URI: `mongodb://${host}:${port}/${nombre}`, RESPALDO_CARPETA: carpetaBase }, { tope: 60000 })
+      assert.equal(respaldo.status, 0, respaldo.stderr)
+      assert.match(respaldo.stdout, new RegExp(`Conectado a la base "${nombre}"`))
+      assert.deepEqual(await otraBase.listCollections().toArray(), [], 'la base sigue sin colecciones (ni índices)')
+    } finally {
+      await otraBase.dropDatabase()
+    }
+  })
 })
 
 describe('D04 · Comandos respaldar y verificar-respaldo sin base real', () => {
@@ -162,16 +242,19 @@ describe('D04 · Comandos respaldar y verificar-respaldo sin base real', () => {
     const llamadas = []
     return {
       llamadas,
-      conectarBaseDeDatos: async () => { llamadas.push('conectar') },
-      exportarRespaldo: async ({ carpetaBase }) => {
-        llamadas.push(`exportar ${carpetaBase}`)
+      conectarBaseDeDatos: async () => {
+        llamadas.push('conectar')
+        return { name: 'base_falsa' }
+      },
+      exportarRespaldo: async ({ carpetaBase, conexion }) => {
+        llamadas.push(`exportar ${carpetaBase} de ${conexion.name}`)
         return { carpeta: path.join(carpetaBase, 'respaldo-x'), colecciones: { usuarios: 3 } }
       },
       leerRespaldo: async () => {
         llamadas.push('leer')
         if (falla) throw new Error(falla)
       },
-      desconectarBaseDeDatos: async () => { llamadas.push('desconectar') },
+      desconectarBaseDeDatos: async (base) => { llamadas.push(`desconectar ${base?.name}`) },
     }
   }
 
@@ -188,7 +271,7 @@ describe('D04 · Comandos respaldar y verificar-respaldo sin base real', () => {
     const registro = registroFalso()
     const destino = path.resolve('respaldos-de-prueba')
     assert.equal(await respaldar({ entorno: { RESPALDO_CARPETA: ` ${destino} ` }, configuracion: { mongodbUri: 'mongodb://127.0.0.1:1/x' }, conexion, registro }), 0)
-    assert.deepEqual(conexion.llamadas, ['conectar', `exportar ${destino}`, 'leer', 'desconectar'])
+    assert.deepEqual(conexion.llamadas, ['conectar', `exportar ${destino} de base_falsa`, 'leer', 'desconectar base_falsa'])
     assert.match(registro.texto(), /usuarios: 3/)
   })
 
@@ -196,7 +279,7 @@ describe('D04 · Comandos respaldar y verificar-respaldo sin base real', () => {
     const conexion = conexionFalsa({ falla: 'usuarios.json tiene 2 documentos y el manifiesto dice 3' })
     const registro = registroFalso()
     assert.equal(await respaldar({ entorno: {}, configuracion: { mongodbUri: 'mongodb://127.0.0.1:1/x' }, conexion, registro }), 1)
-    assert.equal(conexion.llamadas.at(-1), 'desconectar')
+    assert.equal(conexion.llamadas.at(-1), 'desconectar base_falsa')
     assert.match(registro.texto(), /No se pudo completar el respaldo/)
   })
 
