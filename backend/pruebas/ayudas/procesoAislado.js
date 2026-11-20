@@ -12,13 +12,15 @@ const RAIZ_BACKEND = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 
  * Ejecuta un programa ESM en un proceso aparte con configuración solo sintética:
  * no hereda el entorno del desarrollador y corre desde una carpeta vacía, así dotenv no encuentra ningún .env.
  * El programa recibe en RAIZ_BACKEND la URL (con barra final) de la carpeta backend y en SUPERTEST la URL del módulo supertest.
+ * Con `tope` (ms), un proceso que no termina se detiene y la prueba falla en vez de quedarse esperando.
  */
-export function ejecutarAislado(programa, entorno) {
+export function ejecutarAislado(programa, entorno, { tope } = {}) {
   const carpeta = mkdtempSync(path.join(tmpdir(), 'conectatutor-aislado-'))
   try {
     return spawnSync(process.execPath, ['--input-type=module', '-e', programa], {
       cwd: carpeta,
       encoding: 'utf8',
+      timeout: tope,
       env: {
         PATH: process.env.PATH ?? '',
         SystemRoot: process.env.SystemRoot ?? '',
