@@ -103,6 +103,18 @@ Mientras no complete ese paso, la API solo le permite consultar.
 
 La ruta `POST /api/auth/registro` sigue disponible en la API para pruebas, pero la aplicación no la usa.
 
+### Primera cuenta de Coordinación
+
+Una base nueva, como la de producción, no tiene registro abierto ni cuentas de demostración: hace falta crear una vez la primera cuenta de Coordinación, que después crea las de los estudiantes desde la aplicación. Desde `backend/`, con `MONGODB_URI` apuntando a esa base (en `backend/.env` o en el entorno), en PowerShell:
+
+```powershell
+$env:COORDINACION_NOMBRE = 'Nombre Apellido'
+$env:COORDINACION_CORREO = 'nombre.apellido@uniguajira.edu.co'
+npm run crear-coordinacion
+```
+
+El script pide la contraseña dos veces sin mostrarla (mínimo 8 caracteres, con letras y números) y la guarda cifrada. `COORDINACION_DEPENDENCIA` es opcional; si no se indica, queda la dependencia que verifica a los tutores. Si la base ya tiene una cuenta de Coordinación, no crea otra y termina con código 1. Sin terminal interactiva, la contraseña puede ir en `COORDINACION_CLAVE`.
+
 ## Recorrido rápido
 
 Es el recorrido de desarrollo y pruebas, con las cuentas de demostración. En producción no se crean cuentas de demostración ni existe el registro abierto.
@@ -120,6 +132,7 @@ Solo puede haber una sesión abierta por cuenta. Si la misma cuenta ingresa en o
 - **Base de datos:** MongoDB Atlas. En Network Access debe permitirse `0.0.0.0/0` para que el servicio de la API pueda conectarse.
 - **API (Railway):** carpeta raíz `backend`, comando de inicio `npm start`. Variables: `NODE_ENV=production`, `MONGODB_URI`, `JWT_SECRETO`, `CORS_ORIGIN` (dirección exacta del frontend, nunca `*`), `FRONTEND_URL`, `CLAVE_DEMO` y las de correo.
 - **Frontend (Vercel):** carpeta raíz `frontend`, comando `npm run build`, salida `dist`, variable `VITE_API_URL` con la dirección pública de la API terminada en `/api`. `vercel.json` redirige todas las rutas a `index.html`.
+- **Primera cuenta:** con la base de producción vacía, crea la cuenta de Coordinación con `npm run crear-coordinacion` (ver «Primera cuenta de Coordinación»). En producción no se cargan datos de demostración.
 - **Comprobación:** `/api/salud` y `/api/docs` de la API responden, y el ingreso funciona desde un celular con una cuenta ya aprovisionada.
 
 ## Documentación de la API
