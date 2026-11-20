@@ -5,6 +5,7 @@ import swaggerUi from 'swagger-ui-express'
 import { estaConectada } from './config/database.js'
 import { env } from './config/env.js'
 import { documentacion } from './docs/openapi.js'
+import { cerrarEnProduccion } from './middlewares/cerrarEnProduccion.js'
 import { ENCABEZADO_TOKEN_RENOVADO } from './middlewares/autenticar.js'
 import { manejarErrores, rutaNoEncontrada } from './middlewares/manejarErrores.js'
 import { registrarPeticiones } from './middlewares/registrarPeticiones.js'
@@ -32,6 +33,9 @@ app.use(helmet())
 
 // Solo el frontend autorizado puede consumir la API desde un navegador
 app.use(cors({ origin: env.corsOrigenes, exposedHeaders: [ENCABEZADO_TOKEN_RENOVADO] }))
+
+// El registro abierto es solo para desarrollo y pruebas: en producción no existe, ni con un cuerpo mal formado
+app.post('/api/auth/registro', cerrarEnProduccion())
 
 // El límite evita que un cuerpo enorme ocupe la memoria del servidor
 // La foto de perfil llega en base64 (máximo 200 KB de imagen): esa ruta admite un cuerpo mayor.

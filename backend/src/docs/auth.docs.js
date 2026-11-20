@@ -118,7 +118,8 @@ export const rutasAuth = {
       summary: 'Crea la cuenta de un estudiante',
       description:
         'Solo acepta correos del dominio institucional. Guarda la contraseña cifrada y la fecha en que se ' +
-        'aceptó el tratamiento de datos. Devuelve el token: la persona queda con la sesión iniciada.',
+        'aceptó el tratamiento de datos. Devuelve el token: la persona queda con la sesión iniciada. ' +
+        'Solo existe en desarrollo y pruebas; en producción responde 404.',
       requestBody: {
         required: true,
         content: { 'application/json': { schema: { $ref: '#/components/schemas/DatosRegistro' } } },
@@ -129,6 +130,7 @@ export const rutasAuth = {
           content: { 'application/json': { schema: { $ref: '#/components/schemas/SesionIniciada' } } },
         },
         400: error('Datos no válidos: correo que no es institucional, contraseña débil, falta el consentimiento...'),
+        404: error('En producción esta ruta está cerrada: el registro abierto solo existe en desarrollo y pruebas'),
         409: error('Ya existe una cuenta con ese correo'),
         500: { $ref: '#/components/responses/ErrorInterno' },
       },

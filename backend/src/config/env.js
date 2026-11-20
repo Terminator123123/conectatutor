@@ -56,20 +56,24 @@ export const env = Object.freeze({
 
 /**
  * Comprueba que la configuración sirva para arrancar.
+ * @param {typeof env} [configuracion] Configuración a revisar; por defecto la real.
  * @returns {string[]} Lista de problemas; vacía si todo está bien.
  */
-export function revisarConfiguracion() {
+export function revisarConfiguracion(configuracion = env) {
   const problemas = []
-  if (env.esProduccion && !env.mongodbUri) {
+  if (configuracion.esProduccion && configuracion.correo.desvio) {
+    problemas.push('CORREO_DESVIO no se permite en producción: desviaría los correos reales a otra dirección.')
+  }
+  if (configuracion.esProduccion && !configuracion.mongodbUri) {
     problemas.push('Falta MONGODB_URI: en producción la base de datos es obligatoria.')
   }
-  if (env.esProduccion && env.corsOrigenes.includes('*')) {
+  if (configuracion.esProduccion && configuracion.corsOrigenes.includes('*')) {
     problemas.push('CORS_ORIGIN no puede ser * en producción: indica el dominio del frontend.')
   }
-  if (env.jwtSecreto.length < LONGITUD_MINIMA_SECRETO) {
+  if (configuracion.jwtSecreto.length < LONGITUD_MINIMA_SECRETO) {
     problemas.push(`JWT_SECRETO debe tener al menos ${LONGITUD_MINIMA_SECRETO} caracteres al azar.`)
   }
-  for (const [nombre, valor] of [['JWT_DURACION', env.jwtDuracion], ['SESION_INACTIVIDAD', env.sesionInactividad]]) {
+  for (const [nombre, valor] of [['JWT_DURACION', configuracion.jwtDuracion], ['SESION_INACTIVIDAD', configuracion.sesionInactividad]]) {
     if (!(aSegundos(valor) > 0)) problemas.push(`${nombre} debe ser una duración como 30m, 2h o 1d.`)
   }
   return problemas
