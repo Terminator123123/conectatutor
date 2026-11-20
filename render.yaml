@@ -1,0 +1,45 @@
+# Despliegue en Render (Blueprint): la API como servicio web y el frontend como sitio estático.
+# Los secretos no van aquí: MONGODB_URI y el correo se escriben en el panel de Render (sync: false).
+services:
+  - type: web
+    name: conectatutor-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /api/salud
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 22.12.0
+      - key: JWT_SECRETO
+        generateValue: true
+      - key: MONGODB_URI
+        sync: false
+      - key: CORS_ORIGIN
+        value: https://conectatutor-web.onrender.com
+      - key: FRONTEND_URL
+        value: https://conectatutor-web.onrender.com
+      - key: CORREO_USUARIO
+        sync: false
+      - key: CORREO_CLAVE_APP
+        sync: false
+
+  - type: web
+    name: conectatutor-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: NODE_VERSION
+        value: 22.12.0
+      - key: VITE_API_URL
+        value: https://conectatutor-api.onrender.com/api
+    routes:
+      # Aplicación de una sola página: toda ruta la resuelve index.html
+      - type: rewrite
+        source: /*
+        destination: /index.html
