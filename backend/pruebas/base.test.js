@@ -1,4 +1,4 @@
-import { detenerBaseDePrueba, iniciarBaseDePrueba } from './ayudas/base.js'
+import { CLAVE_DE_PRUEBA, detenerBaseDePrueba, iniciarBaseDePrueba, vaciarBaseDePrueba } from './ayudas/base.js'
 
 import assert from 'node:assert/strict'
 import { after, before, describe, it } from 'node:test'
@@ -9,7 +9,8 @@ import { app } from '../src/app.js'
 import { revisarConfiguracion } from '../src/config/env.js'
 import { cerrarEnProduccion } from '../src/middlewares/cerrarEnProduccion.js'
 import { manejarErrores, rutaNoEncontrada } from '../src/middlewares/manejarErrores.js'
-import { Usuario } from '../src/models/index.js'
+import { Programa, Usuario } from '../src/models/index.js'
+import { cargarSemilla } from '../src/services/semilla.service.js'
 import { ejecutarAislado } from './ayudas/procesoAislado.js'
 import * as rutasAuth from '../src/routes/auth.routes.js'
 
@@ -115,22 +116,37 @@ describe('D01 · Entradas de prueba cerradas en producción', () => {
   })
 
   it('POST /api/auth/registro responde 404 en producción y no crea ninguna cuenta', async () => {
-    const aplicacion = express()
-    aplicacion.use(express.json())
-    aplicacion.use('/api/auth', rutasAuth.crearAuthRouter({ esProduccion: true }))
-    aplicacion.use(rutaNoEncontrada)
-    aplicacion.use(manejarErrores)
-
-    const antes = await Usuario.countDocuments()
-    const respuesta = await request(aplicacion).post('/api/auth/registro').send({
+    await vaciarBaseDePrueba()
+    await cargarSemilla(CLAVE_DE_PRUEBA)
+    const programa = (await Programa.findOne({ nombre: 'Ingeniería de Sistemas' })).id
+    const montar = (esProduccion) => {
+      const aplicacion = express()
+      aplicacion.use(express.json())
+      aplicacion.use('/api/auth', rutasAuth.crearAuthRouter({ esProduccion }))
+      aplicacion.use(rutaNoEncontrada)
+      aplicacion.use(manejarErrores)
+      return aplicacion
+    }
+    // Un cuerpo completo y válido: en local crea la cuenta, así el 404 de producción no se debe a la validación
+    const cuerpo = (correoInstitucional) => ({
       nombre: 'Cuenta Sintética',
-      correoInstitucional: 'cuenta.sintetica@uniguajira.edu.co',
+      correoInstitucional,
       clave: 'ClaveSintetica2026',
+      semestre: 3,
+      sede: 'Riohacha',
+      programa,
       aceptaTratamientoDatos: true,
     })
+
+    const enLocal = await request(montar(false)).post('/api/auth/registro').send(cuerpo('cuenta.local@uniguajira.edu.co'))
+    assert.equal(enLocal.status, 201)
+
+    const antes = await Usuario.countDocuments()
+    const respuesta = await request(montar(true)).post('/api/auth/registro').send(cuerpo('cuenta.produccion@uniguajira.edu.co'))
     assert.equal(respuesta.status, 404)
     assert.match(respuesta.headers['content-type'], /json/)
     assert.equal(await Usuario.countDocuments(), antes)
+    assert.equal(await Usuario.countDocuments({ correoInstitucional: 'cuenta.produccion@uniguajira.edu.co' }), 0)
   })
 
   it('en producción el registro responde 404 también con un JSON mal escrito', async () => {
