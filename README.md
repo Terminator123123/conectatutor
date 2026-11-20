@@ -49,7 +49,7 @@ Abre `http://localhost:5173`. El archivo `frontend/.env` solo define `VITE_API_U
 
 ### Base de datos persistente
 
-Para conservar los datos, pon en `MONGODB_URI` una cadena de MongoDB Atlas o de un MongoDB local. Después carga los datos de demostración, una sola vez:
+Para conservar los datos, pon en `MONGODB_URI` la cadena de un MongoDB local (`localhost`, `127.0.0.1` o `[::1]`); la semilla se niega a cargar datos en un servidor remoto. Después carga los datos de demostración, una sola vez:
 
 ```bash
 cd backend

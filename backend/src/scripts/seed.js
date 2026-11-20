@@ -4,6 +4,19 @@ import { env, revisarConfiguracion } from '../config/env.js'
 import { asegurarIndices } from '../models/index.js'
 import { cargarSemilla } from '../services/semilla.service.js'
 
+const HOSTS_LOCALES = new Set(['localhost', '127.0.0.1', '[::1]'])
+
+/**
+ * Indica si todos los servidores de la URI son de esta misma máquina.
+ * La semilla pisa datos de demostración: solo se permite sobre una base local.
+ * @param {string} uri Cadena de conexión mongodb://
+ */
+export function esUriLocal(uri) {
+  const partes = /^mongodb:\/\/(?:[^@/]*@)?([^/?]+)/.exec(uri)
+  if (!partes) return false
+  return partes[1].split(',').every((servidor) => HOSTS_LOCALES.has(servidor.replace(/:\d+$/, '').toLowerCase()))
+}
+
 /**
  * Carga los datos de demostración en la base indicada por MONGODB_URI.
  * Uso: npm run seed
@@ -12,7 +25,7 @@ import { cargarSemilla } from '../services/semilla.service.js'
  * Si MONGODB_URI está vacía (solo en desarrollo), lo ejecuta dos veces sobre una
  * base temporal en memoria para comprobar que no duplica; ahí no queda nada guardado.
  *
- * En producción nunca corre: termina con salida 1 antes de intentar conectarse.
+ * En producción nunca corre, ni sobre una base que no sea local: termina con salida 1 antes de intentar conectarse.
  * Los parámetros existen para poder probarlo con una conexión de mentira.
  */
 export async function ejecutar({
@@ -32,6 +45,12 @@ export async function ejecutar({
   const problemas = revisar()
   if (problemas.length > 0) {
     for (const problema of problemas) registro.error(`[Seed] ${problema}`)
+    salir(1)
+    return
+  }
+
+  if (configuracion.mongodbUri && !esUriLocal(configuracion.mongodbUri)) {
+    registro.error('[Seed] MONGODB_URI no apunta a una base local (localhost, 127.0.0.1 o [::1]): la semilla no se carga en servidores remotos.')
     salir(1)
     return
   }

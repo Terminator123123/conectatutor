@@ -1,7 +1,6 @@
 import { detenerBaseDePrueba, iniciarBaseDePrueba } from './ayudas/base.js'
 
 import assert from 'node:assert/strict'
-import { spawnSync } from 'node:child_process'
 import { after, before, describe, it } from 'node:test'
 import express from 'express'
 import mongoose from 'mongoose'
@@ -11,6 +10,7 @@ import { revisarConfiguracion } from '../src/config/env.js'
 import { cerrarEnProduccion } from '../src/middlewares/cerrarEnProduccion.js'
 import { manejarErrores, rutaNoEncontrada } from '../src/middlewares/manejarErrores.js'
 import { Usuario } from '../src/models/index.js'
+import { ejecutarAislado } from './ayudas/procesoAislado.js'
 import * as rutasAuth from '../src/routes/auth.routes.js'
 
 describe('E1 · Base de la API', () => {
@@ -150,17 +150,14 @@ describe('D01 · Entradas de prueba cerradas en producción', () => {
 
   it('la app real, arrancada como producción, responde 404 al registro aun con un JSON mal escrito', () => {
     const programa = `
-      const { default: request } = await import('supertest')
-      const { app } = await import('./src/app.js')
-      const r = await request(app).post('/api/auth/registro').set('Content-Type', 'application/json').send('{"nombre": ')
+      const raiz = process.env.RAIZ_BACKEND
+      const supertest = await import(process.env.SUPERTEST)
+      const { app } = await import(raiz + 'src/app.js')
+      const r = await supertest.default(app).post('/api/auth/registro').set('Content-Type', 'application/json').send('{"nombre": ')
       console.log(r.status)
     `
-    const resultado = spawnSync(process.execPath, ['--input-type=module', '-e', programa], {
-      cwd: new URL('..', import.meta.url),
-      encoding: 'utf8',
-      env: { ...process.env, NODE_ENV: 'production', MONGODB_URI: 'mongodb://127.0.0.1:1/conectatutor_pruebas', JWT_SECRETO: 'secreto-sintetico-de-prueba-xxxxxxxxxxxx', CORS_ORIGIN: 'https://frontend.example.test' },
-    })
-    assert.equal(resultado.stdout.trim().split(/\r?\n/).pop(), '404', resultado.stderr)
+    const resultado = ejecutarAislado(programa, { NODE_ENV: 'production', MONGODB_URI: 'mongodb://127.0.0.1:1/conectatutor_pruebas' })
+    assert.match(resultado.stdout.trim(), /404$/, resultado.stderr)
   })
 
   it('en producción siguen abiertas las demás rutas de autenticación', async () => {

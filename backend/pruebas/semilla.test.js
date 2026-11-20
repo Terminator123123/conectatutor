@@ -1,11 +1,11 @@
 import { CLAVE_DE_PRUEBA, detenerBaseDePrueba, iniciarBaseDePrueba, vaciarBaseDePrueba } from './ayudas/base.js'
 
 import assert from 'node:assert/strict'
-import { spawnSync } from 'node:child_process'
 import { after, before, beforeEach, describe, it } from 'node:test'
 import bcrypt from 'bcryptjs'
 import { Administrador, Materia, PerfilTutor, Sesion, Usuario } from '../src/models/index.js'
 import { cargarSemilla } from '../src/services/semilla.service.js'
+import { ejecutarAislado } from './ayudas/procesoAislado.js'
 
 describe('E1 · Datos de demostración (seed)', () => {
   before(iniciarBaseDePrueba)
@@ -117,7 +117,7 @@ describe('D01 · El seed no corre en producción', () => {
 
   it('en un proceso de producción no conecta aunque reciba una configuración de desarrollo', () => {
     const programa = `
-      const { ejecutar } = await import('./src/scripts/seed.js')
+      const { ejecutar } = await import(process.env.RAIZ_BACKEND + 'src/scripts/seed.js')
       const llamadas = []
       const anotar = (n) => async () => { llamadas.push(n) }
       await ejecutar({
@@ -129,11 +129,7 @@ describe('D01 · El seed no corre en producción', () => {
       })
       console.log(JSON.stringify(llamadas))
     `
-    const resultado = spawnSync(process.execPath, ['--input-type=module', '-e', programa], {
-      cwd: new URL('..', import.meta.url),
-      encoding: 'utf8',
-      env: { ...process.env, NODE_ENV: 'production', MONGODB_URI: 'mongodb://127.0.0.1:1/conectatutor_pruebas', JWT_SECRETO: 'secreto-sintetico-de-prueba-xxxxxxxxxxxx' },
-    })
+    const resultado = ejecutarAislado(programa, { NODE_ENV: 'production', MONGODB_URI: 'mongodb://127.0.0.1:1/conectatutor_pruebas' })
     assert.equal(resultado.status, 1, resultado.stderr)
     assert.equal(resultado.stdout.trim(), '[]')
   })
@@ -165,4 +161,50 @@ describe('D01 · El seed no corre en producción', () => {
     })
     assert.deepEqual(llamadas, ['conectarBaseDeDatos', 'asegurarIndices', 'cargarSemilla', 'desconectarBaseDeDatos'])
   })
+})
+
+describe('D01 · El seed solo acepta bases en loopback', () => {
+  const sembrar = async (mongodbUri) => {
+    const { ejecutar } = await import('../src/scripts/seed.js')
+    const { llamadas, conexion } = crearDoble()
+    const salidas = []
+    const mensajes = []
+    await ejecutar({
+      configuracion: { esProduccion: false, mongodbUri, claveDemo: CLAVE_DE_PRUEBA },
+      revisar: () => [],
+      conexion,
+      salir: (codigo) => salidas.push(codigo),
+      registro: { log() {}, error: (...partes) => mensajes.push(partes.join(' ')) },
+    })
+    return { llamadas, salidas, mensajes }
+  }
+
+  for (const uri of [
+    'mongodb+srv://usuario:clave@cluster.example.test/conectatutor',
+    'mongodb://usuario:clave@nodo1.example.test:27017,nodo2.example.test:27017/conectatutor',
+    'mongodb://127.0.0.1:27017,nodo2.example.test:27017/conectatutor',
+    'mongodb://localhost.example.test:27017/conectatutor',
+    'no es una uri',
+  ]) {
+    it(`rechaza ${uri.split('@').pop()} sin conectar y sin mostrar la URI`, async () => {
+      const { llamadas, salidas, mensajes } = await sembrar(uri)
+      assert.deepEqual(salidas, [1])
+      assert.deepEqual(llamadas, [])
+      assert.ok(mensajes.length > 0)
+      assert.ok(mensajes.every((mensaje) => !mensaje.includes('clave') && !mensaje.includes('example.test')))
+    })
+  }
+
+  for (const uri of [
+    'mongodb://127.0.0.1:27017/conectatutor_pruebas',
+    'mongodb://localhost:27017/conectatutor_pruebas',
+    'mongodb://usuario:clave@[::1]:27017/conectatutor_pruebas?authSource=admin',
+    'mongodb://127.0.0.1:27017,localhost:27018/conectatutor_pruebas?replicaSet=rs0',
+  ]) {
+    it(`acepta ${uri.split('@').pop()}`, async () => {
+      const { llamadas, salidas } = await sembrar(uri)
+      assert.deepEqual(salidas, [])
+      assert.deepEqual(llamadas, ['conectarBaseDeDatos', 'asegurarIndices', 'cargarSemilla', 'desconectarBaseDeDatos'])
+    })
+  }
 })
