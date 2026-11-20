@@ -12,6 +12,7 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "seed": "node src/scripts/seed.js",
+    "cargar-catalogo": "node src/scripts/cargarCatalogo.js",
     "crear-coordinacion": "node src/scripts/crearCoordinacion.js",
     "respaldar": "node src/scripts/respaldar.js",
     "verificar-respaldo": "node src/scripts/verificarRespaldo.js",

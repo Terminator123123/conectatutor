@@ -101,11 +101,21 @@ Los estudiantes no se registran por su cuenta: Uniguajira entrega las credencial
 
 Mientras no complete ese paso, la API solo le permite consultar.
 
-La ruta `POST /api/auth/registro` sigue disponible en la API para pruebas, pero la aplicación no la usa.
+La ruta `POST /api/auth/registro` sigue disponible en la API para desarrollo y pruebas, pero la aplicación no la usa; en producción responde 404.
+
+### Catálogo académico inicial
+
+Una base nueva, como la de producción, no tiene programas ni materias, y sin programas Coordinación no puede crear cuentas de estudiantes ni materias. Se carga una vez, antes de la primera cuenta, desde `backend/` con `MONGODB_URI` apuntando a esa base:
+
+```bash
+npm run cargar-catalogo
+```
+
+Carga los programas y las materias reales de Uniguajira que están en `backend/src/datos/catalogoUniguajira.js` (los mismos de la semilla, con su fuente). No crea cuentas ni datos de demostración, así que se puede usar en producción. Solo inserta lo que falta: si un programa o una materia ya existe, lo deja como está, aunque Coordinación lo haya editado o desactivado. Se puede repetir sin duplicar nada; muestra cuántos creó y cuántos ya estaban. Después, Coordinación agrega o edita materias desde **Materias**.
 
 ### Primera cuenta de Coordinación
 
-Una base nueva, como la de producción, no tiene registro abierto ni cuentas de demostración: hace falta crear una vez la primera cuenta de Coordinación, que después crea las de los estudiantes desde la aplicación. Desde `backend/`, con `MONGODB_URI` apuntando a esa base (en `backend/.env` o en el entorno), en PowerShell:
+Una base nueva, como la de producción, no tiene registro abierto ni cuentas de demostración: después de cargar el catálogo, hace falta crear una vez la primera cuenta de Coordinación, que después crea las de los estudiantes desde la aplicación. Desde `backend/`, con `MONGODB_URI` apuntando a esa base (en `backend/.env` o en el entorno), en PowerShell:
 
 ```powershell
 $env:COORDINACION_NOMBRE = 'Nombre Apellido'
@@ -150,9 +160,9 @@ Los respaldos contienen datos personales y contraseñas cifradas (Ley 1581 de 20
 ## Despliegue
 
 - **Base de datos:** MongoDB Atlas. En Network Access debe permitirse `0.0.0.0/0` para que el servicio de la API pueda conectarse.
-- **API (Railway):** carpeta raíz `backend`, comando de inicio `npm start`. Variables: `NODE_ENV=production`, `MONGODB_URI`, `JWT_SECRETO`, `CORS_ORIGIN` (dirección exacta del frontend, nunca `*`), `FRONTEND_URL`, `CLAVE_DEMO` y las de correo.
+- **API (Railway):** carpeta raíz `backend`, comando de inicio `npm start`. Variables: `NODE_ENV=production`, `MONGODB_URI`, `JWT_SECRETO`, `CORS_ORIGIN` (dirección exacta del frontend, nunca `*`), `FRONTEND_URL` y las de correo. `CLAVE_DEMO` no hace falta: en producción no se cargan cuentas de demostración.
 - **Frontend (Vercel):** carpeta raíz `frontend`, comando `npm run build`, salida `dist`, variable `VITE_API_URL` con la dirección pública de la API terminada en `/api`. `vercel.json` redirige todas las rutas a `index.html`.
-- **Primera cuenta:** con la base de producción vacía, crea la cuenta de Coordinación con `npm run crear-coordinacion` (ver «Primera cuenta de Coordinación»). En producción no se cargan datos de demostración.
+- **Catálogo y primera cuenta:** con la base de producción vacía, carga el catálogo con `npm run cargar-catalogo` y después crea la cuenta de Coordinación con `npm run crear-coordinacion` (ver «Catálogo académico inicial» y «Primera cuenta de Coordinación»). En producción no se cargan datos de demostración.
 - **Comprobación:** `/api/salud` y `/api/docs` de la API responden, y el ingreso funciona desde un celular con una cuenta ya aprovisionada.
 
 ## Documentación de la API
