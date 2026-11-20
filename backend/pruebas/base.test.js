@@ -2,8 +2,14 @@ import { detenerBaseDePrueba, iniciarBaseDePrueba } from './ayudas/base.js'
 
 import assert from 'node:assert/strict'
 import { after, before, describe, it } from 'node:test'
+import express from 'express'
+import mongoose from 'mongoose'
 import request from 'supertest'
 import { app } from '../src/app.js'
+import { revisarConfiguracion } from '../src/config/env.js'
+import { manejarErrores, rutaNoEncontrada } from '../src/middlewares/manejarErrores.js'
+import { Usuario } from '../src/models/index.js'
+import * as rutasAuth from '../src/routes/auth.routes.js'
 
 describe('E1 · Base de la API', () => {
   before(iniciarBaseDePrueba)
@@ -79,5 +85,84 @@ describe('E1 · Base de la API', () => {
     assert.equal(permitido.headers['access-control-allow-origin'], 'http://localhost:5173')
     const ajeno = await request(app).get('/api/salud').set('Origin', 'http://sitio-ajeno.example')
     assert.equal(ajeno.headers['access-control-allow-origin'], undefined)
+  })
+})
+
+/** Configuración sintética de producción: no sale de ningún .env ni apunta a un servicio real. */
+function configuracionSintetica(cambios = {}) {
+  const { correo, ...resto } = cambios
+  return {
+    esProduccion: true,
+    mongodbUri: 'mongodb://127.0.0.1:27017/conectatutor_pruebas',
+    corsOrigenes: ['https://frontend.example.test'],
+    jwtSecreto: 'secreto-sintetico-de-prueba-'.padEnd(40, 'x'),
+    jwtDuracion: '2h',
+    sesionInactividad: '30m',
+    correo: { desvio: '', ...correo },
+    ...resto,
+  }
+}
+
+describe('D01 · Entradas de prueba cerradas en producción', () => {
+  before(iniciarBaseDePrueba)
+  after(detenerBaseDePrueba)
+
+  it('las pruebas usan una base en memoria, en loopback y llamada conectatutor_pruebas', () => {
+    assert.equal(mongoose.connection.name, 'conectatutor_pruebas')
+    assert.match(mongoose.connection.host, /^(127\.0\.0\.1|localhost|::1)$/)
+  })
+
+  it('POST /api/auth/registro responde 404 en producción y no crea ninguna cuenta', async () => {
+    const aplicacion = express()
+    aplicacion.use(express.json())
+    aplicacion.use('/api/auth', rutasAuth.crearAuthRouter({ esProduccion: true }))
+    aplicacion.use(rutaNoEncontrada)
+    aplicacion.use(manejarErrores)
+
+    const antes = await Usuario.countDocuments()
+    const respuesta = await request(aplicacion).post('/api/auth/registro').send({
+      nombre: 'Cuenta Sintética',
+      correoInstitucional: 'cuenta.sintetica@uniguajira.edu.co',
+      clave: 'ClaveSintetica2026',
+      aceptaTratamientoDatos: true,
+    })
+    assert.equal(respuesta.status, 404)
+    assert.match(respuesta.headers['content-type'], /json/)
+    assert.equal(await Usuario.countDocuments(), antes)
+  })
+
+  it('en producción siguen abiertas las demás rutas de autenticación', async () => {
+    const aplicacion = express()
+    aplicacion.use(express.json())
+    aplicacion.use('/api/auth', rutasAuth.crearAuthRouter({ esProduccion: true }))
+    aplicacion.use(rutaNoEncontrada)
+    aplicacion.use(manejarErrores)
+    const respuesta = await request(aplicacion).post('/api/auth/ingreso').send({})
+    assert.equal(respuesta.status, 400)
+  })
+
+  it('fuera de producción el registro sigue disponible (llega a la validación, no al 404)', async () => {
+    const aplicacion = express()
+    aplicacion.use(express.json())
+    aplicacion.use('/api/auth', rutasAuth.crearAuthRouter({ esProduccion: false }))
+    aplicacion.use(rutaNoEncontrada)
+    aplicacion.use(manejarErrores)
+    const respuesta = await request(aplicacion).post('/api/auth/registro').send({})
+    assert.equal(respuesta.status, 400)
+  })
+
+  it('revisarConfiguracion rechaza CORREO_DESVIO en producción', () => {
+    const problemas = revisarConfiguracion(configuracionSintetica({ correo: { desvio: 'demo@example.test' } }))
+    assert.equal(problemas.length, 1)
+    assert.match(problemas[0], /CORREO_DESVIO/)
+  })
+
+  it('revisarConfiguracion acepta una producción sin CORREO_DESVIO', () => {
+    assert.deepEqual(revisarConfiguracion(configuracionSintetica()), [])
+  })
+
+  it('CORREO_DESVIO sigue permitido en demostraciones locales', () => {
+    const local = configuracionSintetica({ esProduccion: false, mongodbUri: '', correo: { desvio: 'demo@example.test' } })
+    assert.deepEqual(revisarConfiguracion(local), [])
   })
 })

@@ -1,3 +1,4 @@
+import { pathToFileURL } from 'node:url'
 import { conectarBaseDeDatos, conectarBaseEnMemoria, desconectarBaseDeDatos } from '../config/database.js'
 import { env, revisarConfiguracion } from '../config/env.js'
 import { asegurarIndices } from '../models/index.js'
@@ -10,36 +11,53 @@ import { cargarSemilla } from '../services/semilla.service.js'
  * Se puede repetir las veces que haga falta: actualiza lo que ya existe y no duplica.
  * Si MONGODB_URI está vacía (solo en desarrollo), lo ejecuta dos veces sobre una
  * base temporal en memoria para comprobar que no duplica; ahí no queda nada guardado.
+ *
+ * En producción nunca corre: termina con salida 1 antes de intentar conectarse.
+ * Los parámetros existen para poder probarlo con una conexión de mentira.
  */
-async function ejecutar() {
-  const problemas = revisarConfiguracion()
+export async function ejecutar({
+  configuracion = env,
+  revisar = revisarConfiguracion,
+  conexion = { conectarBaseDeDatos, conectarBaseEnMemoria, desconectarBaseDeDatos, asegurarIndices, cargarSemilla },
+  salir = (codigo) => process.exit(codigo),
+  registro = console,
+} = {}) {
+  if (configuracion.esProduccion) {
+    registro.error('[Seed] La carga de datos de demostración no se ejecuta en producción.')
+    salir(1)
+    return
+  }
+
+  const problemas = revisar()
   if (problemas.length > 0) {
-    for (const problema of problemas) console.error(`[Seed] ${problema}`)
-    process.exit(1)
+    for (const problema of problemas) registro.error(`[Seed] ${problema}`)
+    salir(1)
+    return
   }
 
   try {
-    if (env.mongodbUri) {
-      await conectarBaseDeDatos(env.mongodbUri)
-      await asegurarIndices()
-      const totales = await cargarSemilla(env.claveDemo)
-      console.log('[Seed] Datos de demostración cargados:', totales)
+    if (configuracion.mongodbUri) {
+      await conexion.conectarBaseDeDatos(configuracion.mongodbUri)
+      await conexion.asegurarIndices()
+      const totales = await conexion.cargarSemilla(configuracion.claveDemo)
+      registro.log('[Seed] Datos de demostración cargados:', totales)
     } else {
-      console.log('[Seed] MONGODB_URI está vacía: se prueba sobre una base temporal en memoria.')
-      await conectarBaseEnMemoria()
-      await asegurarIndices()
-      const primera = await cargarSemilla(env.claveDemo)
-      const segunda = await cargarSemilla(env.claveDemo)
-      console.log('[Seed] Primera carga:', primera)
-      console.log('[Seed] Segunda carga:', segunda)
-      console.log('[Seed] Nada quedó guardado. Para cargar la base real, define MONGODB_URI en backend/.env.')
+      registro.log('[Seed] MONGODB_URI está vacía: se prueba sobre una base temporal en memoria.')
+      await conexion.conectarBaseEnMemoria()
+      await conexion.asegurarIndices()
+      const primera = await conexion.cargarSemilla(configuracion.claveDemo)
+      const segunda = await conexion.cargarSemilla(configuracion.claveDemo)
+      registro.log('[Seed] Primera carga:', primera)
+      registro.log('[Seed] Segunda carga:', segunda)
+      registro.log('[Seed] Nada quedó guardado. Para cargar una base local, define MONGODB_URI en backend/.env.')
     }
   } catch (error) {
-    console.error('[Seed] No se pudieron cargar los datos:', error.message)
+    registro.error('[Seed] No se pudieron cargar los datos:', error.message)
     process.exitCode = 1
   } finally {
-    await desconectarBaseDeDatos()
+    await conexion.desconectarBaseDeDatos()
   }
 }
 
-ejecutar()
+// Solo corre al ejecutar `npm run seed`, no al importarlo desde las pruebas
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await ejecutar()

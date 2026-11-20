@@ -61,3 +61,84 @@ describe('E1 · Datos de demostración (seed)', () => {
     assert.equal(await Usuario.countDocuments(), 0)
   })
 })
+
+/** Doble de la conexión y de la carga: registra cada llamada para comprobar qué se intentó. */
+function crearDoble() {
+  const llamadas = []
+  const registrar = (nombre, resultado) => async (...args) => {
+    llamadas.push(nombre)
+    return resultado ?? args[0]
+  }
+  return {
+    llamadas,
+    conexion: {
+      conectarBaseDeDatos: registrar('conectarBaseDeDatos'),
+      conectarBaseEnMemoria: registrar('conectarBaseEnMemoria'),
+      desconectarBaseDeDatos: registrar('desconectarBaseDeDatos'),
+      asegurarIndices: registrar('asegurarIndices'),
+      cargarSemilla: registrar('cargarSemilla', { programas: 0 }),
+    },
+  }
+}
+
+const SILENCIO = { log() {}, error() {} }
+
+describe('D01 · El seed no corre en producción', () => {
+  it('en producción termina con salida 1 y no intenta conectarse a Mongo', async () => {
+    const { ejecutar } = await import('../src/scripts/seed.js')
+    const { llamadas, conexion } = crearDoble()
+    const salidas = []
+    await ejecutar({
+      configuracion: { esProduccion: true, mongodbUri: 'mongodb://127.0.0.1:1/conectatutor_pruebas', claveDemo: CLAVE_DE_PRUEBA },
+      revisar: () => [],
+      conexion,
+      salir: (codigo) => salidas.push(codigo),
+      registro: SILENCIO,
+    })
+    assert.deepEqual(salidas, [1])
+    assert.deepEqual(llamadas, [])
+  })
+
+  it('en producción sale con 1 aunque la configuración tenga errores, sin conectarse', async () => {
+    const { ejecutar } = await import('../src/scripts/seed.js')
+    const { llamadas, conexion } = crearDoble()
+    const salidas = []
+    await ejecutar({
+      configuracion: { esProduccion: true, mongodbUri: '', claveDemo: '' },
+      revisar: () => ['Falta algo'],
+      conexion,
+      salir: (codigo) => salidas.push(codigo),
+      registro: SILENCIO,
+    })
+    assert.deepEqual(salidas, [1])
+    assert.deepEqual(llamadas, [])
+  })
+
+  it('en desarrollo sin MONGODB_URI sigue cargando la semilla sobre una base en memoria', async () => {
+    const { ejecutar } = await import('../src/scripts/seed.js')
+    const { llamadas, conexion } = crearDoble()
+    const salidas = []
+    await ejecutar({
+      configuracion: { esProduccion: false, mongodbUri: '', claveDemo: CLAVE_DE_PRUEBA },
+      revisar: () => [],
+      conexion,
+      salir: (codigo) => salidas.push(codigo),
+      registro: SILENCIO,
+    })
+    assert.deepEqual(salidas, [])
+    assert.deepEqual(llamadas, ['conectarBaseEnMemoria', 'asegurarIndices', 'cargarSemilla', 'cargarSemilla', 'desconectarBaseDeDatos'])
+  })
+
+  it('en desarrollo con una base local sigue usando la URI indicada', async () => {
+    const { ejecutar } = await import('../src/scripts/seed.js')
+    const { llamadas, conexion } = crearDoble()
+    await ejecutar({
+      configuracion: { esProduccion: false, mongodbUri: 'mongodb://127.0.0.1:27017/conectatutor_pruebas', claveDemo: CLAVE_DE_PRUEBA },
+      revisar: () => [],
+      conexion,
+      salir: () => {},
+      registro: SILENCIO,
+    })
+    assert.deepEqual(llamadas, ['conectarBaseDeDatos', 'asegurarIndices', 'cargarSemilla', 'desconectarBaseDeDatos'])
+  })
+})

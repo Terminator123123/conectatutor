@@ -115,7 +115,7 @@ Solo puede haber una sesión abierta por cuenta. Si la misma cuenta ingresa en o
 ## Despliegue
 
 - **Base de datos:** MongoDB Atlas. En Network Access debe permitirse `0.0.0.0/0` para que el servicio de la API pueda conectarse.
-- **API (Railway):** carpeta raíz `backend`, comando de inicio `npm start`. Variables: `NODE_ENV=production`, `MONGODB_URI`, `JWT_SECRETO`, `CORS_ORIGIN` (dirección exacta del frontend, nunca `*`), `FRONTEND_URL`, `CLAVE_DEMO` y las de correo. Después, una vez: `npm run seed` con la `MONGODB_URI` de producción.
+- **API (Railway):** carpeta raíz `backend`, comando de inicio `npm start`. Variables: `NODE_ENV=production`, `MONGODB_URI`, `JWT_SECRETO`, `CORS_ORIGIN` (dirección exacta del frontend, nunca `*`), `FRONTEND_URL`, `CLAVE_DEMO` y las de correo.
 - **Frontend (Vercel):** carpeta raíz `frontend`, comando `npm run build`, salida `dist`, variable `VITE_API_URL` con la dirección pública de la API terminada en `/api`. `vercel.json` redirige todas las rutas a `index.html`.
 - **Comprobación:** `/api/salud` y `/api/docs` de la API responden, y el recorrido rápido funciona desde un celular.
 
