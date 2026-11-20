@@ -1,5 +1,13 @@
 import { MATERIAS, PROGRAMAS } from '../datos/catalogoUniguajira.js'
-import { Materia, Programa } from '../models/index.js'
+// Solo estos dos modelos: importar models/index.js registraría todos, y al conectar Mongoose prepararía
+// sus colecciones e índices (incluida la migración de reservas de las sesiones). La carga solo toca el catálogo.
+import { Materia } from '../models/materia.model.js'
+import { Programa } from '../models/programa.model.js'
+
+/** Crea las colecciones y los índices únicos del catálogo (nombre del programa, código de la materia) y nada más. */
+export async function prepararIndicesDelCatalogo() {
+  await Promise.all([Programa.init(), Materia.init()])
+}
 
 /**
  * Crea el documento si todavía no existe. La clave natural (nombre del programa, código de la materia) tiene

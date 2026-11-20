@@ -1,20 +1,20 @@
 import { pathToFileURL } from 'node:url'
 import { conectarBaseDeDatos, desconectarBaseDeDatos } from '../config/database.js'
 import { env } from '../config/env.js'
-import { asegurarIndices } from '../models/index.js'
-import { cargarCatalogoInicial } from '../services/catalogoInicial.service.js'
+import { cargarCatalogoInicial, prepararIndicesDelCatalogo } from '../services/catalogoInicial.service.js'
 
 /**
  * Carga el catálogo académico de Uniguajira (programas y materias) en la base de MONGODB_URI, también la de
  * producción: sin programas, Coordinación no puede crear cuentas de estudiantes ni materias.
- * Solo inserta lo que falta; no cambia lo existente, no crea cuentas ni datos de demostración.
+ * Solo inserta lo que falta en programas y materias; no cambia lo existente ni otras colecciones, y no crea cuentas
+ * ni datos de demostración.
  * Uso desde backend/: npm run cargar-catalogo (ver README, «Catálogo académico inicial»).
  * Los parámetros existen para poder probarlo sin base real.
  * @returns {Promise<number>} Código de salida: 0 si el catálogo quedó completo; 1 si no.
  */
 export async function ejecutar({
   configuracion = env,
-  conexion = { conectarBaseDeDatos, desconectarBaseDeDatos, asegurarIndices, cargarCatalogoInicial },
+  conexion = { conectarBaseDeDatos, desconectarBaseDeDatos, asegurarIndices: prepararIndicesDelCatalogo, cargarCatalogoInicial },
   registro = console,
 } = {}) {
   if (!configuracion.mongodbUri) {
@@ -23,7 +23,8 @@ export async function ejecutar({
   }
   try {
     await conexion.conectarBaseDeDatos(configuracion.mongodbUri)
-    // Los índices únicos son los que impiden duplicar un programa o una materia
+    // Solo los índices del catálogo: son los que impiden duplicar un programa o una materia.
+    // No se tocan las demás colecciones (por ejemplo, no se migran las reservas de las sesiones).
     await conexion.asegurarIndices()
     const { programas, materias } = await conexion.cargarCatalogoInicial()
     registro.log(`[Catálogo] Programas: ${programas.creados} creados, ${programas.existentes} ya estaban.`)

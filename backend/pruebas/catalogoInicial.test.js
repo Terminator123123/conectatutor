@@ -3,8 +3,6 @@ import { detenerBaseDePrueba, iniciarBaseDePrueba, vaciarBaseDePrueba } from './
 import assert from 'node:assert/strict'
 import mongoose from 'mongoose'
 import { after, before, beforeEach, describe, it } from 'node:test'
-import request from 'supertest'
-import { app } from '../src/app.js'
 import { MATERIAS, PROGRAMAS } from '../src/datos/catalogoUniguajira.js'
 import { reiniciarIntentos } from '../src/middlewares/limitarIntentos.js'
 import { Materia, Programa, Usuario } from '../src/models/index.js'
@@ -119,19 +117,44 @@ describe('D05 · Catálogo académico inicial', () => {
     assert.equal(await Usuario.countDocuments(), 1)
     assert.equal(await mongoose.connection.db.collection('sesiones').countDocuments(), 0)
 
-    const { token } = (await request(app).post('/api/auth/ingreso').send({ correoInstitucional: correo, clave })).body
-    const programas = await request(app).get('/api/programas')
-    assert.equal(programas.status, 200)
-    assert.equal(programas.body.length, PROGRAMAS.length)
-    const sistemas = programas.body.find(({ nombre }) => nombre === 'Ingeniería de Sistemas')
-
-    const materia = await request(app).post('/api/materias').set('Authorization', `Bearer ${token}`)
-      .send({ codigo: 'SIS-09', nombre: 'Bases de Datos I', programa: sistemas.id })
-    assert.equal(materia.status, 201, JSON.stringify(materia.body))
-
-    const cuenta = await request(app).post('/api/coordinacion/cuentas').set('Authorization', `Bearer ${token}`)
-      .send({ nombre: 'Laura Pérez', correoInstitucional: 'laura.perez@uniguajira.edu.co', documento: '1122334455', semestre: 1, sede: 'Riohacha', programa: sistemas.id })
-    assert.equal(cuenta.status, 201, JSON.stringify(cuenta.body))
+    // La API arrancada como producción, en su propio proceso y conectada solo a la base temporal:
+    // Coordinación ingresa, ve los programas y crea una materia y la cuenta de un estudiante
+    const api = ejecutarAislado(`
+      const raiz = process.env.RAIZ_BACKEND
+      const supertest = (await import(process.env.SUPERTEST)).default
+      const { conectarBaseDeDatos, desconectarBaseDeDatos } = await import(raiz + 'src/config/database.js')
+      const { env } = await import(raiz + 'src/config/env.js')
+      const { asegurarIndices } = await import(raiz + 'src/models/index.js')
+      const { app } = await import(raiz + 'src/app.js')
+      await conectarBaseDeDatos(process.env.MONGODB_URI)
+      await asegurarIndices()
+      try {
+        const ingreso = await supertest(app).post('/api/auth/ingreso').send({ correoInstitucional: process.env.CORREO, clave: process.env.CLAVE })
+        const programas = await supertest(app).get('/api/programas')
+        const sistemas = (programas.body ?? []).find(({ nombre }) => nombre === 'Ingeniería de Sistemas')
+        const autorizacion = 'Bearer ' + ingreso.body.token
+        const materia = await supertest(app).post('/api/materias').set('Authorization', autorizacion)
+          .send({ codigo: 'SIS-09', nombre: 'Bases de Datos I', programa: sistemas?.id })
+        const cuenta = await supertest(app).post('/api/coordinacion/cuentas').set('Authorization', autorizacion)
+          .send({ nombre: 'Laura Pérez', correoInstitucional: 'laura.perez@uniguajira.edu.co', documento: '1122334455', semestre: 1, sede: 'Riohacha', programa: sistemas?.id })
+        const registro = await supertest(app).post('/api/auth/registro').send({})
+        console.log(JSON.stringify({
+          produccion: env.esProduccion,
+          ingreso: ingreso.status, programas: programas.status, totalProgramas: programas.body.length,
+          materia: materia.status, cuenta: cuenta.status, registro: registro.status,
+        }))
+      } finally {
+        await desconectarBaseDeDatos()
+      }
+    `, { ...entorno, CORREO: correo, CLAVE: clave }, { tope: 60000 })
+    assert.equal(api.status, 0, api.stderr)
+    assert.deepEqual(JSON.parse(api.stdout.trim().split('\n').at(-1)), {
+      produccion: true,
+      ingreso: 200, programas: 200, totalProgramas: PROGRAMAS.length,
+      materia: 201, cuenta: 201, registro: 404,
+    })
+    assert.ok(await Materia.exists({ codigo: 'SIS-09' }))
+    assert.equal((await Usuario.findOne({ correoInstitucional: 'laura.perez@uniguajira.edu.co' })).tipo, 'ESTUDIANTE')
 
     // Repetir la carga en producción no toca lo que ya existe, incluida la materia nueva
     const repetida = ejecutarAislado(`
@@ -141,6 +164,38 @@ describe('D05 · Catálogo académico inicial', () => {
     assert.equal(repetida.status, 0, repetida.stderr)
     assert.match(repetida.stdout, /Programas: 0 creados/)
     assert.equal(await Materia.countDocuments(), MATERIAS.length + 1)
+  })
+
+  it('el comando no toca otras colecciones: no migra sesiones antiguas ni crea sus índices', async () => {
+    const { host, port } = mongoose.connection
+    const nombre = 'conectatutor_catalogo_sin_tocar'
+    const otraBase = mongoose.connection.client.db(nombre)
+    await otraBase.dropDatabase()
+    try {
+      // Una sesión antigua sin `minutosOcupados` y una cuenta, tal como estarían en la base
+      const sesion = { _id: new mongoose.Types.ObjectId(), estado: 'PENDIENTE', franja: { horaInicio: '08:00', horaFin: '10:00' } }
+      const usuario = { _id: new mongoose.Types.ObjectId(), correoInstitucional: 'cuenta.previa@uniguajira.edu.co', tipo: 'ESTUDIANTE' }
+      await otraBase.collection('sesiones').insertOne(sesion)
+      await otraBase.collection('usuarios').insertOne(usuario)
+
+      const carga = ejecutarAislado(`
+        const { ejecutar } = await import(new URL('src/scripts/cargarCatalogo.js', process.env.RAIZ_BACKEND))
+        process.exitCode = await ejecutar()
+      `, { NODE_ENV: 'production', MONGODB_URI: `mongodb://${host}:${port}/${nombre}` }, { tope: 60000 })
+      assert.equal(carga.status, 0, carga.stderr)
+
+      assert.deepEqual(await otraBase.collection('sesiones').find().toArray(), [sesion])
+      assert.deepEqual(await otraBase.collection('usuarios').find().toArray(), [usuario])
+      for (const coleccion of ['sesiones', 'usuarios']) {
+        const indices = (await otraBase.collection(coleccion).indexes()).map(({ name }) => name)
+        assert.deepEqual(indices, ['_id_'], `${coleccion} conserva solo sus índices de antes`)
+      }
+      const colecciones = (await otraBase.listCollections().toArray()).map(({ name }) => name).sort()
+      assert.deepEqual(colecciones, ['materias', 'programas', 'sesiones', 'usuarios'])
+      assert.equal(await otraBase.collection('materias').countDocuments(), MATERIAS.length)
+    } finally {
+      await otraBase.dropDatabase()
+    }
   })
 })
 
