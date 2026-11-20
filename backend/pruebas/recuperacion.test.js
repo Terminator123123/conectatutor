@@ -1,6 +1,7 @@
 import { CLAVE_DE_PRUEBA, detenerBaseDePrueba, iniciarBaseDePrueba, vaciarBaseDePrueba } from './ayudas/base.js'
 
 import assert from 'node:assert/strict'
+import bcrypt from 'bcryptjs'
 import { after, before, beforeEach, describe, it } from 'node:test'
 import request from 'supertest'
 import { app } from '../src/app.js'
@@ -98,6 +99,47 @@ describe('Recuperación de acceso por correo', () => {
     assert.equal(comprobar.status, 400)
     const usar = await request(app).post('/api/auth/recuperacion/restablecer').send({ token, clave: 'ClaveDelEnlace9' })
     assert.equal(usar.status, 400)
+  })
+
+  it('un cambio desde la cuenta que quedó a medias no sobrescribe un restablecimiento terminado', async () => {
+    await request(app).post('/api/auth/recuperacion').send({ correoInstitucional: CORREO })
+    const token = tokenDelCorreo()
+    const ingreso = await request(app).post('/api/auth/ingreso').send({ correoInstitucional: CORREO, clave: CLAVE_DE_PRUEBA })
+    const CLAVE_CAMBIO = 'ClaveDelCambio9'
+    const CLAVE_ENLACE = 'ClaveDelEnlace9'
+
+    // Se detiene el cambio justo después de comprobar la contraseña actual, mientras cifra la nueva
+    let avisarEntrada
+    let soltar
+    const entro = new Promise((resolver) => { avisarEntrada = resolver })
+    const liberado = new Promise((resolver) => { soltar = resolver })
+    const hashOriginal = bcrypt.hash
+    bcrypt.hash = async function (clave, ...resto) {
+      if (clave === CLAVE_CAMBIO) {
+        avisarEntrada()
+        await liberado
+      }
+      return hashOriginal.call(this, clave, ...resto)
+    }
+    try {
+      const cambioPendiente = request(app).put('/api/auth/yo/clave').set('Authorization', `Bearer ${ingreso.body.token}`)
+        .send({ claveActual: CLAVE_DE_PRUEBA, claveNueva: CLAVE_CAMBIO })
+        .then((respuesta) => respuesta)
+      await entro
+      const restablecer = await request(app).post('/api/auth/recuperacion/restablecer').send({ token, clave: CLAVE_ENLACE })
+      assert.equal(restablecer.status, 200)
+      soltar()
+      const cambio = await cambioPendiente
+      assert.equal(cambio.status, 409)
+    } finally {
+      bcrypt.hash = hashOriginal
+    }
+
+    reiniciarIntentos()
+    const conEnlace = await request(app).post('/api/auth/ingreso').send({ correoInstitucional: CORREO, clave: CLAVE_ENLACE })
+    const conCambio = await request(app).post('/api/auth/ingreso').send({ correoInstitucional: CORREO, clave: CLAVE_CAMBIO })
+    assert.equal(conEnlace.status, 200)
+    assert.equal(conCambio.status, 401)
   })
 
   it('en producción sin cuenta de correo no hay recuperación (no se escriben enlaces en el registro)', () => {

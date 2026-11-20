@@ -263,6 +263,7 @@ export const rutasAuth = {
         200: { description: 'Contraseña actualizada', content: { 'application/json': { schema: { type: 'object', properties: { mensaje: { type: 'string' } } } } } },
         400: error('La contraseña actual no es correcta o la nueva no cumple las reglas'),
         401: { $ref: '#/components/responses/NoAutenticado' },
+        409: error('La contraseña se restableció por recuperación mientras se guardaba este cambio; no se aplica'),
         500: { $ref: '#/components/responses/ErrorInterno' },
       },
     },

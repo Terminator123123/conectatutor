@@ -41,12 +41,18 @@ export function crearRepositorioApi({ cliente = crearClienteApi() } = {}) {
 
   async function autenticar(ruta, datos) {
     const revision = ++revisionAcceso
+    // El almacenamiento lo comparten todas las pestañas: si otra inicia o cierra sesión mientras
+    // esta espera la respuesta, esta respuesta ya llegó tarde y no puede reemplazar esa sesión.
+    // Se compara la sesión del token (cuenta y sesión), que no cambia cuando el token solo se renueva.
+    const sesionGuardada = () => sesionDelToken(cliente.obtenerToken() ?? '')
+    const sesionAlEmpezar = sesionGuardada()
+    const vigente = (sesionEsperada) => revision === revisionAcceso && sesionGuardada() === sesionEsperada
     const resultado = await pedir(ruta, { metodo: 'POST', datos, autenticada: false })
-    if (revision !== revisionAcceso) throw new ErrorApi('La solicitud de acceso ya no está vigente. Vuelve a iniciar sesión')
+    if (!vigente(sesionAlEmpezar)) throw new ErrorApi('La solicitud de acceso ya no está vigente. Vuelve a iniciar sesión')
     usuarioDesdeApi(resultado.usuario)
     cliente.guardarToken(resultado.token)
     const usuario = await conPerfilPropio(resultado.usuario)
-    if (revision !== revisionAcceso) throw new ErrorApi('La solicitud de acceso ya no está vigente. Vuelve a iniciar sesión')
+    if (!vigente(sesionDelToken(resultado.token))) throw new ErrorApi('La solicitud de acceso ya no está vigente. Vuelve a iniciar sesión')
     return usuario
   }
 
@@ -282,7 +288,12 @@ export function crearRepositorioApi({ cliente = crearClienteApi() } = {}) {
       const { usuario } = await pedir('/auth/yo/primer-acceso', {
         metodo: 'POST', datos: { claveNueva, quiereSerTutor: quiereSerTutor === true, aceptaTratamientoDatos: aceptaTratamientoDatos === true },
       })
-      return conPerfilPropio(usuario)
+      // La activación ya quedó guardada: si falla la lectura auxiliar del perfil, se devuelve la cuenta confirmada
+      try {
+        return await conPerfilPropio(usuario)
+      } catch {
+        return usuarioDesdeApi(usuario)
+      }
     },
 
     // Coordinación crea la cuenta de un estudiante; la contraseña inicial es su documento.

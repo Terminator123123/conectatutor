@@ -67,10 +67,12 @@ export default function ProveedorAutenticacion({ children }) {
     flushSync(() => { setUsuario(null); setSesionExpirada(false); setErrorInicial(''); setCargando(false) })
   }, [])
 
-  const actualizarUsuario = useCallback(async () => {
+  // Con `confirmado` (la cuenta que devolvió una mutación ya guardada) se usa tal cual, sin otra consulta:
+  // si esa lectura fallara, la mutación ya hecha se presentaría como fallida.
+  const actualizarUsuario = useCallback(async (confirmado) => {
     const actual = revision.current
     const habiaSesion = repositorio.tieneSesionGuardada()
-    const restaurado = await repositorio.obtenerSesionActual()
+    const restaurado = confirmado ?? await repositorio.obtenerSesionActual()
     if (actual === revision.current) flushSync(() => {
       setUsuario(restaurado)
       setSesionExpirada(habiaSesion && !restaurado)

@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken'
 import { after, before, beforeEach, describe, it } from 'node:test'
 import { crearClienteApi } from '../../frontend/src/servicios/api.js'
 import { crearRepositorioApi } from '../../frontend/src/servicios/repositorioApi.js'
+import { cuentaSinActivar } from '../../frontend/src/servicios/mapeoApi.js'
 import ServicioAutenticacionApi from '../../frontend/src/servicios/ServicioAutenticacionApi.js'
 import Estudiante from '../../frontend/src/modelo/Estudiante.js'
 import Administrador from '../../frontend/src/modelo/Administrador.js'
@@ -302,6 +303,55 @@ describe('Preparación E5/E6 · Repositorio de dominio sobre la API temporal', (
     const editado = Estudiante.desdeJSON({ ...nombre, nombre: 'Elena Lozano Pimienta' }, { buscarPrograma: () => programa })
     // El nombre y los datos académicos los pone la Universidad: el estudiante no los cambia
     await assert.rejects(solicitante.repositorio.guardarUsuario(editado), (error) => error.status === 403)
+  })
+
+  it('un ingreso atrasado de otra pestaña no reemplaza la sesión iniciada después', async () => {
+    // Dos pestañas (dos repositorios) con el mismo almacenamiento; la respuesta de la primera se retiene
+    const almacen = crearAlmacen()
+    let avisarRecibida
+    let soltar
+    const recibida = new Promise((resolver) => { avisarRecibida = resolver })
+    const liberada = new Promise((resolver) => { soltar = resolver })
+    const fetchRetenido = async (...argumentos) => {
+      const respuesta = await fetch(...argumentos)
+      if (String(argumentos[0]).endsWith('/auth/ingreso')) {
+        avisarRecibida()
+        await liberada
+      }
+      return respuesta
+    }
+    const anterior = crearRepositorioApi({ cliente: crearClienteApi({ urlBase, almacen, fetchImpl: fetchRetenido }) })
+    const nueva = crearRepositorioApi({ cliente: crearClienteApi({ urlBase, almacen }) })
+
+    const pendiente = anterior.iniciarSesion(CORREOS.elena, CLAVE_DE_PRUEBA)
+    await recibida
+    const andrea = await nueva.iniciarSesion(CORREOS.andrea, CLAVE_DE_PRUEBA)
+    soltar()
+    await assert.rejects(pendiente, /ya no está vigente/)
+
+    assert.equal((await nueva.obtenerSesionActual()).getId(), andrea.getId())
+    await nueva.listarSesionesDe(andrea.getId())
+  })
+
+  it('el primer acceso devuelve la cuenta activada y un reintento atrasado deja ver la cuenta activa', async () => {
+    const programa = (await coordinacion.repositorio.listarProgramas())[0]
+    const correo = `cuenta.activacion@uniguajira.edu.co`
+    await coordinacion.repositorio.crearCuentaEstudiante({
+      nombre: 'Cuenta Activación', correoInstitucional: correo, documento: '1098765432', semestre: 2, sede: 'Riohacha', programa: programa.getId(),
+    })
+    const nueva = preparar()
+    const pendiente = await nueva.repositorio.iniciarSesion(correo, '1098765432')
+    assert.equal(cuentaSinActivar(pendiente), true)
+
+    const datos = { claveNueva: 'CuentaActivada2026', quiereSerTutor: false, aceptaTratamientoDatos: true }
+    const activada = await nueva.repositorio.completarPrimerAcceso(datos)
+    // La cuenta confirmada por la activación basta para seguir: no depende de otra lectura
+    assert.equal(cuentaSinActivar(activada), false)
+    assert.equal(activada.getId(), pendiente.getId())
+
+    // Si la respuesta se hubiera perdido, el reintento recibe 409 y la relectura muestra la cuenta ya activa
+    await assert.rejects(nueva.repositorio.completarPrimerAcceso(datos), (error) => error.status === 409)
+    assert.equal(cuentaSinActivar(await nueva.repositorio.obtenerSesionActual()), false)
   })
 
   it('una credencial inválida expira sin restaurar datos de demostración', async () => {
