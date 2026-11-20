@@ -10,7 +10,23 @@ const FORMA_URI_LOCAL = new RegExp(
   `^mongodb://(?:(${CARACTER_URI}+(?::${CARACTER_URI}*)?)@)?(localhost|127\\.0\\.0\\.1|\\[::1\\])(?::(\\d{1,5}))?(?:/([^?#]*))?(?:\\?([^#]*))?$`,
   'i',
 )
-const OPCIONES_PERMITIDAS = new Set(['authsource', 'appname', 'retrywrites', 'w', 'serverselectiontimeoutms', 'connecttimeoutms', 'directconnection', 'tls'])
+// Opciones con las que el controlador puede terminar en otro servidor: descubrir réplicas, balanceador, SRV o un proxy
+const OPCIONES_QUE_CAMBIAN_DESTINO = new Set([
+  'replicaset',
+  'loadbalanced',
+  'srvservicename',
+  'srvmaxhosts',
+  'proxyhost',
+  'proxyport',
+  'proxyusername',
+  'proxypassword',
+])
+
+/** Nombre de la opción tal como lo entiende el controlador: decodificado y sin distinguir mayúsculas. */
+function nombreOpcion(opcion) {
+  const [nombre = ''] = new URLSearchParams(opcion).keys()
+  return nombre.trim().toLowerCase()
+}
 
 /** El controlador decodifica usuario y contraseña como UTF-8: se rechazan aquí las secuencias que no lo son (p. ej. %FF). */
 function credencialesDecodificables(credenciales) {
@@ -25,8 +41,9 @@ function credencialesDecodificables(credenciales) {
 /**
  * Indica si la URI apunta a un único servidor de esta misma máquina.
  * La semilla pisa datos de demostración: solo se permite sobre una base local.
- * Rechaza varios servidores, mongodb+srv, replicaSet y cualquier opción desconocida, porque con ellas
- * el controlador podría terminar escribiendo en un servidor remoto anunciado por el local.
+ * Rechaza varios servidores, mongodb+srv y las opciones que cambian el destino (replicaSet, loadBalanced,
+ * SRV, proxy, directConnection=false), porque con ellas el controlador podría terminar escribiendo en otro servidor.
+ * Las demás opciones (TLS, autenticación, tiempos) pasan intactas al controlador, como antes de la guarda.
  * @param {string} uri Cadena de conexión mongodb://
  */
 export function esUriLocal(uri) {
@@ -35,11 +52,10 @@ export function esUriLocal(uri) {
   if (partes[1] !== undefined && !credencialesDecodificables(partes[1])) return false
   const puerto = partes[3]
   if (puerto !== undefined && !(Number(puerto) >= 1 && Number(puerto) <= 65535)) return false
-  for (const opcion of (partes[5] ?? '').split('&').filter(Boolean)) {
-    const [nombre, valor = ''] = opcion.split('=')
-    const clave = nombre.toLowerCase()
-    if (!OPCIONES_PERMITIDAS.has(clave)) return false
-    if (clave === 'directconnection' && valor.toLowerCase() !== 'true') return false
+  for (const [nombre, valor] of new URLSearchParams(partes[5] ?? '')) {
+    const clave = nombre.trim().toLowerCase()
+    if (OPCIONES_QUE_CAMBIAN_DESTINO.has(clave)) return false
+    if (clave === 'directconnection' && valor.trim().toLowerCase() !== 'true') return false
   }
   return true
 }
@@ -50,7 +66,7 @@ export function esUriLocal(uri) {
  */
 function conConexionDirecta(uri) {
   const [base, ...resto] = uri.split('?')
-  const opciones = resto.join('?').split('&').filter((opcion) => opcion && opcion.split('=')[0].toLowerCase() !== 'directconnection')
+  const opciones = resto.join('?').split('&').filter((opcion) => opcion && nombreOpcion(opcion) !== 'directconnection')
   return `${base}?${[...opciones, 'directConnection=true'].join('&')}`
 }
 
@@ -87,7 +103,7 @@ export async function ejecutar({
   }
 
   if (configuracion.mongodbUri && !esUriLocal(configuracion.mongodbUri)) {
-    registro.error('[Seed] MONGODB_URI no es válida para la semilla: debe apuntar a un único servidor local (localhost, 127.0.0.1 o [::1]): la semilla solo se carga en un servidor local, sin replicaSet ni opciones que cambien el destino.')
+    registro.error('[Seed] MONGODB_URI no es válida para la semilla: debe apuntar a un único servidor local (localhost, 127.0.0.1 o [::1]): la semilla solo se carga en un servidor local, sin replicaSet, balanceador, SRV, proxy ni directConnection=false.')
     salir(1)
     return
   }

@@ -190,6 +190,12 @@ describe('D01 · El seed solo acepta bases en loopback', () => {
     'mongodb://127.0.0.1:27017/conectatutor_pruebas?replicaSet=rs0',
     'mongodb://127.0.0.1:27017/conectatutor_pruebas?directConnection=false',
     'mongodb://127.0.0.1:27017/conectatutor_pruebas?loadBalanced=true',
+    'mongodb://127.0.0.1:27017/conectatutor_pruebas?replica%53et=rs0',
+    'mongodb://127.0.0.1:27017/conectatutor_pruebas?ReplicaSet=rs0',
+    'mongodb://127.0.0.1:27017/conectatutor_pruebas?directConnection=%66alse',
+    'mongodb://127.0.0.1:27017/conectatutor_pruebas?srvServiceName=otro',
+    'mongodb://127.0.0.1:27017/conectatutor_pruebas?srvMaxHosts=2',
+    'mongodb://127.0.0.1:27017/conectatutor_pruebas?proxyHost=proxy.example.test&proxyPort=1080',
     'mongodb://localhost:65536/conectatutor_pruebas',
     'mongodb://localhost:0/conectatutor_pruebas',
     'mongodb://usuario?x:clave@localhost:27017/conectatutor_pruebas',
@@ -221,6 +227,8 @@ describe('D01 · El seed solo acepta bases en loopback', () => {
     'mongodb://localhost:27017/conectatutor_pruebas?tls=true',
     'mongodb://localhost:27017/conectatutor_pruebas?tls=true&authSource=admin',
     'mongodb://127.0.0.1:27017/conectatutor_pruebas?appName=x?directConnection=true',
+    'mongodb://127.0.0.1:27017/conectatutor_pruebas?directConnectio%6E=true',
+    'mongodb://127.0.0.1:27017/conectatutor_pruebas?maxPoolSize=5&readPreference=primary',
   ]) {
     it(`acepta ${uri.split('@').pop()} y fuerza la conexión directa`, async () => {
       const { llamadas, salidas, uris } = await sembrar(uri)
@@ -228,6 +236,22 @@ describe('D01 · El seed solo acepta bases en loopback', () => {
       assert.equal(uris.length, 1)
       // Lo que cuenta es lo que entiende el controlador de MongoDB, no el texto de la URI
       assert.equal(new MongoClient(uris[0]).options.directConnection, true)
+      assert.deepEqual(llamadas, ['conectarBaseDeDatos', 'asegurarIndices', 'cargarSemilla', 'desconectarBaseDeDatos'])
+    })
+  }
+  // Ronda 5: la versión base pasaba estas URI al controlador; la guarda no debe romper TLS en desarrollo local
+  for (const uri of [
+    'mongodb://localhost:27017/conectatutor_pruebas?ssl=true',
+    'mongodb://localhost:27017/conectatutor_pruebas?tls=true&tlsCAFile=ca-local.pem',
+    'mongodb://localhost:27017/conectatutor_pruebas?tls=true&tlsCAFile=ca-local.pem&tlsCertificateKeyFile=cliente.pem',
+  ]) {
+    it(`acepta ${uri.split('?').pop()} una sola vez, con TLS y conexión directa`, async () => {
+      const { llamadas, salidas, uris } = await sembrar(uri)
+      assert.deepEqual(salidas, [])
+      assert.equal(uris.length, 1)
+      const opciones = new MongoClient(uris[0]).options
+      assert.equal(opciones.tls, true)
+      assert.equal(opciones.directConnection, true)
       assert.deepEqual(llamadas, ['conectarBaseDeDatos', 'asegurarIndices', 'cargarSemilla', 'desconectarBaseDeDatos'])
     })
   }
