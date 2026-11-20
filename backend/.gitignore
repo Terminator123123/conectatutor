@@ -3,3 +3,5 @@ node_modules
 .env
 .cache
 *.log
+# Respaldos de la base: contienen datos personales y contraseñas cifradas.
+respaldos/

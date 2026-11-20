@@ -127,6 +127,26 @@ Es el recorrido de desarrollo y pruebas, con las cuentas de demostración. En pr
 
 Solo puede haber una sesión abierta por cuenta. Si la misma cuenta ingresa en otro navegador, la sesión anterior se cierra.
 
+## Respaldo de la base
+
+El plan gratuito de MongoDB Atlas no hace copias automáticas, así que el respaldo (RQNF010) es un comando. Desde `backend/`, con `MONGODB_URI` apuntando a la base que se quiere respaldar:
+
+```bash
+npm run respaldar
+```
+
+Crea `backend/respaldos/respaldo-<fecha y hora UTC>/` con un archivo por colección (usuarios, programas, materias, perfiles de tutor, sesiones y notificaciones) en EJSON canónico, que conserva identificadores, fechas, imágenes y el tipo de cada número (entero de 32 o 64 bits, decimal), y un `manifiesto.json` con la fecha y el número de documentos de cada colección. Al terminar vuelve a leer lo escrito y lo compara con el manifiesto. `RESPALDO_CARPETA` cambia la carpeta de destino. Nunca sobrescribe un respaldo anterior. Solo lee la base: se conecta sin los modelos de la aplicación, así que no crea colecciones ni índices.
+
+Para que sea automático, se programa en el sistema: en Windows, una tarea diaria del Programador de tareas que ejecute `npm run respaldar` en la carpeta `backend`; en Linux o macOS, una línea de `cron`. Las colecciones se leen una tras otra, sin congelar la base: conviene programarlo en horas sin uso, por ejemplo de madrugada.
+
+Para comprobar un respaldo guardado sin conectarse a ninguna base:
+
+```bash
+npm run verificar-respaldo -- respaldos/respaldo-2026-11-20T07-00-00Z
+```
+
+Los respaldos contienen datos personales y contraseñas cifradas (Ley 1581 de 2012): `respaldos/` está fuera de git y deben guardarse en un lugar privado. Para restaurar, cada archivo se importa en su colección con las herramientas de MongoDB (por ejemplo `mongoimport --jsonArray`), primero en una base de prueba.
+
 ## Despliegue
 
 - **Base de datos:** MongoDB Atlas. En Network Access debe permitirse `0.0.0.0/0` para que el servicio de la API pueda conectarse.

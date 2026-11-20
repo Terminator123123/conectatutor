@@ -13,6 +13,8 @@
     "start": "node src/server.js",
     "seed": "node src/scripts/seed.js",
     "crear-coordinacion": "node src/scripts/crearCoordinacion.js",
+    "respaldar": "node src/scripts/respaldar.js",
+    "verificar-respaldo": "node src/scripts/verificarRespaldo.js",
     "test": "node --test --test-concurrency=1 \"pruebas/**/*.test.js\""
   },
   "config": {
