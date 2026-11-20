@@ -22,7 +22,8 @@ export async function ejecutar({
   salir = (codigo) => process.exit(codigo),
   registro = console,
 } = {}) {
-  if (configuracion.esProduccion) {
+  // También se mira el proceso real: una configuración recibida no puede abrir la puerta en producción
+  if (configuracion.esProduccion || env.esProduccion) {
     registro.error('[Seed] La carga de datos de demostración no se ejecuta en producción.')
     salir(1)
     return

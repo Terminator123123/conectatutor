@@ -1,12 +1,14 @@
 import { detenerBaseDePrueba, iniciarBaseDePrueba } from './ayudas/base.js'
 
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { after, before, describe, it } from 'node:test'
 import express from 'express'
 import mongoose from 'mongoose'
 import request from 'supertest'
 import { app } from '../src/app.js'
 import { revisarConfiguracion } from '../src/config/env.js'
+import { cerrarEnProduccion } from '../src/middlewares/cerrarEnProduccion.js'
 import { manejarErrores, rutaNoEncontrada } from '../src/middlewares/manejarErrores.js'
 import { Usuario } from '../src/models/index.js'
 import * as rutasAuth from '../src/routes/auth.routes.js'
@@ -129,6 +131,36 @@ describe('D01 · Entradas de prueba cerradas en producción', () => {
     assert.equal(respuesta.status, 404)
     assert.match(respuesta.headers['content-type'], /json/)
     assert.equal(await Usuario.countDocuments(), antes)
+  })
+
+  it('en producción el registro responde 404 también con un JSON mal escrito', async () => {
+    const montar = (esProduccion) => {
+      const aplicacion = express()
+      aplicacion.post('/api/auth/registro', cerrarEnProduccion({ esProduccion }))
+      aplicacion.use(express.json())
+      aplicacion.use('/api/auth', rutasAuth.crearAuthRouter({ esProduccion }))
+      aplicacion.use(rutaNoEncontrada)
+      aplicacion.use(manejarErrores)
+      return aplicacion
+    }
+    const enviar = (aplicacion) => request(aplicacion).post('/api/auth/registro').set('Content-Type', 'application/json').send('{"nombre": ')
+    assert.equal((await enviar(montar(true))).status, 404)
+    assert.equal((await enviar(montar(false))).status, 400)
+  })
+
+  it('la app real, arrancada como producción, responde 404 al registro aun con un JSON mal escrito', () => {
+    const programa = `
+      const { default: request } = await import('supertest')
+      const { app } = await import('./src/app.js')
+      const r = await request(app).post('/api/auth/registro').set('Content-Type', 'application/json').send('{"nombre": ')
+      console.log(r.status)
+    `
+    const resultado = spawnSync(process.execPath, ['--input-type=module', '-e', programa], {
+      cwd: new URL('..', import.meta.url),
+      encoding: 'utf8',
+      env: { ...process.env, NODE_ENV: 'production', MONGODB_URI: 'mongodb://127.0.0.1:1/conectatutor_pruebas', JWT_SECRETO: 'secreto-sintetico-de-prueba-xxxxxxxxxxxx', CORS_ORIGIN: 'https://frontend.example.test' },
+    })
+    assert.equal(resultado.stdout.trim().split(/\r?\n/).pop(), '404', resultado.stderr)
   })
 
   it('en producción siguen abiertas las demás rutas de autenticación', async () => {

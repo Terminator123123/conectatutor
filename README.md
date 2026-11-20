@@ -69,7 +69,8 @@ Todas están explicadas en `backend/.env.example`. En producción la API no arra
 | `CORS_ORIGIN` | Dirección del frontend. |
 | `SESION_INACTIVIDAD`, `JWT_DURACION` | La sesión vence tras 30 minutos sin uso, con un tope de 2 horas. |
 | `CLAVE_DEMO` | Contraseña de las cuentas de demostración. |
-| `CORREO_USUARIO`, `CORREO_CLAVE_APP`, `CORREO_REMITENTE`, `CORREO_DESVIO`, `FRONTEND_URL` | Envío del enlace de recuperación de contraseña con Gmail y una contraseña de aplicación. |
+| `CORREO_USUARIO`, `CORREO_CLAVE_APP`, `CORREO_REMITENTE`, `FRONTEND_URL` | Envío del enlace de recuperación de contraseña con Gmail y una contraseña de aplicación. |
+| `CORREO_DESVIO` | Solo desarrollo y demostraciones locales: envía todos los correos a esa dirección. La API no arranca en producción si está definida. |
 
 Sobre la recuperación de contraseña:
 
@@ -104,6 +105,8 @@ La ruta `POST /api/auth/registro` sigue disponible en la API para pruebas, pero 
 
 ## Recorrido rápido
 
+Es el recorrido de desarrollo y pruebas, con las cuentas de demostración. En producción no se crean cuentas de demostración ni existe el registro abierto.
+
 1. Sin iniciar sesión, la página principal muestra los tutores con sus filtros.
 2. Al pulsar **Solicitar sesión** pide ingresar. Ingresa con Elena y vuelve a la solicitud.
 3. Elige fecha, franja y tema, y envía la solicitud.
@@ -117,7 +120,7 @@ Solo puede haber una sesión abierta por cuenta. Si la misma cuenta ingresa en o
 - **Base de datos:** MongoDB Atlas. En Network Access debe permitirse `0.0.0.0/0` para que el servicio de la API pueda conectarse.
 - **API (Railway):** carpeta raíz `backend`, comando de inicio `npm start`. Variables: `NODE_ENV=production`, `MONGODB_URI`, `JWT_SECRETO`, `CORS_ORIGIN` (dirección exacta del frontend, nunca `*`), `FRONTEND_URL`, `CLAVE_DEMO` y las de correo.
 - **Frontend (Vercel):** carpeta raíz `frontend`, comando `npm run build`, salida `dist`, variable `VITE_API_URL` con la dirección pública de la API terminada en `/api`. `vercel.json` redirige todas las rutas a `index.html`.
-- **Comprobación:** `/api/salud` y `/api/docs` de la API responden, y el recorrido rápido funciona desde un celular.
+- **Comprobación:** `/api/salud` y `/api/docs` de la API responden, y el ingreso funciona desde un celular con una cuenta ya aprovisionada.
 
 ## Documentación de la API
 

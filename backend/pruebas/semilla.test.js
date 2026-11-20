@@ -1,6 +1,7 @@
 import { CLAVE_DE_PRUEBA, detenerBaseDePrueba, iniciarBaseDePrueba, vaciarBaseDePrueba } from './ayudas/base.js'
 
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { after, before, beforeEach, describe, it } from 'node:test'
 import bcrypt from 'bcryptjs'
 import { Administrador, Materia, PerfilTutor, Sesion, Usuario } from '../src/models/index.js'
@@ -112,6 +113,29 @@ describe('D01 · El seed no corre en producción', () => {
     })
     assert.deepEqual(salidas, [1])
     assert.deepEqual(llamadas, [])
+  })
+
+  it('en un proceso de producción no conecta aunque reciba una configuración de desarrollo', () => {
+    const programa = `
+      const { ejecutar } = await import('./src/scripts/seed.js')
+      const llamadas = []
+      const anotar = (n) => async () => { llamadas.push(n) }
+      await ejecutar({
+        configuracion: { esProduccion: false, mongodbUri: 'mongodb://127.0.0.1:1/conectatutor_pruebas', claveDemo: 'x' },
+        revisar: () => [],
+        conexion: { conectarBaseDeDatos: anotar('c'), conectarBaseEnMemoria: anotar('m'), desconectarBaseDeDatos: anotar('d'), asegurarIndices: anotar('i'), cargarSemilla: anotar('s') },
+        salir: (codigo) => { process.exitCode = codigo },
+        registro: { log() {}, error() {} },
+      })
+      console.log(JSON.stringify(llamadas))
+    `
+    const resultado = spawnSync(process.execPath, ['--input-type=module', '-e', programa], {
+      cwd: new URL('..', import.meta.url),
+      encoding: 'utf8',
+      env: { ...process.env, NODE_ENV: 'production', MONGODB_URI: 'mongodb://127.0.0.1:1/conectatutor_pruebas', JWT_SECRETO: 'secreto-sintetico-de-prueba-xxxxxxxxxxxx' },
+    })
+    assert.equal(resultado.status, 1, resultado.stderr)
+    assert.equal(resultado.stdout.trim(), '[]')
   })
 
   it('en desarrollo sin MONGODB_URI sigue cargando la semilla sobre una base en memoria', async () => {

@@ -4,6 +4,7 @@ import {
 } from '../controllers/auth.controller.js'
 import { cambiarClave, completarPrimerAcceso, guardarFoto, quitarFoto, verFoto } from '../controllers/cuenta.controller.js'
 import { env } from '../config/env.js'
+import { cerrarEnProduccion } from '../middlewares/cerrarEnProduccion.js'
 import { autenticar } from '../middlewares/autenticar.js'
 import { validarId } from '../middlewares/validarId.js'
 import { limitarIngreso, limitarRecuperacion } from '../middlewares/limitarIntentos.js'
@@ -21,10 +22,8 @@ import {
 export function crearAuthRouter(entorno = env) {
   const authRouter = Router()
 
-  // 'router' sale de este enrutador y deja que el 404 general responda
-  const cerrarEnProduccion = (_req, _res, siguiente) => siguiente(entorno.esProduccion ? 'router' : undefined)
-
-  authRouter.post('/registro', cerrarEnProduccion, validarRegistro, registrar)
+  // Segunda barrera: app.js ya lo cierra antes de leer el cuerpo
+  authRouter.post('/registro', cerrarEnProduccion(entorno), validarRegistro, registrar)
   authRouter.post('/ingreso', validarIngreso, limitarIngreso, ingresar)
   authRouter.get('/yo', autenticar, obtenerPropio)
   authRouter.patch('/yo', autenticar, validarEdicionCuenta, editarPropio)
