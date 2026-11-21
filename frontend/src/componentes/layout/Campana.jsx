@@ -24,9 +24,7 @@ export default function Campana() {
     actualizar()
     const intervalo = setInterval(actualizar, CADA_MINUTO)
     document.addEventListener('visibilitychange', actualizar)
-    // Al volver a esta ventana se consulta en el acto: si la cuenta se abrió en otro lugar, aquí se cierra enseguida
-    window.addEventListener('focus', actualizar)
-    return () => { activo = false; clearInterval(intervalo); document.removeEventListener('visibilitychange', actualizar); window.removeEventListener('focus', actualizar) }
+    return () => { activo = false; clearInterval(intervalo); document.removeEventListener('visibilitychange', actualizar) }
   }, [cargar, pathname])
 
   useEffect(() => {
