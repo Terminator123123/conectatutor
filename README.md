@@ -79,7 +79,7 @@ Sobre la recuperación de contraseña:
 
 ## Cuentas de demostración
 
-Las cargan el arranque en memoria y `npm run seed`. Todas usan la contraseña definida en `CLAVE_DEMO`.
+Las cargan el arranque en memoria y `npm run seed`. Todas usan la contraseña definida en `CLAVE_DEMO`. Son solo de desarrollo: en la versión publicada no existen (ver «Recorrido rápido» para las cuentas de la demostración en producción).
 
 | Nombre | Correo | Rol | Perfil de tutor |
 |---|---|---|---|
@@ -127,7 +127,7 @@ El script pide la contraseña dos veces sin mostrarla (mínimo 8 caracteres, con
 
 ## Recorrido rápido
 
-Es el recorrido de desarrollo y pruebas, con las cuentas de demostración. En producción no se crean cuentas de demostración ni existe el registro abierto.
+Es el recorrido de desarrollo y pruebas, con las cuentas de la semilla (`npm run seed` o el arranque en memoria). En producción la semilla está bloqueada y no existe el registro abierto: las cuentas de demostración de la versión publicada son cuentas normales que Coordinación crea en **Cuentas** (como las de cualquier estudiante), y sus contraseñas se entregan fuera del repositorio. Con ellas se hace el mismo recorrido; cada una completa primero su primer acceso.
 
 1. Sin iniciar sesión, la página principal muestra los tutores con sus filtros.
 2. Al pulsar **Solicitar sesión** pide ingresar. Ingresa con Elena y vuelve a la solicitud.
@@ -162,9 +162,9 @@ Los respaldos contienen datos personales y contraseñas cifradas (Ley 1581 de 20
 - **Base de datos:** MongoDB Atlas. En Network Access debe permitirse `0.0.0.0/0` para que el servicio de la API pueda conectarse.
 La aplicación está publicada en Render con el plan gratuito: frontend en https://conectatutor-web.onrender.com y API en https://conectatutor-api.onrender.com/api (Swagger en `/api/docs`). `render.yaml`, en la raíz del repositorio, es un Blueprint que crea los dos servicios; en Render: **New → Blueprint** y la dirección del repositorio. La API gratuita se suspende sin uso: la primera petición después de un rato tarda alrededor de un minuto.
 
-- **API (servicio web):** carpeta raíz `backend`, `npm ci --omit=dev`, inicio `npm start`, chequeo `/api/salud`. El Blueprint define `NODE_ENV=production`, genera `JWT_SECRETO` y fija `CORS_ORIGIN` y `FRONTEND_URL` con la dirección del frontend (nunca `*`). `MONGODB_URI` y las de correo (`CORREO_USUARIO`, `CORREO_CLAVE_APP`) se escriben a mano en **Environment**, porque son secretos. `CLAVE_DEMO` no hace falta: en producción no se cargan cuentas de demostración.
+- **API (servicio web):** carpeta raíz `backend`, `npm ci --omit=dev`, inicio `npm start`, chequeo `/api/salud`. El Blueprint define `NODE_ENV=production`, genera `JWT_SECRETO` y fija `CORS_ORIGIN` y `FRONTEND_URL` con la dirección del frontend (nunca `*`). `MONGODB_URI` y las de correo (`CORREO_USUARIO`, `CORREO_CLAVE_APP`) se escriben a mano en **Environment**, porque son secretos. `CLAVE_DEMO` no hace falta: en producción la semilla no corre.
 - **Frontend (sitio estático):** carpeta raíz `frontend`, `npm ci && npm run build`, publica `dist`, variable `VITE_API_URL` con la dirección pública de la API terminada en `/api`. Toda ruta se reescribe a `index.html`. `vercel.json` queda para quien prefiera desplegarlo en Vercel.
-- **Catálogo y primera cuenta:** con la base de producción vacía, carga el catálogo con `npm run cargar-catalogo` y después crea la cuenta de Coordinación con `npm run crear-coordinacion` (ver «Catálogo académico inicial» y «Primera cuenta de Coordinación»). En producción no se cargan datos de demostración.
+- **Catálogo y primera cuenta:** con la base de producción vacía, carga el catálogo con `npm run cargar-catalogo` y después crea la cuenta de Coordinación con `npm run crear-coordinacion` (ver «Catálogo académico inicial» y «Primera cuenta de Coordinación»). En producción no se ejecuta la semilla; si se quieren cuentas para la demostración, Coordinación las crea en **Cuentas**.
 - **Comprobación:** `/api/salud` y `/api/docs` de la API responden, y el ingreso funciona desde un celular con una cuenta ya aprovisionada.
 
 ## Documentación de la API
