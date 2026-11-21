@@ -160,8 +160,10 @@ Los respaldos contienen datos personales y contraseñas cifradas (Ley 1581 de 20
 ## Despliegue
 
 - **Base de datos:** MongoDB Atlas. En Network Access debe permitirse `0.0.0.0/0` para que el servicio de la API pueda conectarse.
-- **API (Railway):** carpeta raíz `backend`, comando de inicio `npm start`. Variables: `NODE_ENV=production`, `MONGODB_URI`, `JWT_SECRETO`, `CORS_ORIGIN` (dirección exacta del frontend, nunca `*`), `FRONTEND_URL` y las de correo. `CLAVE_DEMO` no hace falta: en producción no se cargan cuentas de demostración.
-- **Frontend (Vercel):** carpeta raíz `frontend`, comando `npm run build`, salida `dist`, variable `VITE_API_URL` con la dirección pública de la API terminada en `/api`. `vercel.json` redirige todas las rutas a `index.html`.
+La aplicación está publicada en Render con el plan gratuito: frontend en https://conectatutor-web.onrender.com y API en https://conectatutor-api.onrender.com/api (Swagger en `/api/docs`). `render.yaml`, en la raíz del repositorio, es un Blueprint que crea los dos servicios; en Render: **New → Blueprint** y la dirección del repositorio. La API gratuita se suspende sin uso: la primera petición después de un rato tarda alrededor de un minuto.
+
+- **API (servicio web):** carpeta raíz `backend`, `npm ci --omit=dev`, inicio `npm start`, chequeo `/api/salud`. El Blueprint define `NODE_ENV=production`, genera `JWT_SECRETO` y fija `CORS_ORIGIN` y `FRONTEND_URL` con la dirección del frontend (nunca `*`). `MONGODB_URI` y las de correo (`CORREO_USUARIO`, `CORREO_CLAVE_APP`) se escriben a mano en **Environment**, porque son secretos. `CLAVE_DEMO` no hace falta: en producción no se cargan cuentas de demostración.
+- **Frontend (sitio estático):** carpeta raíz `frontend`, `npm ci && npm run build`, publica `dist`, variable `VITE_API_URL` con la dirección pública de la API terminada en `/api`. Toda ruta se reescribe a `index.html`. `vercel.json` queda para quien prefiera desplegarlo en Vercel.
 - **Catálogo y primera cuenta:** con la base de producción vacía, carga el catálogo con `npm run cargar-catalogo` y después crea la cuenta de Coordinación con `npm run crear-coordinacion` (ver «Catálogo académico inicial» y «Primera cuenta de Coordinación»). En producción no se cargan datos de demostración.
 - **Comprobación:** `/api/salud` y `/api/docs` de la API responden, y el ingreso funciona desde un celular con una cuenta ya aprovisionada.
 
