@@ -2,6 +2,7 @@ import { CLAVE_DE_PRUEBA, detenerBaseDePrueba, iniciarBaseDePrueba, vaciarBaseDe
 
 import assert from 'node:assert/strict'
 import { after, before, beforeEach, describe, it } from 'node:test'
+import { PROGRAMAS } from '../src/datos/catalogoUniguajira.js'
 import { Materia, PerfilTutor, Programa } from '../src/models/index.js'
 import { cargarSemilla } from '../src/services/semilla.service.js'
 import { clienteDe, CORREOS } from './ayudas/sesion.js'
@@ -26,9 +27,8 @@ describe('E3 · Catálogo: programas y materias', () => {
     it('GET /api/programas lista los programas sin pedir sesión', async () => {
       const respuesta = await anonimo.get('/programas')
       assert.equal(respuesta.status, 200)
-      assert.deepEqual(respuesta.body.map((programa) => programa.nombre), [
-        'Administración de Empresas', 'Biología', 'Ingeniería de Sistemas', 'Psicología',
-      ])
+      // El servidor ordena por nombre con el orden binario de MongoDB, el mismo de sort() sin comparador
+      assert.deepEqual(respuesta.body.map((programa) => programa.nombre), PROGRAMAS.map((programa) => programa.nombre).sort())
       assert.ok(respuesta.body[0].id)
     })
 

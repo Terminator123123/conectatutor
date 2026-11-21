@@ -4,12 +4,49 @@
  * `npm run cargar-catalogo` (ver README, «Catálogo académico inicial»). La semilla de demostración usa el mismo.
  */
 
-/** Programas. Fuente: uniguajira.edu.co/ofertas-academicas (consultado el 2026-10-29). */
+/**
+ * Programas de pregrado, agrupados por facultad. Fuente: uniguajira.edu.co/ofertas-academicas (consultado el
+ * 2026-11-21). Son los mismos 36 del formulario de inscripción de estudiantes. Solo Ingeniería de Sistemas,
+ * Administración de Empresas, Biología y Psicología tienen materias cargadas; las de los demás programas las
+ * agrega Coordinación en **Materias**.
+ */
 export const PROGRAMAS = [
-  { nombre: 'Ingeniería de Sistemas', facultad: 'Facultad de Ingeniería' },
-  { nombre: 'Administración de Empresas', facultad: 'Facultad de Ciencias Económicas y Administrativas' },
   { nombre: 'Biología', facultad: 'Facultad de Ciencias Básicas y Aplicadas' },
+  { nombre: 'Agroecología', facultad: 'Facultad de Ciencias Básicas y Aplicadas' },
+  { nombre: 'Química', facultad: 'Facultad de Ciencias Básicas y Aplicadas' },
+  { nombre: 'Administración de Empresas', facultad: 'Facultad de Ciencias Económicas y Administrativas' },
+  { nombre: 'Administración Marítima y Portuaria', facultad: 'Facultad de Ciencias Económicas y Administrativas' },
+  { nombre: 'Administración Pública', facultad: 'Facultad de Ciencias Económicas y Administrativas' },
+  { nombre: 'Administración Turística y Hotelera', facultad: 'Facultad de Ciencias Económicas y Administrativas' },
+  { nombre: 'Contaduría Pública', facultad: 'Facultad de Ciencias Económicas y Administrativas' },
+  { nombre: 'Economía', facultad: 'Facultad de Ciencias Económicas y Administrativas' },
+  { nombre: 'Negocios Internacionales', facultad: 'Facultad de Ciencias Económicas y Administrativas' },
+  { nombre: 'Tecnología en Gestión de Comercio Internacional', facultad: 'Facultad de Ciencias Económicas y Administrativas' },
+  { nombre: 'Derecho', facultad: 'Facultad de Ciencias Sociales y Humanas' },
   { nombre: 'Psicología', facultad: 'Facultad de Ciencias Sociales y Humanas' },
+  { nombre: 'Trabajo Social', facultad: 'Facultad de Ciencias Sociales y Humanas' },
+  { nombre: 'Comunicación Social', facultad: 'Facultad de Ciencias Sociales y Humanas' },
+  { nombre: 'Licenciatura en Etnoeducación e Interculturalidad', facultad: 'Facultad de Ciencias de la Educación' },
+  { nombre: 'Licenciatura en Educación Infantil', facultad: 'Facultad de Ciencias de la Educación' },
+  { nombre: 'Licenciatura en Educación Física, Recreación y Deporte', facultad: 'Facultad de Ciencias de la Educación' },
+  { nombre: 'Licenciatura en Música', facultad: 'Facultad de Ciencias de la Educación' },
+  { nombre: 'Licenciatura en Educación Básica Primaria', facultad: 'Facultad de Ciencias de la Educación' },
+  { nombre: 'Licenciatura en Ciencias Sociales', facultad: 'Facultad de Ciencias de la Educación' },
+  { nombre: 'Licenciatura en Español y Humanidades', facultad: 'Facultad de Ciencias de la Educación' },
+  { nombre: 'Ingeniería Industrial', facultad: 'Facultad de Ingeniería' },
+  { nombre: 'Ingeniería Ambiental', facultad: 'Facultad de Ingeniería' },
+  { nombre: 'Ingeniería de Sistemas', facultad: 'Facultad de Ingeniería' },
+  { nombre: 'Ingeniería Mecánica', facultad: 'Facultad de Ingeniería' },
+  { nombre: 'Ingeniería Civil', facultad: 'Facultad de Ingeniería' },
+  { nombre: 'Ingeniería en Energías', facultad: 'Facultad de Ingeniería' },
+  { nombre: 'Tecnología en Gestión de Redes Informáticas', facultad: 'Facultad de Ingeniería' },
+  { nombre: 'Tecnología en Gestión de Energías Renovables', facultad: 'Facultad de Ingeniería' },
+  { nombre: 'Tecnología en Desarrollo de Software', facultad: 'Facultad de Ingeniería' },
+  { nombre: 'Medicina', facultad: 'Facultad de Ciencias de la Salud' },
+  { nombre: 'Enfermería', facultad: 'Facultad de Ciencias de la Salud' },
+  { nombre: 'Nutrición y Dietética', facultad: 'Facultad de Ciencias de la Salud' },
+  { nombre: 'Seguridad y Salud en el Trabajo', facultad: 'Facultad de Ciencias de la Salud' },
+  { nombre: 'Arquitectura', facultad: 'Facultad de Artes Integradas' },
 ]
 
 /** Materias. El código es interno de la aplicación: el plan de estudios no publica códigos. */

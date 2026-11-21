@@ -47,7 +47,7 @@ pm.collectionVariables.set('fechaNueva', lunes.toISOString().slice(0, 10));
 for (const clave of ['tutorToken', 'solicitanteToken', 'adminToken', 'ajenoToken', 'perfilId', 'sesionId', 'cancelableId', 'rechazableId', 'materiaCreadaId']) pm.collectionVariables.unset(clave);
 `))
 caso('01 Preparación', 'E6-02 Swagger publicado', 'GET', '/docs.json', 200, { comprobar: "asegurar(datos.openapi.startsWith('3.'), 'Falta OpenAPI 3'); asegurar(datos.paths['/sesiones'], 'Falta documentación de sesiones');" })
-caso('01 Preparación', 'E6-03 Programas públicos', 'GET', '/programas', 200, { comprobar: `asegurar(Array.isArray(datos) && datos.length > 0, 'Faltan programas'); ${guardar('programaId', 'datos[0].id')}` })
+caso('01 Preparación', 'E6-03 Programas públicos', 'GET', '/programas', 200, { comprobar: `const sistemas = Array.isArray(datos) && datos.find(programa => programa.nombre === 'Ingeniería de Sistemas'); asegurar(sistemas, 'Falta Ingeniería de Sistemas'); ${guardar('programaId', 'sistemas.id')}` })
 caso('01 Preparación', 'E6-04 Materias del programa', 'GET', '/materias?programa={{programaId}}', 200, { comprobar: `asegurar(Array.isArray(datos) && datos.length >= 2, 'La fixture necesita dos materias'); ${guardar('materiaId', 'datos[0].id')} ${guardar('otraMateriaId', 'datos[1].id')}` })
 caso('01 Preparación', 'E6-05 Sesiones sin autenticación', 'GET', '/sesiones', 401)
 caso('01 Preparación', 'E6-06 Ingreso de coordinación ficticia', 'POST', '/auth/ingreso', 200, { cuerpo: { correoInstitucional: 'gabriela.montes@uniguajira.edu.co', clave: v('clave') }, comprobar: iniciar('admin') })
