@@ -121,7 +121,7 @@
                   "  asegurar(pm.response.code === 200, 'HTTP esperado 200; recibido ' + pm.response.code);",
                   "  const datos = pm.response.json();",
                   "  ",
-                  "  asegurar(Array.isArray(datos) && datos.length > 0, 'Faltan programas'); pm.collectionVariables.set('programaId', datos[0].id);",
+                  "  const sistemas = Array.isArray(datos) && datos.find(programa => programa.nombre === 'Ingeniería de Sistemas'); asegurar(sistemas, 'Falta Ingeniería de Sistemas'); pm.collectionVariables.set('programaId', sistemas.id);",
                   "});"
                 ]
               }

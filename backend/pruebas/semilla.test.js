@@ -15,7 +15,7 @@ describe('E1 · Datos de demostración (seed)', () => {
 
   it('carga programas, materias, cuentas, perfiles y sesiones', async () => {
     const totales = await cargarSemilla(CLAVE_DE_PRUEBA)
-    assert.deepEqual(totales, { programas: 4, materias: 32, usuarios: 7, perfilesTutor: 4, sesiones: 5 })
+    assert.deepEqual(totales, { programas: 36, materias: 32, usuarios: 7, perfilesTutor: 4, sesiones: 5 })
   })
 
   it('se puede correr dos veces sin duplicar nada', async () => {

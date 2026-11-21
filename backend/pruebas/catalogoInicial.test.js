@@ -38,6 +38,14 @@ describe('D05 · Catálogo académico inicial', () => {
     assert.equal(MATERIAS_SEMILLA, MATERIAS)
   })
 
+  it('D06 · trae los 36 programas del formulario, sin repetir, y cada materia apunta a uno de ellos', () => {
+    const nombres = PROGRAMAS.map((programa) => programa.nombre)
+    assert.equal(nombres.length, 36)
+    assert.equal(new Set(nombres).size, 36)
+    for (const programa of PROGRAMAS) assert.match(programa.facultad, /^Facultad de /)
+    for (const materia of MATERIAS) assert.ok(nombres.includes(materia.programa), materia.programa)
+  })
+
   it('en una base vacía carga todos los programas y materias, activas y en su programa, sin crear cuentas', async () => {
     const resultado = await cargarCatalogoInicial()
     assert.deepEqual(resultado, {
