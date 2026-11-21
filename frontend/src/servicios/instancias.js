@@ -4,7 +4,7 @@ import { crearClienteApi } from './api.js'
 import { crearRepositorioApi } from './repositorioApi.js'
 
 const escuchas = new Set()
-const cliente = crearClienteApi({ alExpirarSesion: () => escuchas.forEach((escuchar) => escuchar()) })
+const cliente = crearClienteApi({ alExpirarSesion: (motivo) => escuchas.forEach((escuchar) => escuchar(motivo)) })
 
 export function suscribirExpiracionSesion(escuchar) {
   escuchas.add(escuchar)

@@ -7,6 +7,9 @@ import { HttpError } from '../utils/HttpError.js'
 /** Encabezado con el que la API entrega el token renovado tras cada uso. */
 export const ENCABEZADO_TOKEN_RENOVADO = 'X-Token-Renovado'
 
+/** Motivo del 401 cuando la cuenta ingresó en otro lugar: el cliente lo explica en vez de hablar de expiración. */
+export const SESION_REEMPLAZADA = 'SESION_REEMPLAZADA'
+
 /** Segundos mínimos entre renovaciones, para no firmar un token por cada petición seguida. */
 const SEGUNDOS_ENTRE_RENOVACIONES = 60
 
@@ -41,7 +44,7 @@ async function usuarioDelToken(req, res) {
   }
   // Solo una sesión a la vez: si la cuenta ingresó en otro lado, este token ya no sirve.
   if (usuario.sesionActiva && contenido.sid !== usuario.sesionActiva) {
-    throw new HttpError(401, 'Tu cuenta se abrió en otro navegador o dispositivo. Inicia sesión de nuevo')
+    throw new HttpError(401, 'Tu cuenta se abrió en otro navegador o dispositivo. Inicia sesión de nuevo', undefined, SESION_REEMPLAZADA)
   }
 
   const ahora = Math.floor(Date.now() / 1000)

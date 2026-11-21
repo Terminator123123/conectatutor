@@ -251,6 +251,7 @@ describe('E2 · Autenticación', () => {
       const rechazo = await conPrimero()
       assert.equal(rechazo.status, 401)
       assert.match(rechazo.body.mensaje ?? rechazo.body.error ?? '', /otro navegador o dispositivo/)
+      assert.equal(rechazo.body.regla, 'SESION_REEMPLAZADA')
       assert.equal((await request(app).get('/api/auth/yo').set('Authorization', `Bearer ${segundo}`)).status, 200)
     })
 

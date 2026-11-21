@@ -9,6 +9,8 @@ export default function ProveedorAutenticacion({ children }) {
   const [cargando, setCargando] = useState(true)
   const [errorInicial, setErrorInicial] = useState('')
   const [sesionExpirada, setSesionExpirada] = useState(false)
+  // Por qué se cerró: SESION_REEMPLAZADA si la cuenta entró en otro lugar; null si venció
+  const [motivoCierre, setMotivoCierre] = useState(null)
   const revision = useRef(0)
 
   const restaurarSesion = useCallback(() => {
@@ -35,10 +37,11 @@ export default function ProveedorAutenticacion({ children }) {
     return restaurarSesion()
   }, [restaurarSesion])
 
-  useEffect(() => suscribirExpiracionSesion(() => {
+  useEffect(() => suscribirExpiracionSesion((motivo) => {
     revision.current += 1
     setUsuario(null)
     setSesionExpirada(true)
+    setMotivoCierre(motivo ?? null)
     setErrorInicial('')
     setCargando(false)
   }), [])
@@ -89,8 +92,8 @@ export default function ProveedorAutenticacion({ children }) {
   }), [restaurarSesion])
 
   const valor = useMemo(() => ({
-    usuario, cargando, errorInicial, sesionExpirada, iniciarSesion, registrar, cerrarSesion, actualizarUsuario, confirmarCuenta, reintentarSesion,
-  }), [usuario, cargando, errorInicial, sesionExpirada, iniciarSesion, registrar, cerrarSesion, actualizarUsuario, confirmarCuenta, reintentarSesion])
+    usuario, cargando, errorInicial, sesionExpirada, motivoCierre, iniciarSesion, registrar, cerrarSesion, actualizarUsuario, confirmarCuenta, reintentarSesion,
+  }), [usuario, cargando, errorInicial, sesionExpirada, motivoCierre, iniciarSesion, registrar, cerrarSesion, actualizarUsuario, confirmarCuenta, reintentarSesion])
 
   return <ContextoAutenticacion.Provider value={valor}>{children}</ContextoAutenticacion.Provider>
 }

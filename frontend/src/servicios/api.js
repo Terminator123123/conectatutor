@@ -23,6 +23,8 @@ export const estadoConexion = {
 }
 const RUTAS_DE_INGRESO = new Set(['/auth/ingreso', '/auth/registro'])
 const ENCABEZADO_TOKEN_RENOVADO = 'X-Token-Renovado'
+/** Motivo que da la API cuando la cuenta ingresó en otra pestaña, navegador o dispositivo. */
+export const SESION_REEMPLAZADA = 'SESION_REEMPLAZADA'
 
 /** Momento (ms) en que vence un JWT según su campo `exp`; null si no se puede leer. */
 export function vencimientoDelToken(token) {
@@ -197,9 +199,15 @@ export function crearClienteApi({
     }
 
     // Un 401 atrasado no puede cerrar una sesión iniciada después de la petición
-    if (respuesta.status === 401 && token && revisionSesion === revisionAlEnviar && obtenerToken() === token) {
-      cerrarSesion()
-      alExpirarSesion()
+    const sigueSiendoLaMisma = () => token && revisionSesion === revisionAlEnviar && obtenerToken() === token
+    if (respuesta.status === 401 && sigueSiendoLaMisma()) {
+      // El motivo viene en el cuerpo; sin él, se trata como una sesión vencida
+      let motivo
+      try { motivo = (await respuesta.clone?.().json())?.regla } catch { motivo = undefined }
+      if (sigueSiendoLaMisma()) {
+        cerrarSesion()
+        alExpirarSesion(motivo === SESION_REEMPLAZADA ? SESION_REEMPLAZADA : undefined)
+      }
     }
     // Cada uso renueva el token: la sesión sigue mientras haya actividad
     const renovado = respuesta.headers?.get?.(ENCABEZADO_TOKEN_RENOVADO)
