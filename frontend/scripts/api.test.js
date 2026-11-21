@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { crearClienteApi, ErrorApi } from '../src/servicios/api.js'
+import { crearClienteApi, ErrorApi, SESION_REEMPLAZADA } from '../src/servicios/api.js'
 import { crearRepositorioApi } from '../src/servicios/repositorioApi.js'
 
 function crearAlmacen() {
@@ -68,6 +68,41 @@ test('un 401 autenticado borra el token y avisa de expiración una vez', async (
   await assert.rejects(cliente.peticion('/auth/yo'))
   assert.equal(cliente.obtenerToken(), null)
   assert.equal(expiraciones, 1)
+})
+
+test('D07 · si la cuenta se abrió en otro lugar, el aviso dice el motivo y la sesión de aquí se cierra', async () => {
+  const motivos = []
+  const { cliente } = preparar(async () => json({ mensaje: 'Tu cuenta se abrió en otro navegador o dispositivo', regla: SESION_REEMPLAZADA }, 401),
+    { alExpirarSesion: (motivo) => { motivos.push(motivo) } })
+  cliente.guardarToken('token-reemplazado')
+  await assert.rejects(cliente.peticion('/notificaciones'), (error) => error instanceof ErrorApi && error.status === 401 && /otro navegador/.test(error.message))
+  assert.equal(cliente.obtenerToken(), null)
+  assert.deepEqual(motivos, [SESION_REEMPLAZADA])
+})
+
+test('D07 · un 401 sin motivo conocido se avisa como vencimiento', async () => {
+  const motivos = []
+  const { cliente } = preparar(async () => json({ mensaje: 'Algo', regla: 'OTRA' }, 401), { alExpirarSesion: (motivo) => { motivos.push(motivo) } })
+  cliente.guardarToken('token-vencido')
+  await assert.rejects(cliente.peticion('/auth/yo'))
+  assert.deepEqual(motivos, [undefined])
+})
+
+test('D07 · si mientras se lee el motivo otra pestaña inicia sesión, la sesión nueva no se cierra', async () => {
+  let expiraciones = 0
+  let clienteGlobal
+  const { cliente } = preparar(async () => {
+    const respuesta = json({ mensaje: 'Reemplazada', regla: SESION_REEMPLAZADA }, 401)
+    const clonar = respuesta.clone.bind(respuesta)
+    // La lectura del motivo coincide con un ingreso nuevo en esta misma pestaña
+    respuesta.clone = () => { clienteGlobal.guardarToken('token-nuevo'); return clonar() }
+    return respuesta
+  }, { alExpirarSesion: () => { expiraciones += 1 } })
+  clienteGlobal = cliente
+  cliente.guardarToken('token-viejo')
+  await assert.rejects(cliente.peticion('/notificaciones'))
+  assert.equal(cliente.obtenerToken(), 'token-nuevo')
+  assert.equal(expiraciones, 0)
 })
 
 test('ingreso y registro son públicos y sus errores no cierran una sesión existente', async () => {
