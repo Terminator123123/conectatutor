@@ -23,6 +23,8 @@ export const estadoConexion = {
 }
 const RUTAS_DE_INGRESO = new Set(['/auth/ingreso', '/auth/registro'])
 const ENCABEZADO_TOKEN_RENOVADO = 'X-Token-Renovado'
+/** Marca las consultas que la app hace sola (la campana): la API no las cuenta como uso y no renueva el token. */
+const ENCABEZADO_CONSULTA_AUTOMATICA = 'X-Consulta-Automatica'
 /** Motivo que da la API cuando la cuenta ingresó en otra pestaña, navegador o dispositivo. */
 export const SESION_REEMPLAZADA = 'SESION_REEMPLAZADA'
 
@@ -87,7 +89,8 @@ export function crearClienteApi({
     cancelar: (id) => clearTimeout(id),
   },
 } = {}) {
-  const base = new URL(urlBase)
+  // Admite una ruta relativa ("/api"): la API queda en el mismo origen que la página.
+  const base = new URL(urlBase, globalThis.location?.href)
   if (!['http:', 'https:'].includes(base.protocol) || base.username || base.password || base.search || base.hash) {
     throw new TypeError('La URL de la API debe ser una dirección HTTP o HTTPS sin credenciales, consulta ni fragmento')
   }
@@ -150,7 +153,24 @@ export function crearClienteApi({
 
   programarVencimiento(obtenerToken())
 
-  async function peticion(ruta, { metodo = 'GET', datos, parametros = {}, autenticada = true, signal } = {}) {
+  /**
+   * Salir (RQF003): borra la sesión de esta pestaña al instante y pide a la API que invalide
+   * ese token, para que una copia guardada no siga sirviendo. Si la API no responde, la
+   * sesión local queda cerrada igual y el token vence solo por inactividad.
+   * @returns {Promise<void>}
+   */
+  async function salir() {
+    const token = obtenerToken()
+    cerrarSesion()
+    if (!token) return
+    try {
+      await fetchImpl(`${direccion}/auth/salida`, { method: 'POST', headers: { Accept: 'application/json', Authorization: `Bearer ${token}` } })
+    } catch {
+      // Sin conexión: la sesión local ya se cerró
+    }
+  }
+
+  async function peticion(ruta, { metodo = 'GET', datos, parametros = {}, autenticada = true, automatica = false, signal } = {}) {
     if (typeof ruta !== 'string' || !ruta.startsWith('/') || ruta.startsWith('//') || /[?#\\]/.test(ruta)) {
       throw new TypeError('La ruta debe ser relativa a la API; usa parametros para la consulta')
     }
@@ -163,6 +183,7 @@ export function crearClienteApi({
     const revisionAlEnviar = revisionSesion
     const headers = { Accept: 'application/json' }
     if (token) headers.Authorization = `Bearer ${token}`
+    if (automatica) headers[ENCABEZADO_CONSULTA_AUTOMATICA] = '1'
     if (datos !== undefined) headers['Content-Type'] = 'application/json'
     const body = datos === undefined ? undefined : JSON.stringify(datos)
 
@@ -209,7 +230,7 @@ export function crearClienteApi({
         alExpirarSesion(motivo === SESION_REEMPLAZADA ? SESION_REEMPLAZADA : undefined)
       }
     }
-    // Cada uso renueva el token: la sesión sigue mientras haya actividad
+    // Cada uso renueva el token: la sesión sigue mientras haya actividad (las consultas automáticas no lo renuevan)
     const renovado = respuesta.headers?.get?.(ENCABEZADO_TOKEN_RENOVADO)
     if (renovado && respuesta.ok && token && revisionSesion === revisionAlEnviar && obtenerToken() === token) {
       almacen.setItem(CLAVE_TOKEN, renovado)
@@ -240,7 +261,7 @@ export function crearClienteApi({
   }
 
   return {
-    peticion, obtenerToken, guardarToken, cerrarSesion, iniciarAcceso, accesoVigente, terminarAcceso,
+    peticion, obtenerToken, guardarToken, cerrarSesion, salir, iniciarAcceso, accesoVigente, terminarAcceso,
     tieneSesionGuardada: () => Boolean(obtenerToken()),
     /** Cambia al iniciar o cerrar sesión en esta pestaña; no cambia al renovar el token. */
     revisionSesion: () => revisionSesion,

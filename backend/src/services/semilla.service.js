@@ -95,6 +95,7 @@ export async function cargarSemilla(claveDemo) {
       materia: materias.get(datos.materia)._id,
       fecha,
       franja: { dia, horaInicio, horaFin },
+      tarifaHora: perfil.tarifaHora ?? null,
       tema: datos.tema,
       estado: datos.estado,
       motivo: datos.motivo ?? null,

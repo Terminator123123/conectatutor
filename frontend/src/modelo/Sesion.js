@@ -2,6 +2,7 @@ import { EstadoSesion } from './enums.js'
 import ErrorDeNegocio from './ErrorDeNegocio.js'
 import FranjaHoraria from './FranjaHoraria.js'
 import Calificacion from './Calificacion.js'
+import { nuevoId } from './identificador.js'
 
 /** Sesión de tutoría que controla sus transiciones de estado y su calificación. */
 export default class Sesion {
@@ -28,7 +29,7 @@ export default class Sesion {
    * @throws {TypeError} Si la fecha de la sesión no es válida.
    */
   constructor({ solicitante, tutor, materia, franja, fecha, tema }) {
-    this.#id = crypto.randomUUID()
+    this.#id = nuevoId()
     this.#solicitante = solicitante
     this.#tutor = tutor
     this.#materia = materia

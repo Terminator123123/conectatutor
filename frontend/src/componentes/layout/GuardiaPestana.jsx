@@ -1,9 +1,10 @@
 // Una sola pestaña activa: al abrir ConectaTutor en otra, la anterior se cierra para no mezclar acciones.
 import { useEffect, useState } from 'react'
 import { INSTITUCION } from '../../config/institucion.js'
+import { nuevoId } from '../../modelo/identificador.js'
 
 const canal = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('conectatutor-pestana')
-const ID_PESTANA = crypto.randomUUID()
+const ID_PESTANA = nuevoId()
 
 /**
  * @param {object} props Propiedades.

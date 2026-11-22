@@ -14,7 +14,8 @@ export default function Campana() {
   const contenedor = useRef(null)
 
   const cargar = useCallback(async () => {
-    try { setDatos(await repositorio.listarNotificaciones()) } catch { /* sin conexión: se intenta en el próximo minuto */ }
+    // Consulta automática: no cuenta como uso, así una pestaña abandonada vence a los 30 minutos (RQNF005)
+    try { setDatos(await repositorio.listarNotificaciones({ automatica: true })) } catch { /* sin conexión: se intenta en el próximo minuto */ }
   }, [])
 
   // Al cambiar de pantalla y cada minuto mientras la pestaña está a la vista.

@@ -131,9 +131,25 @@ export async function guardarMiPerfil(estudianteId, { biografia, tarifaHora, mat
  * @param {boolean} [filtros.soloGratuitas] Solo tutorías sin tarifa.
  * @param {number} [filtros.calificacionMinima] Promedio mínimo de 1 a 5.
  */
+/**
+ * Perfiles publicados: verificados y con algo que ofrecer (al menos una materia y una franja).
+ * Coordinación no verifica un perfil vacío; si uno ya verificado se vacía al editarlo, sale
+ * de la búsqueda, del detalle público y de favoritos hasta que vuelva a tener oferta.
+ */
+export const FILTRO_PUBLICADO = Object.freeze({
+  estadoVerificacion: EstadoVerificacion.VERIFICADO,
+  'materias.0': { $exists: true },
+  'disponibilidad.0': { $exists: true },
+})
+
+/** Lo mismo que FILTRO_PUBLICADO para un perfil ya cargado. */
+export function estaPublicado(perfil) {
+  return perfil.estadoVerificacion === EstadoVerificacion.VERIFICADO && perfil.materias.length > 0 && perfil.disponibilidad.length > 0
+}
+
 export async function buscarTutores({ materia, programa, sede, dia, precioMaximo, soloGratuitas, calificacionMinima } = {}) {
-  // Regla fija: en la búsqueda solo aparecen perfiles VERIFICADOS.
-  const filtro = { estadoVerificacion: EstadoVerificacion.VERIFICADO }
+  // Regla fija: en la búsqueda solo aparecen perfiles VERIFICADOS que ofrecen algo.
+  const filtro = { ...FILTRO_PUBLICADO }
 
   if (materia) {
     // Una materia retirada del catálogo no produce resultados.
@@ -171,8 +187,8 @@ function abreviarNombre(nombre) {
 
 /**
  * Devuelve el perfil público de un tutor con sus reseñas (RQF011).
- * Un perfil que no está verificado solo lo ven su dueño y el administrador;
- * para los demás no existe.
+ * Un perfil que no está publicado (sin verificar, o sin materias o franjas) solo lo
+ * ven su dueño y el administrador; para los demás no existe.
  * @param {string} perfilId
  * @param {import('mongoose').Document} usuario Quien consulta.
  */
@@ -183,7 +199,7 @@ export async function obtenerDetalle(perfilId, usuario) {
   // Sin sesión (visitante) solo se ven perfiles verificados.
   const esDueno = Boolean(usuario) && perfil.estudiante._id.equals(usuario._id)
   const esAdministrador = usuario?.tipo === RolUsuario.ADMINISTRADOR
-  if (perfil.estadoVerificacion !== EstadoVerificacion.VERIFICADO && !esDueno && !esAdministrador) {
+  if (!estaPublicado(perfil) && !esDueno && !esAdministrador) {
     throw new HttpError(404, 'El tutor no existe')
   }
 

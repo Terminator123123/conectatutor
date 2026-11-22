@@ -29,7 +29,7 @@ export default class ServicioAutenticacionApi {
   }
 
   cerrarSesion() {
-    this.#repositorio.cerrarSesion()
+    return this.#repositorio.cerrarSesion()
   }
 
   toJSON() {

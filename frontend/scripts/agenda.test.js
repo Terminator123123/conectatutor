@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import FranjaHoraria from '../src/modelo/FranjaHoraria.js'
 import Sesion from '../src/modelo/Sesion.js'
 import { DiaSemana, EstadoSesion } from '../src/modelo/enums.js'
-import { estaOcupada, estaOcupadaEnAgenda } from '../src/servicios/agenda.js'
+import { estaOcupada, estaOcupadaEnAgenda, yaEmpezo } from '../src/servicios/agenda.js'
 
 const DIA = '2026-12-07'
 const franja = (horaInicio, horaFin, dia = DiaSemana.LUNES) => new FranjaHoraria({ dia, horaInicio, horaFin })
@@ -86,4 +86,11 @@ test('la ocupación pública detecta cruces sin reconstruir sesiones privadas', 
   assert.equal(estaOcupadaEnAgenda(ocupaciones, franja('09:00', '10:00'), DIA), false)
   assert.equal(estaOcupadaEnAgenda(ocupaciones, franja('10:00', '12:00'), '2026-12-14'), false)
   assert.equal(estaOcupadaEnAgenda([], franja('10:00', '12:00'), DIA), false)
+})
+
+test('una tutoría se puede marcar como realizada solo desde su hora de inicio en Colombia', () => {
+  const sesion = reservar({ estado: EstadoSesion.CONFIRMADA })
+  assert.equal(yaEmpezo(sesion, new Date('2026-12-07T09:59:00-05:00')), false)
+  assert.equal(yaEmpezo(sesion, new Date('2026-12-07T10:00:00-05:00')), true)
+  assert.equal(yaEmpezo(sesion, new Date('2026-11-21T10:00:00-05:00')), false)
 })

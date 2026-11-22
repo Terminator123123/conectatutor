@@ -13,6 +13,7 @@ import Modal from '../componentes/ui/Modal.jsx'
 import ConfirmarDesactivacion from '../componentes/ui/ConfirmarDesactivacion.jsx'
 import '../estilos/tutor.css'
 import '../estilos/autenticacion.css'
+import { nuevoId } from '../modelo/identificador.js'
 
 /** @returns {import('react').ReactElement} Lista, alta y edición de materias por programa. */
 export default function GestionMaterias() {
@@ -64,7 +65,7 @@ export default function GestionMaterias() {
       if (!programa) throw new Error('El programa ya no está disponible.')
       const anterior = actuales.find((materia) => materia.getId() === edicion)
       if (edicion !== 'nueva' && !anterior) throw new Error('Esta materia ya no está disponible.')
-      const datos = { nombre:campos.nombre.trim(), codigo:campos.codigo.trim() || `MAT-${crypto.randomUUID().slice(0,8).toUpperCase()}`, programa }
+      const datos = { nombre:campos.nombre.trim(), codigo:campos.codigo.trim() || `MAT-${nuevoId().slice(0,8).toUpperCase()}`, programa }
       const materia = anterior ? Materia.desdeJSON({ ...anterior.toJSON(), ...datos, programaId:programa.getId() }, { buscarPrograma:() => programa }) : new Materia(datos)
       const guardada = await repositorio.guardarMateria(materia)
       setMaterias((lista) => lista.some((item) => item.getId() === guardada.getId())

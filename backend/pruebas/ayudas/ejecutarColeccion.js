@@ -10,7 +10,7 @@ function ejecutarEventos(eventos, tipo, pm) {
   }
 }
 
-export async function ejecutarColeccion(urlBase, alVerificar = () => {}) {
+export async function ejecutarColeccion(urlBase, alVerificar = () => {}, antesDeCaso = async () => {}) {
   const base = new URL(urlBase)
   assert.ok(base.protocol === 'http:' && base.hostname === 'localhost' && Number(base.port) > 0
     && base.pathname === '/api' && !base.search && !base.hash && !base.username && !base.password,
@@ -38,6 +38,7 @@ export async function ejecutarColeccion(urlBase, alVerificar = () => {}) {
             catch (error) { pruebas.push({ nombre, cumple: false, error: error.message }) }
           },
         }
+        await antesDeCaso(item.name, variables)
         ejecutarEventos(coleccion.event, 'prerequest', pm)
         ejecutarEventos(item.event, 'prerequest', pm)
         const destino = new URL(interpolar(item.request.url))

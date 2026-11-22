@@ -66,7 +66,8 @@ function presentarSesion(sesion, usuario) {
     id: sesion.id,
     miPapel: papel,
     solicitante: persona(sesion.solicitante),
-    tutor: sesion.tutor && { id: sesion.tutor.id, tarifaHora: sesion.tutor.tarifaHora, estudiante: persona(sesion.tutor.estudiante) },
+    // tarifaHora es la de esta reserva (la que había al solicitar), no la actual del perfil
+    tutor: sesion.tutor && { id: sesion.tutor.id, tarifaHora: sesion.tarifaHora === undefined ? sesion.tutor.tarifaHora : sesion.tarifaHora, estudiante: persona(sesion.tutor.estudiante) },
     materia: sesion.materia,
     fecha: aTextoDia(sesion.fecha),
     franja: sesion.franja,
@@ -133,9 +134,9 @@ function exigirFranjaYFecha(perfil, dia, franja) {
  * La comprobación y el cambio van en UNA sola operación de la base de datos:
  * si dos personas actúan a la vez (uno acepta y el otro cancela), solo gana una.
  */
-async function cambiarEstado(id, estadosPermitidos, cambios) {
+async function cambiarEstado(id, estadosPermitidos, cambios, condiciones = {}) {
   const sesion = await Sesion.findOneAndUpdate(
-    { _id: id, estado: { $in: estadosPermitidos } },
+    { _id: id, estado: { $in: estadosPermitidos }, ...condiciones },
     { $set: { ...cambios, reprogramacion: null } },
     { returnDocument: 'after' },
   ).populate(DATOS_DE_LA_SESION)
@@ -175,6 +176,7 @@ export async function solicitar(usuario, { tutor, materia, fecha, franja, tema }
       materia,
       fecha: aFechaGuardada(fecha),
       franja,
+      tarifaHora: perfil.tarifaHora ?? null,
       tema,
     })
   } catch (error) {
@@ -244,10 +246,18 @@ export async function cancelar(id, usuario, { motivo, motivos = ['OTRO'] }) {
   return presentarSesion(sesion, usuario)
 }
 
-/** El tutor marca la tutoría como realizada: CONFIRMADA -> FINALIZADA. */
+/**
+ * El tutor marca la tutoría como realizada: CONFIRMADA -> FINALIZADA.
+ * Solo desde que empieza su franja: una tutoría que todavía no pudo ocurrir no se da
+ * por realizada ni se califica, así el promedio y las tutorías completadas son hechos reales.
+ */
 export async function finalizar(id, usuario) {
-  await cargarSesionComo(id, usuario, ['TUTOR'])
-  const sesion = await cambiarEstado(id, [EstadoSesion.CONFIRMADA], { estado: EstadoSesion.FINALIZADA })
+  const actual = await cargarSesionComo(id, usuario, ['TUTOR'])
+  if (momentoDeInicio(aTextoDia(actual.fecha), actual.franja.horaInicio) > new Date()) {
+    throw errorDeRegla('R5', 'La tutoría todavía no empieza: podrás marcarla como realizada desde la hora de inicio')
+  }
+  // La fecha va en el filtro: si una reprogramación la movió mientras tanto, no se finaliza
+  const sesion = await cambiarEstado(id, [EstadoSesion.CONFIRMADA], { estado: EstadoSesion.FINALIZADA }, { fecha: actual.fecha, 'franja.horaInicio': actual.franja.horaInicio })
   await avisar(() => avisarCambio(TipoNotificacion.SESION_FINALIZADA, sesion))
   return presentarSesion(sesion, usuario)
 }

@@ -164,6 +164,27 @@ describe('E3 · Tutores', () => {
       assert.ok(!nombres(await andrea.get('/tutores')).includes('Elena Lozano'))
     })
 
+    it('un perfil verificado que se queda sin materias o sin franjas sale de la oferta pública y vuelve al completarlo', async () => {
+      const perfil = await perfilDe(CORREOS.andrea)
+      const publico = async () => ({
+        busqueda: nombres(await elena.get('/tutores')).includes('Andrea Salcedo'),
+        detalle: (await elena.get(`/tutores/${perfil.id}`)).status,
+        favorito: (await elena.put(`/favoritos/${perfil.id}`)).status,
+      })
+      for (const vacio of [{ materias: [] }, { disponibilidad: [] }, { materias: [], disponibilidad: [] }]) {
+        const guardado = await andrea.put('/tutores/mi-perfil', datosPerfil(vacio))
+        assert.equal(guardado.status, 200)
+        assert.equal(guardado.body.estadoVerificacion, 'VERIFICADO')
+        assert.deepEqual(await publico(), { busqueda: false, detalle: 404, favorito: 404 })
+        assert.equal((await andrea.get(`/tutores/${perfil.id}`)).status, 200) // su dueño sí lo ve
+        assert.equal((await administrador.get(`/tutores/${perfil.id}`)).status, 200)
+      }
+      await andrea.put('/tutores/mi-perfil', datosPerfil())
+      assert.deepEqual(await publico(), { busqueda: true, detalle: 200, favorito: 200 })
+      await andrea.put('/tutores/mi-perfil', datosPerfil({ materias: [] }))
+      assert.deepEqual((await elena.get('/favoritos')).body, [])
+    })
+
     it('PUT guarda cambios del perfil existente sin perder la verificación (RQF026)', async () => {
       const respuesta = await andrea.put('/tutores/mi-perfil', datosPerfil({ tarifaHora: 28000 }))
       assert.equal(respuesta.status, 200)

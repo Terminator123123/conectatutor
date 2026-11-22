@@ -3,9 +3,10 @@ import { CLAVE_DE_PRUEBA, detenerBaseDePrueba, iniciarBaseDePrueba, vaciarBaseDe
 import assert from 'node:assert/strict'
 import { after, before, beforeEach, describe, it } from 'node:test'
 import { Materia, PerfilTutor, Sesion, Usuario } from '../src/models/index.js'
+import { prepararReservas } from '../src/models/sesion.model.js'
 import { cargarSemilla } from '../src/services/semilla.service.js'
 import { hoyEnColombia } from '../src/utils/fechas.js'
-import { clienteDe, CORREOS } from './ayudas/sesion.js'
+import { clienteDe, CORREOS, moverAlPasado } from './ayudas/sesion.js'
 
 const ID_INEXISTENTE = '6728f1a2b3c4d5e6f7a8b9c0'
 const FRANJA_ANDREA = { dia: 'LUNES', horaInicio: '08:00', horaFin: '10:00' }
@@ -172,6 +173,47 @@ describe('E4 · Sesiones', () => {
     })
   })
 
+  describe('Tarifa de la reserva', () => {
+    /** Andrea guarda su perfil igual, cambiando solo la tarifa. */
+    async function cambiarTarifaDeAndrea(tarifaHora) {
+      const perfil = await PerfilTutor.findById(perfilAndrea._id)
+      const respuesta = await andrea.put('/tutores/mi-perfil', {
+        biografia: perfil.biografia, tarifaHora, materias: perfil.materias.map(String),
+        disponibilidad: perfil.disponibilidad.map(({ dia, horaInicio, horaFin }) => ({ dia, horaInicio, horaFin })),
+      })
+      assert.equal(respuesta.status, 200)
+    }
+
+    it('si el tutor cambia su tarifa, la reserva y su historial conservan la que había al solicitar', async () => {
+      const creada = (await elena.post('/sesiones', solicitud())).body
+      const original = creada.tutor.tarifaHora
+      assert.equal(original, perfilAndrea.tarifaHora)
+      await cambiarTarifaDeAndrea(original + 15000)
+      assert.equal((await elena.get(`/sesiones/${creada.id}`)).body.tutor.tarifaHora, original)
+      assert.equal((await andrea.get(`/sesiones/${creada.id}`)).body.tutor.tarifaHora, original)
+      assert.equal((await elena.get('/sesiones')).body.find((fila) => fila.id === creada.id).tutor.tarifaHora, original)
+      // Una solicitud nueva sí toma la tarifa nueva
+      const nueva = (await elena.post('/sesiones', solicitud({ fecha: lunes(5) }))).body
+      assert.equal(nueva.tutor.tarifaHora, original + 15000)
+    })
+
+    it('una reserva gratuita sigue gratuita aunque el tutor empiece a cobrar', async () => {
+      const creada = (await felipe.post('/sesiones', solicitud({ tutor: perfilBruno.id, materia: administracion.id, franja: perfilBruno.disponibilidad[0], tema: 'Resolver el taller de planeación' }))).body
+      assert.equal(creada.tutor.tarifaHora, null)
+      await PerfilTutor.updateOne({ _id: perfilBruno._id }, { $set: { tarifaHora: 20000 } })
+      assert.equal((await felipe.get(`/sesiones/${creada.id}`)).body.tutor.tarifaHora, null)
+    })
+
+    it('las sesiones guardadas antes de esta regla reciben la tarifa del perfil una sola vez', async () => {
+      const creada = (await elena.post('/sesiones', solicitud())).body
+      await Sesion.collection.updateOne({ _id: new Sesion({ _id: creada.id })._id }, { $unset: { tarifaHora: '' } })
+      await prepararReservas()
+      await cambiarTarifaDeAndrea(perfilAndrea.tarifaHora + 1000)
+      await prepararReservas()
+      assert.equal((await elena.get(`/sesiones/${creada.id}`)).body.tutor.tarifaHora, perfilAndrea.tarifaHora)
+    })
+  })
+
   describe('GET /api/sesiones (Mis sesiones, RQF015)', () => {
     it('cada quien ve solo las suyas, como solicitante y como tutor', async () => {
       const deElena = await elena.get('/sesiones')
@@ -259,7 +301,17 @@ describe('E4 · Sesiones', () => {
       }
     })
 
-    it('el tutor finaliza una sesión confirmada: CONFIRMADA -> FINALIZADA', async () => {
+    it('una tutoría que todavía no empieza no se puede finalizar ni calificar', async () => {
+      const respuesta = await bruno.patch(`/sesiones/${confirmada.id}/finalizar`)
+      assert.equal(respuesta.status, 409)
+      assert.equal(respuesta.body.regla, 'R5')
+      assert.match(respuesta.body.mensaje, /todavía no empieza/)
+      assert.equal((await Sesion.findById(confirmada.id)).estado, 'CONFIRMADA')
+      assert.equal((await felipe.post(`/sesiones/${confirmada.id}/calificacion`, { puntaje: 5 })).status, 409)
+    })
+
+    it('el tutor finaliza una sesión confirmada que ya empezó: CONFIRMADA -> FINALIZADA', async () => {
+      await moverAlPasado(confirmada.id)
       const respuesta = await bruno.patch(`/sesiones/${confirmada.id}/finalizar`)
       assert.equal(respuesta.status, 200)
       assert.equal(respuesta.body.estado, 'FINALIZADA')
@@ -411,6 +463,7 @@ describe('E4 · Sesiones', () => {
     })
 
     it('una sesión finalizada o cancelada no se reprograma', async () => {
+      await moverAlPasado(sesion.id)
       await bruno.patch(`/sesiones/${sesion.id}/finalizar`)
       const respuesta = await felipe.put(`/sesiones/${sesion.id}/reprogramacion`, { fecha: lunes(5), franja: FRANJA_BRUNO })
       assert.equal(respuesta.status, 409)

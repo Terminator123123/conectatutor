@@ -159,6 +159,21 @@ export const rutasAuth = {
       },
     },
   },
+  '/auth/salida': {
+    post: {
+      tags: ['Autenticación'],
+      summary: 'Cierra la sesión',
+      description:
+        'Invalida en el servidor la sesión del token: desde ese momento ese token y sus renovaciones responden 401. ' +
+        'Si la cuenta ya ingresó en otro lugar, no cierra esa sesión nueva.',
+      security: [{ tokenJWT: [] }],
+      responses: {
+        204: { description: 'Sesión cerrada' },
+        401: { $ref: '#/components/responses/NoAutenticado' },
+        500: { $ref: '#/components/responses/ErrorInterno' },
+      },
+    },
+  },
   '/auth/recuperacion': {
     post: {
       tags: ['Autenticación'],

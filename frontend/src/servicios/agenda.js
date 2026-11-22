@@ -35,6 +35,18 @@ export function fechaEnColombia(fecha) {
 }
 
 /**
+ * Indica si la tutoría ya empezó (día y hora de inicio, en hora de Colombia).
+ * Antes de eso no se puede marcar como realizada: la API responde 409 (R5).
+ * @param {import('../modelo/Sesion.js').default} sesion
+ * @param {Date} [ahora=new Date()]
+ * @returns {boolean}
+ */
+export function yaEmpezo(sesion, ahora = new Date()) {
+  const inicio = new Date(`${fechaEnColombia(sesion.getFecha())}T${sesion.getFranja().getHoraInicio()}:00${DESFASE_HORARIO}`)
+  return inicio <= ahora
+}
+
+/**
  * Encuentra coincidencias desde mañana hasta el límite de días en Colombia.
  * @param {import('../modelo/FranjaHoraria.js').default} franja Franja buscada.
  * @param {Date} [desde=new Date()] Fecha de referencia.

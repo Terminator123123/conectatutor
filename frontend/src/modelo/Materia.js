@@ -1,3 +1,4 @@
+import { nuevoId } from './identificador.js'
 /** Representa una materia perteneciente a un programa académico. */
 export default class Materia {
   #id
@@ -13,7 +14,7 @@ export default class Materia {
    * @param {import('./Programa.js').default} datos.programa Programa asociado.
    */
   constructor({ codigo, nombre, programa }) {
-    this.#id = crypto.randomUUID()
+    this.#id = nuevoId()
     this.#codigo = codigo
     this.#nombre = nombre
     this.#programa = programa

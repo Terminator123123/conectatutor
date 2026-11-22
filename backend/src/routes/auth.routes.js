@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import {
-  comprobarRecuperacion, editarPropio, ingresar, obtenerPropio, pedirRecuperacion, registrar, restablecerClave,
+  comprobarRecuperacion, editarPropio, ingresar, obtenerPropio, pedirRecuperacion, registrar, restablecerClave, salir,
 } from '../controllers/auth.controller.js'
 import { cambiarClave, completarPrimerAcceso, guardarFoto, quitarFoto, verFoto } from '../controllers/cuenta.controller.js'
 import { env } from '../config/env.js'
@@ -25,6 +25,7 @@ export function crearAuthRouter(entorno = env) {
   // Segunda barrera: app.js ya lo cierra antes de leer el cuerpo
   authRouter.post('/registro', cerrarEnProduccion(entorno), validarRegistro, registrar)
   authRouter.post('/ingreso', validarIngreso, limitarIngreso, ingresar)
+  authRouter.post('/salida', autenticar, salir)
   authRouter.get('/yo', autenticar, obtenerPropio)
   authRouter.patch('/yo', autenticar, validarEdicionCuenta, editarPropio)
   authRouter.post('/recuperacion', validarSolicitudRecuperacion, limitarRecuperacion, pedirRecuperacion)

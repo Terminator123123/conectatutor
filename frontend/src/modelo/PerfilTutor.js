@@ -1,6 +1,7 @@
 import { EstadoVerificacion } from './enums.js'
 import ErrorDeNegocio from './ErrorDeNegocio.js'
 import FranjaHoraria from './FranjaHoraria.js'
+import { nuevoId } from './identificador.js'
 
 /** Perfil de tutor que pertenece a un estudiante y administra su oferta y disponibilidad. */
 export default class PerfilTutor {
@@ -21,7 +22,7 @@ export default class PerfilTutor {
    * @param {string} datos.biografia Presentación del tutor.
    */
   constructor({ estudiante, biografia }) {
-    this.#id = crypto.randomUUID()
+    this.#id = nuevoId()
     this.#estudiante = estudiante
     this.#biografia = biografia
     this.#tarifaHora = null

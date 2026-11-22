@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { EstadoSesion, EstadoVerificacion } from '../../modelo/enums.js'
 import { repositorio } from '../../servicios/instancias.js'
-import { estaOcupada, fechaEnColombia } from '../../servicios/agenda.js'
+import { estaOcupada, fechaEnColombia, yaEmpezo } from '../../servicios/agenda.js'
 import ItemSesion from '../../componentes/ui/ItemSesion.jsx'
 import Modal from '../../componentes/ui/Modal.jsx'
 import EncuestaCancelacion from '../../componentes/sesiones/EncuestaCancelacion.jsx'
@@ -229,8 +229,8 @@ export default function SesionesQueDoy({ perfil, alAnunciar }) {
           estado={estado}>
           {estado === EstadoSesion.CONFIRMADA && 
           <>
-              <Boton deshabilitado={!!guardando} alHacerClic={() => abrir('finalizar', sesion)}>Marcar como realizada
-            </Boton>
+              {yaEmpezo(sesion) && <Boton deshabilitado={!!guardando} alHacerClic={() => abrir('finalizar', sesion)}>Marcar como realizada
+            </Boton>}
               <Link className="ct-boton btn-ct-secundario" to={`/sesiones/${sesion.getId()}?cancelar=confirmada`}>Cancelar sesión
             </Link>
             </>}

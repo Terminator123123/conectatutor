@@ -28,6 +28,12 @@ export async function obtenerPropio(req, res) {
   res.status(200).json({ usuario: await servicioAuth.presentarUsuario(req.usuario) })
 }
 
+/** POST /api/auth/salida */
+export async function salir(req, res) {
+  await servicioAuth.cerrarSesionUnica(req.usuario, req.sesionId)
+  res.status(204).end()
+}
+
 /** PATCH /api/auth/yo */
 export async function editarPropio(req, res) {
   res.status(200).json({ usuario: await servicioAuth.editarCuenta(req.usuario, req.body) })

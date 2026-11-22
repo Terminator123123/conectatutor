@@ -9,7 +9,7 @@ import { cargarSemilla } from '../src/services/semilla.service.js'
 import { hoyEnColombia } from '../src/utils/fechas.js'
 import { reiniciarIntentos } from '../src/middlewares/limitarIntentos.js'
 import { ejecutarColeccion } from './ayudas/ejecutarColeccion.js'
-import { CORREOS } from './ayudas/sesion.js'
+import { CORREOS, moverAlPasado } from './ayudas/sesion.js'
 
 describe('E6 · Colección exportada y concurrencia por HTTP real', () => {
   let servidor, urlBase
@@ -67,9 +67,11 @@ describe('E6 · Colección exportada y concurrencia por HTTP real', () => {
     return { tutor, elena, felipe, perfil, datos }
   }
 
-  it('ejecuta las 65 peticiones y los scripts de la colección Postman exportada', async t => {
-    const resultados = await ejecutarColeccion(urlBase, resultado => t.diagnostic(`${resultado.caso}: HTTP ${resultado.http}`))
-    assert.equal(resultados.length, 65)
+  it('ejecuta las 66 peticiones y los scripts de la colección Postman exportada', async t => {
+    // La tutoría tiene que haber empezado para finalizarla: antes de ese paso se mueve al pasado en la base temporal
+    const antesDeCaso = async (nombre, variables) => { if (nombre.startsWith('E6-39 ')) await moverAlPasado(variables.get('sesionId')) }
+    const resultados = await ejecutarColeccion(urlBase, resultado => t.diagnostic(`${resultado.caso}: HTTP ${resultado.http}`), antesDeCaso)
+    assert.equal(resultados.length, 66)
     assert.ok(resultados.every(resultado => resultado.pruebas.every(prueba => prueba.cumple)))
     assert.ok(resultados.every(resultado => !('token' in resultado) && !('cuerpo' in resultado)))
   })
@@ -111,6 +113,7 @@ describe('E6 · Colección exportada y concurrencia por HTTP real', () => {
     assert.equal(creada.estado, 201)
     const ruta = `/sesiones/${creada.datos.id}`
     assert.equal((await pedir(`${ruta}/confirmar`, { metodo: 'PATCH', token: tutor.token })).estado, 200)
+    await moverAlPasado(creada.datos.id) // la tutoría ya ocurrió
     assert.equal((await pedir(`${ruta}/finalizar`, { metodo: 'PATCH', token: tutor.token })).estado, 200)
     const respuestas = await Promise.all([4, 5].map(puntaje => pedir(`${ruta}/calificacion`, { metodo: 'POST', token: elena.token, datos: { puntaje, resena: 'Explicación de prueba' } })))
     assert.deepEqual(respuestas.map(respuesta => respuesta.estado).sort(), [201, 409])

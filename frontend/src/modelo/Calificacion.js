@@ -1,4 +1,5 @@
 import ErrorDeNegocio from './ErrorDeNegocio.js'
+import { nuevoId } from './identificador.js'
 
 /** Calificación de una sesión, con puntaje sujeto a la regla R7. */
 export default class Calificacion {
@@ -19,7 +20,7 @@ export default class Calificacion {
       throw new ErrorDeNegocio('R7', 'El puntaje debe ser un número entero entre 1 y 5.')
     }
 
-    this.#id = crypto.randomUUID()
+    this.#id = nuevoId()
     this.#puntaje = puntaje
     this.#resena = resena
     this.#fecha = new Date()

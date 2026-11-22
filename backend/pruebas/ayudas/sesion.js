@@ -1,7 +1,8 @@
 import request from 'supertest'
 import { app } from '../../src/app.js'
 import { firmarToken } from '../../src/services/auth.service.js'
-import { Usuario } from '../../src/models/index.js'
+import { Sesion, Usuario } from '../../src/models/index.js'
+import { hoyEnColombia } from '../../src/utils/fechas.js'
 
 const DOMINIO = 'uniguajira.edu.co'
 
@@ -34,4 +35,17 @@ export async function clienteDe(correo) {
     return cuerpo === undefined ? peticion : peticion.send(cuerpo)
   }
   return { get: pedir('get'), post: pedir('post'), put: pedir('put'), patch: pedir('patch'), delete: pedir('delete') }
+}
+
+/**
+ * Mueve una sesión al pasado (mismo día de la semana, semanas atrás) directamente en la base
+ * temporal: la API no deja crear tutorías pasadas ni finalizarlas antes de que empiecen.
+ * @param {string} id Id de la sesión.
+ */
+export async function moverAlPasado(id) {
+  const sesion = await Sesion.findById(id)
+  const fecha = new Date(sesion.fecha)
+  const hoy = new Date(`${hoyEnColombia()}T00:00:00.000Z`)
+  while (fecha >= hoy) fecha.setUTCDate(fecha.getUTCDate() - 7)
+  await Sesion.updateOne({ _id: id }, { $set: { fecha } })
 }

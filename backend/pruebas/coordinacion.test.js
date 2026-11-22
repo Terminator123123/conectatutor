@@ -7,7 +7,7 @@ import { app } from '../src/app.js'
 import { Materia, PerfilTutor, Programa, Usuario } from '../src/models/index.js'
 import { cargarSemilla } from '../src/services/semilla.service.js'
 import { hoyEnColombia } from '../src/utils/fechas.js'
-import { clienteDe, CORREOS } from './ayudas/sesion.js'
+import { clienteDe, CORREOS, moverAlPasado } from './ayudas/sesion.js'
 
 const ID_INEXISTENTE = '6728f1a2b3c4d5e6f7a8b9c0'
 
@@ -196,6 +196,7 @@ describe('E4 · Coordinación, favoritos y ciclo completo', () => {
       const deA = await request(app).get(api('/sesiones?papel=TUTOR')).set(como(tokenA))
       assert.deepEqual(deA.body.map((sesion) => sesion.id), [sesionId])
       assert.equal((await request(app).patch(api(`/sesiones/${sesionId}/confirmar`)).set(como(tokenA))).body.estado, 'CONFIRMADA')
+      await moverAlPasado(sesionId) // la tutoría ya ocurrió
       assert.equal((await request(app).patch(api(`/sesiones/${sesionId}/finalizar`)).set(como(tokenA))).body.estado, 'FINALIZADA')
 
       // 6. B califica y el promedio del tutor cambia.

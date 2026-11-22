@@ -7,7 +7,7 @@ import { listar } from '../src/services/notificaciones.service.js'
 import { cargarSemilla } from '../src/services/semilla.service.js'
 import { aFechaGuardada, hoyEnColombia, momentoDeInicio } from '../src/utils/fechas.js'
 import { afirmarContrato } from './ayudas/contrato.js'
-import { clienteDe, CORREOS } from './ayudas/sesion.js'
+import { clienteDe, CORREOS, moverAlPasado } from './ayudas/sesion.js'
 
 const FRANJA = { dia: 'LUNES', horaInicio: '08:00', horaFin: '10:00' }
 
@@ -57,6 +57,7 @@ describe('Campana de notificaciones y encuesta de cancelación (RQF022, RQF016)'
   it('al finalizar invita a calificar y marcar leídas pone el contador en cero', async () => {
     const { body: sesion } = await solicitar()
     await andrea.patch(`/sesiones/${sesion.id}/confirmar`)
+    await moverAlPasado(sesion.id)
     await andrea.patch(`/sesiones/${sesion.id}/finalizar`)
     const lista = (await elena.get('/notificaciones')).body
     assert.equal(lista.notificaciones[0].ruta, `/sesiones/${sesion.id}/calificar`)

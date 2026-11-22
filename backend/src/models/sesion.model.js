@@ -66,6 +66,9 @@ const sesionSchema = new mongoose.Schema(
     // Copia de la franja del tutor en el momento de solicitar.
     franja: { type: franjaSchema, required: [true, 'La sesión necesita una franja'] },
     minutosOcupados: { type: [Number], select: false },
+    // Tarifa por hora del tutor al solicitar (null: gratuita). Si el tutor cambia su tarifa
+    // después, esta reserva y su historial conservan la que se vio al pedirla.
+    tarifaHora: { type: Number, min: [1, 'La tarifa debe ser mayor que cero'] },
     tema: {
       type: String,
       required: [true, 'Describe el tema de la tutoría'],
@@ -113,6 +116,14 @@ export const Sesion = mongoose.model('Sesion', sesionSchema)
 
 // Completa documentos anteriores antes de crear el índice, sin cambiar sus reservas
 export async function prepararReservas() {
+  // Sesiones anteriores a guardar la tarifa: se fija la del perfil en este momento, una sola vez
+  for await (const sesion of Sesion.find({ tarifaHora: { $exists: false } }).select('tutor').populate({ path: 'tutor', select: 'tarifaHora' }).cursor()) {
+    await Sesion.updateOne(
+      { _id: sesion._id, tarifaHora: { $exists: false } },
+      { $set: { tarifaHora: sesion.tutor?.tarifaHora ?? null } },
+      { timestamps: false },
+    )
+  }
   for await (const sesion of Sesion.find({ minutosOcupados: { $exists: false } }).select('franja').cursor()) {
     await Sesion.updateOne(
       { _id: sesion._id, minutosOcupados: { $exists: false } },

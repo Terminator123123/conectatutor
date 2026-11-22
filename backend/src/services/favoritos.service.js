@@ -1,13 +1,12 @@
 import { Estudiante, PerfilTutor } from '../models/index.js'
-import { EstadoVerificacion } from '../utils/enums.js'
 import { HttpError } from '../utils/HttpError.js'
-import { calcularEstadisticas, presentarPerfil } from './tutores.service.js'
+import { calcularEstadisticas, FILTRO_PUBLICADO, presentarPerfil } from './tutores.service.js'
 
 export async function listar(estudianteId) {
   const estudiante = await Estudiante.findById(estudianteId).select('favoritos')
   const perfiles = await PerfilTutor.find({
     _id: { $in: estudiante.favoritos },
-    estadoVerificacion: EstadoVerificacion.VERIFICADO,
+    ...FILTRO_PUBLICADO,
   }).populate([
     { path: 'estudiante', populate: { path: 'programa' } },
     { path: 'materias', populate: { path: 'programa' } },
@@ -17,7 +16,7 @@ export async function listar(estudianteId) {
 }
 
 export async function agregar(estudianteId, perfilId) {
-  const existe = await PerfilTutor.exists({ _id: perfilId, estadoVerificacion: EstadoVerificacion.VERIFICADO })
+  const existe = await PerfilTutor.exists({ _id: perfilId, ...FILTRO_PUBLICADO })
   if (!existe) throw new HttpError(404, 'El tutor no existe')
   await Estudiante.updateOne({ _id: estudianteId }, { $addToSet: { favoritos: perfilId } })
   return listar(estudianteId)

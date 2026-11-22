@@ -1,3 +1,4 @@
+import { nuevoId } from './identificador.js'
 /** Base abstracta de los usuarios de la plataforma. */
 export default class Usuario {
   #id
@@ -12,7 +13,7 @@ export default class Usuario {
    * @param {string} datos.correoInstitucional Correo institucional.
    * @throws {Error} Si se intenta instanciar Usuario directamente.
    */
-  constructor({ id = crypto.randomUUID(), nombre, correoInstitucional } = {}) {
+  constructor({ id = nuevoId(), nombre, correoInstitucional } = {}) {
     if (new.target === Usuario) {
       throw new Error('Usuario es abstracta')
     }

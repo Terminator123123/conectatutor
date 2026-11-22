@@ -20,7 +20,7 @@ import { Usuario } from '../src/models/index.js'
 import { cargarSemilla } from '../src/services/semilla.service.js'
 import { hoyEnColombia } from '../src/utils/fechas.js'
 import { crearRetencion } from './ayudas/retencion.js'
-import { CORREOS } from './ayudas/sesion.js'
+import { CORREOS, moverAlPasado } from './ayudas/sesion.js'
 
 function crearAlmacen() {
   const valores = new Map([['otra.aplicacion', 'conservar']])
@@ -159,6 +159,7 @@ describe('Preparación E5/E6 · Repositorio de dominio sobre la API temporal', (
     const deTutor = await repoTutor.obtenerSesion(borrador.getId())
     deTutor.confirmar()
     assert.equal((await repoTutor.guardarSesion(deTutor)).getEstado(), 'CONFIRMADA')
+    await moverAlPasado(borrador.getId()) // la tutoría ya ocurrió
     const confirmada = await repoTutor.obtenerSesion(borrador.getId())
     confirmada.finalizar()
     assert.equal((await repoTutor.guardarSesion(confirmada)).getEstado(), 'FINALIZADA')
@@ -214,6 +215,7 @@ describe('Preparación E5/E6 · Repositorio de dominio sobre la API temporal', (
     const sesion = await solicitar()
     assert.equal(sesion.getFecha().toISOString(), `${lunes(4)}T15:00:00.000Z`)
     assert.equal(sesion.getTutor().getEstudiante().getCorreo(), '')
+    await moverAlPasado(sesion.getId()) // la tutoría ya ocurrió: se podrá finalizar
     const deTutor = (await tutor.repositorio.listarSesionesDelTutor(tutor.usuario.getPerfilTutor().getId())).find((fila) => fila.getId() === sesion.getId())
     deTutor.confirmar()
     const confirmada = await tutor.repositorio.guardarSesion(deTutor)

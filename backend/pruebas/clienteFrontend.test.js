@@ -10,7 +10,7 @@ import { aSegundos, env } from '../src/config/env.js'
 import { reiniciarIntentos } from '../src/middlewares/limitarIntentos.js'
 import { cargarSemilla } from '../src/services/semilla.service.js'
 import { hoyEnColombia } from '../src/utils/fechas.js'
-import { CORREOS } from './ayudas/sesion.js'
+import { CORREOS, moverAlPasado } from './ayudas/sesion.js'
 
 function almacenEnMemoria() {
   const valores = new Map()
@@ -106,6 +106,8 @@ describe('Preparación E5/E6 · Cliente frontend con HTTP y MongoDB temporales',
     await solicitante.peticion(ruta, { metodo: 'PUT', datos: { fecha: lunes(5), franja } })
     await assert.rejects(solicitante.peticion(ruta, { metodo: 'PATCH', datos: { acepta: true } }), { status: 403 })
     assert.equal((await tutor.peticion(ruta, { metodo: 'PATCH', datos: { acepta: true } })).fecha, lunes(5))
+    await assert.rejects(tutor.peticion(`/sesiones/${sesion.id}/finalizar`, { metodo: 'PATCH' }), (error) => error.status === 409 && error.regla === 'R5')
+    await moverAlPasado(sesion.id) // la tutoría ya ocurrió
     assert.equal((await tutor.peticion(`/sesiones/${sesion.id}/finalizar`, { metodo: 'PATCH' })).estado, 'FINALIZADA')
     await solicitante.peticion(`/sesiones/${sesion.id}/calificacion`, { metodo: 'POST', datos: { puntaje: 4, resena: 'Muy clara' } })
     const detalle = await solicitante.peticion(`/tutores/${perfil.id}`)
@@ -177,6 +179,34 @@ describe('Preparación E5/E6 · Cliente frontend con HTTP y MongoDB temporales',
       assert.equal(jwt.decode(renovado).ini, ahora - 300)
       assert.equal(temporizador.alarmas.size, 1)
       assert.ok([...temporizador.alarmas.values()][0].ms > msAntes + 100_000, 'la ventana vuelve a empezar')
+    })
+
+    it('salir borra el token local y la API deja de aceptar una copia del anterior', async () => {
+      const api = cliente()
+      await ingresar(api, CORREOS.elena)
+      const copia = api.obtenerToken()
+      await api.salir()
+      assert.equal(api.obtenerToken(), null)
+      const otra = cliente()
+      otra.guardarToken(copia)
+      await assert.rejects(otra.peticion('/auth/yo'), { status: 401 })
+    })
+
+    it('solo la consulta automática envía la marca que no renueva el token', async () => {
+      const usuario = { tipo: 'ESTUDIANTE' }
+      const ahora = Math.floor(Date.now() / 1000)
+      const viejo = jwt.sign({ rol: usuario.tipo, ini: ahora - 300, iat: ahora - 300 }, 'x', { subject: 'a'.repeat(24), expiresIn: 600 })
+      const vistos = []
+      const fetchImpl = async (url, opciones) => {
+        vistos.push(opciones.headers)
+        return new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } })
+      }
+      const api = crearClienteApi({ urlBase: 'http://localhost:1/api', almacen: almacenEnMemoria(), fetchImpl })
+      api.guardarToken(viejo)
+      await api.peticion('/notificaciones', { automatica: true })
+      await api.peticion('/notificaciones')
+      assert.equal(vistos[0]['X-Consulta-Automatica'], '1')
+      assert.equal(vistos[1]['X-Consulta-Automatica'], undefined)
     })
 
     it('cerrar sesión cancela la alarma y una alarma vieja no cierra una sesión nueva', async () => {

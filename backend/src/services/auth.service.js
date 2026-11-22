@@ -6,6 +6,9 @@ import { cifrarClave, compararClave } from '../utils/claves.js'
 import { RolUsuario } from '../utils/enums.js'
 import { HttpError } from '../utils/HttpError.js'
 
+/** Prefijo de `sesionActiva` cuando la persona salió: ningún token de esa sesión vuelve a servir. */
+export const PREFIJO_SESION_CERRADA = 'cerrada:'
+
 /** Algoritmo de firma de los tokens. Se fija para que no se acepte ningún otro. */
 export const ALGORITMO_TOKEN = 'HS256'
 
@@ -47,6 +50,20 @@ export async function abrirSesionUnica(usuario) {
   const sesion = randomBytes(16).toString('hex')
   await Usuario.updateOne({ _id: usuario._id }, { $set: { sesionActiva: sesion } })
   return firmarToken(usuario, undefined, sesion)
+}
+
+/**
+ * Cierra en el servidor la sesión del token (RQF003): desde ese momento ningún token
+ * de esa sesión sirve, aunque alguien conserve una copia. Solo la cierra si sigue
+ * siendo la activa: un cierre atrasado no invalida un ingreso posterior.
+ * @param {import('mongoose').Document} usuario
+ * @param {string|null} sesion `sid` del token con que se pide salir.
+ */
+export async function cerrarSesionUnica(usuario, sesion) {
+  await Usuario.updateOne(
+    { _id: usuario._id, sesionActiva: sesion ?? null },
+    { $set: { sesionActiva: `${PREFIJO_SESION_CERRADA}${randomBytes(16).toString('hex')}` } },
+  )
 }
 
 /**

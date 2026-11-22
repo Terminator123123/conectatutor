@@ -1,3 +1,4 @@
+import { nuevoId } from './identificador.js'
 /** Representa un programa académico de la institución. */
 export default class Programa {
   #id
@@ -11,7 +12,7 @@ export default class Programa {
    * @param {string} datos.facultad Facultad a la que pertenece.
    */
   constructor({ nombre, facultad }) {
-    this.#id = crypto.randomUUID()
+    this.#id = nuevoId()
     this.#nombre = nombre
     this.#facultad = facultad
   }

@@ -255,6 +255,40 @@ describe('E2 · Autenticación', () => {
       assert.equal((await request(app).get('/api/auth/yo').set('Authorization', `Bearer ${segundo}`)).status, 200)
     })
 
+    describe('RQF003: salir cierra la sesión en el servidor', () => {
+      const salir = (token) => request(app).post('/api/auth/salida').set('Authorization', `Bearer ${token}`)
+      const yo = (token) => request(app).get('/api/auth/yo').set('Authorization', `Bearer ${token}`)
+
+      it('tras salir, una copia del token (o su renovación) responde 401', async () => {
+        const { token } = (await ingresar(CORREO_ESTUDIANTE)).body
+        assert.equal((await yo(token)).status, 200)
+        assert.equal((await salir(token)).status, 204)
+        const rechazo = await yo(token)
+        assert.equal(rechazo.status, 401)
+        assert.match(rechazo.body.mensaje, /se cerró/)
+        assert.notEqual(rechazo.body.regla, 'SESION_REEMPLAZADA')
+      })
+
+      it('un cierre atrasado de una sesión anterior no cierra el ingreso posterior', async () => {
+        const anterior = (await ingresar(CORREO_ESTUDIANTE)).body.token
+        const nuevo = (await ingresar(CORREO_ESTUDIANTE)).body.token
+        assert.equal((await salir(anterior)).status, 401)
+        assert.equal((await yo(nuevo)).status, 200)
+      })
+
+      it('después de salir se puede volver a ingresar', async () => {
+        const primero = (await ingresar(CORREO_ESTUDIANTE)).body.token
+        await salir(primero)
+        const segundo = (await ingresar(CORREO_ESTUDIANTE)).body.token
+        assert.equal((await yo(segundo)).status, 200)
+        assert.equal((await yo(primero)).status, 401)
+      })
+
+      it('sin token responde 401', async () => {
+        assert.equal((await request(app).post('/api/auth/salida')).status, 401)
+      })
+    })
+
     describe('RQNF005: expiración por inactividad', () => {
       const VENTANA = aSegundos(env.sesionInactividad)
       const TOPE = aSegundos(env.jwtDuracion)
@@ -309,6 +343,38 @@ describe('E2 · Autenticación', () => {
         const respuesta = await request(app).get('/api/auth/yo').set('Authorization', `Bearer ${body.token}`)
         assert.equal(respuesta.status, 200)
         assert.equal(respuesta.get('X-Token-Renovado'), undefined)
+      })
+
+      it('una consulta automática (la campana) responde pero no renueva el token', async () => {
+        const usuario = await Usuario.findOne({ correoInstitucional: CORREO_ESTUDIANTE })
+        const usado = tokenEmitido(usuario, { hace: 300 })
+        const respuesta = await request(app).get('/api/notificaciones')
+          .set('Authorization', `Bearer ${usado}`).set('X-Consulta-Automatica', '1')
+        assert.equal(respuesta.status, 200)
+        assert.equal(respuesta.get('X-Token-Renovado'), undefined)
+      })
+
+      it('una pestaña abandonada con la campana consultando cada minuto vence a los 30 minutos', async () => {
+        const usuario = await Usuario.findOne({ correoInstitucional: CORREO_ESTUDIANTE })
+        // Último uso de la persona hace casi toda la ventana; desde entonces solo consultó la campana.
+        let token = tokenEmitido(usuario, { hace: VENTANA - 30 })
+        const campana = () => request(app).get('/api/notificaciones')
+          .set('Authorization', `Bearer ${token}`).set('X-Consulta-Automatica', '1')
+        const antes = await campana()
+        assert.equal(antes.status, 200)
+        token = antes.get('X-Token-Renovado') ?? token
+        assert.ok(jwt.decode(token).exp <= ahora() + 30, 'la campana no alarga la sesión')
+        token = tokenEmitido(usuario, { hace: VENTANA + 5 })
+        const despues = await campana()
+        assert.equal(despues.status, 401)
+      })
+
+      it('el navegador puede enviar la marca de consulta automática (CORS la admite)', async () => {
+        const respuesta = await request(app).options('/api/notificaciones')
+          .set('Origin', env.corsOrigenes[0])
+          .set('Access-Control-Request-Method', 'GET')
+          .set('Access-Control-Request-Headers', 'authorization,x-consulta-automatica')
+        assert.match(respuesta.get('Access-Control-Allow-Headers') ?? '', /x-consulta-automatica/i)
       })
 
       it('el navegador puede leer el token renovado (CORS lo expone)', async () => {

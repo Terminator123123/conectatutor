@@ -16,9 +16,10 @@ export function crearRepositorioApi({ cliente = crearClienteApi() } = {}) {
   // Materias ya leídas del catálogo, para convertir sesiones si una consulta posterior falla
   const materiasLeidas = new Map()
 
+  /** Cierra la sesión aquí y en la API; la local queda cerrada antes de que la API responda. */
   function cerrarSesion() {
     revisionAcceso += 1
-    cliente.cerrarSesion()
+    return cliente.salir()
   }
 
   async function cuentaPropia() {
@@ -282,8 +283,9 @@ export function crearRepositorioApi({ cliente = crearClienteApi() } = {}) {
     },
 
     // Campana (RQF022): avisos guardados por la API y recordatorios de las sesiones.
-    async listarNotificaciones() {
-      return pedir('/notificaciones')
+    // `automatica`: la consulta que la campana hace sola cada minuto no mantiene viva la sesión.
+    async listarNotificaciones({ automatica = false } = {}) {
+      return pedir('/notificaciones', { automatica })
     },
 
     async marcarNotificacionesLeidas() {

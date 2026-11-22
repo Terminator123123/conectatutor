@@ -6,7 +6,7 @@ import { Materia, PerfilTutor, Sesion, Usuario } from '../src/models/index.js'
 import { cargarSemilla } from '../src/services/semilla.service.js'
 import { hoyEnColombia } from '../src/utils/fechas.js'
 import { afirmarContrato } from './ayudas/contrato.js'
-import { clienteDe, CORREOS } from './ayudas/sesion.js'
+import { clienteDe, CORREOS, moverAlPasado } from './ayudas/sesion.js'
 
 const ID_INEXISTENTE = '6728f1a2b3c4d5e6f7a8b9c0'
 const FRANJA_BRUNO = { dia: 'LUNES', horaInicio: '10:00', horaFin: '12:00' }
@@ -90,6 +90,8 @@ describe('E4 · Las respuestas reales cumplen lo que publica Swagger', () => {
     await afirmarContrato(await bruno.patch(`${ruta}/reprogramacion`, { acepta: true }), '/sesiones/{id}/reprogramacion', 'patch') // 409
 
     await afirmarContrato(await elena.post(`${ruta}/calificacion`, { puntaje: 5 }), '/sesiones/{id}/calificacion', 'post') // 409 R6
+    await afirmarContrato(await bruno.patch(`${ruta}/finalizar`), '/sesiones/{id}/finalizar', 'patch') // 409 R5, todavía no empieza
+    await moverAlPasado(sesion.id)
     await afirmarContrato(await bruno.patch(`${ruta}/finalizar`), '/sesiones/{id}/finalizar', 'patch') // 200
     await afirmarContrato(await elena.post(`${ruta}/calificacion`, { puntaje: 9 }), '/sesiones/{id}/calificacion', 'post') // 400 R7
     await afirmarContrato(await bruno.post(`${ruta}/calificacion`, { puntaje: 5 }), '/sesiones/{id}/calificacion', 'post') // 403

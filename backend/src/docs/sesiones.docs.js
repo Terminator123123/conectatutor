@@ -110,7 +110,7 @@ export const esquemasSesiones = {
         type: 'object',
         properties: {
           id: { type: 'string', description: 'Id del perfil de tutor', example: ID_EJEMPLO },
-          tarifaHora: { type: 'number', nullable: true },
+          tarifaHora: { type: 'number', nullable: true, description: 'Tarifa por hora de esta reserva, la del tutor al solicitarla; null si es gratuita. No cambia si después el tutor edita su perfil' },
           estudiante: persona,
         },
       },
@@ -276,7 +276,7 @@ export const rutasSesiones = {
   },
   '/sesiones/{id}/finalizar': cambioDeEstado({
     resumen: 'El tutor marca la tutoría como realizada',
-    descripcion: 'CONFIRMADA -> FINALIZADA. Solo el tutor de la sesión.',
+    descripcion: 'CONFIRMADA -> FINALIZADA. Solo el tutor de la sesión y desde la hora de inicio de la tutoría: antes responde 409 con regla R5.',
   }),
   '/sesiones/{id}/calificacion': {
     post: {

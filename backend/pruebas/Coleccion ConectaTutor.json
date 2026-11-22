@@ -1498,6 +1498,37 @@
           ]
         },
         {
+          "name": "E6-38b R5 impide finalizar una tutoría que todavía no empieza",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tutorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/sesiones/{{sesionId}}/finalizar",
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: PATCH /sesiones/{{sesionId}}/finalizar. Resultado esperado: HTTP 409 y regla R5. Ver comprobaciones en Tests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"E6-38b R5 impide finalizar una tutoría que todavía no empieza\", function () {",
+                  "  function asegurar(condicion, mensaje) { if (!condicion) throw new Error(mensaje); }",
+                  "  asegurar(pm.response.code === 409, 'HTTP esperado 409; recibido ' + pm.response.code);",
+                  "  const datos = pm.response.json();",
+                  "  asegurar(datos.regla === 'R5', 'Regla esperada R5');",
+                  "  ",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "E6-39 Tutor finaliza sesión",
           "request": {
             "method": "PATCH",
@@ -1508,7 +1539,7 @@
               }
             ],
             "url": "{{baseUrl}}/sesiones/{{sesionId}}/finalizar",
-            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: PATCH /sesiones/{{sesionId}}/finalizar. Resultado esperado: HTTP 200. Ver comprobaciones en Tests."
+            "description": "Precondición: API local aislada con datos ficticios y ejecución ordenada de la colección. Paso: PATCH /sesiones/{{sesionId}}/finalizar. Resultado esperado: HTTP 200. Ver comprobaciones en Tests. Precondición adicional: la tutoría ya empezó. La API no permite crear tutorías pasadas, así que la ejecución automática (pruebas/coleccion.test.js) mueve la fecha de esta sesión al pasado en la base temporal antes de este paso; en Postman hay que hacerlo a mano en la base de prueba."
           },
           "event": [
             {
