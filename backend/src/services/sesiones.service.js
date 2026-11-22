@@ -4,6 +4,7 @@ import { ESTADOS_QUE_OCUPAN_FRANJA, EstadoSesion, EstadoVerificacion, RolUsuario
 import { aFechaGuardada, aTextoDia, diaDeLaSemana, hoyEnColombia, momentoDeInicio } from '../utils/fechas.js'
 import { HttpError } from '../utils/HttpError.js'
 import { avisarAccionDe, avisarCambio } from './notificaciones.service.js'
+import { puedeVerPerfil } from './tutores.service.js'
 
 // Sesiones de tutoría: solicitud (RQF012, RQF013), respuesta del tutor (RQF014),
 // panel "Mis sesiones" (RQF015), cancelación (RQF016), calificación (RQF017),
@@ -346,13 +347,12 @@ export async function responderReprogramacion(id, usuario, acepta) {
 
 /**
  * Lista las franjas ya reservadas de un tutor desde hoy, para que el formulario
- * de solicitud no las ofrezca. Solo fecha y hora: nada sobre quién reservó.
+ * de solicitud y la reprogramación no las ofrezcan. Solo fecha y hora: nada sobre
+ * quién reservó. La ven los mismos que pueden ver el perfil (puedeVerPerfil).
  */
-export async function listarOcupacion(perfilId) {
-  const perfil = await PerfilTutor.findById(perfilId).select('estadoVerificacion materiasAprobadas')
-  if (!perfil || (perfil.estadoVerificacion !== EstadoVerificacion.VERIFICADO && !perfil.materiasAprobadas?.length)) {
-    throw new HttpError(404, 'El tutor no existe')
-  }
+export async function listarOcupacion(perfilId, usuario) {
+  const perfil = await PerfilTutor.findById(perfilId).select('estudiante estadoVerificacion materias materiasAprobadas disponibilidad')
+  if (!perfil || !(await puedeVerPerfil(perfil, usuario))) throw new HttpError(404, 'El tutor no existe')
   const sesiones = await Sesion.find({
     tutor: perfil._id,
     estado: { $in: ESTADOS_QUE_OCUPAN_FRANJA },

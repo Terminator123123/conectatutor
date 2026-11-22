@@ -52,5 +52,5 @@ export async function responderReprogramacion(req, res) {
 
 /** GET /api/tutores/:id/ocupacion */
 export async function listarOcupacion(req, res) {
-  res.status(200).json(await servicioSesiones.listarOcupacion(req.params.id))
+  res.status(200).json(await servicioSesiones.listarOcupacion(req.params.id, req.usuario))
 }

@@ -10,6 +10,7 @@ import { HttpError } from '../utils/HttpError.js'
 const DATOS_DEL_PERFIL = [
   { path: 'estudiante', populate: { path: 'programa' } },
   { path: 'materias', populate: { path: 'programa' } },
+  { path: 'materiasRechazadas', select: 'codigo nombre' },
 ]
 
 const SIN_ESTADISTICAS = Object.freeze({ promedio: 0, totalCalificaciones: 0, tutoriasCompletadas: 0 })
@@ -76,6 +77,9 @@ export function presentarPerfil(perfil, estadisticas = SIN_ESTADISTICAS, { propi
   if (propio) {
     salida.motivoRechazo = perfil.motivoRechazo
     salida.materiasPorVerificar = materiasSinAprobar(perfil).map((materia) => String(materia._id ?? materia))
+    salida.materiasRechazadas = (perfil.materiasRechazadas ?? [])
+      .filter((materia) => materia?.nombre)
+      .map((materia) => ({ id: String(materia._id), codigo: materia.codigo, nombre: materia.nombre }))
   }
   return salida
 }
@@ -117,6 +121,14 @@ export async function guardarMiPerfil(estudianteId, { biografia, tarifaHora, mat
   // Un perfil rechazado que se corrige vuelve a la cola de revisión.
   if (perfil.estadoVerificacion === EstadoVerificacion.RECHAZADO) {
     perfil.estadoVerificacion = EstadoVerificacion.PENDIENTE
+    perfil.motivoRechazo = null
+  }
+
+  // Una materia rechazada que el tutor vuelve a ofrecer queda otra vez por verificar:
+  // el aviso del rechazo ya no aplica a ella.
+  const ofrecidas = new Set(perfil.materias.map(String))
+  perfil.materiasRechazadas = (perfil.materiasRechazadas ?? []).filter((materia) => !ofrecidas.has(String(materia._id ?? materia)))
+  if (perfil.materiasRechazadas.length === 0 && perfil.estadoVerificacion !== EstadoVerificacion.RECHAZADO) {
     perfil.motivoRechazo = null
   }
 
@@ -206,28 +218,34 @@ function abreviarNombre(nombre) {
 }
 
 /**
+ * Quién puede ver un perfil de tutor y su ocupación. Un perfil publicado lo ve cualquiera;
+ * uno que no lo está (sin verificar, rechazado, o sin materias o franjas) solo lo ven su
+ * dueño, el administrador y quien tiene una tutoría pendiente o confirmada con él, para
+ * poder gestionarla aunque el tutor haya perdido la verificación o retirado su oferta.
+ * @param {import('mongoose').Document} perfil Con `estudiante` cargado o como id.
+ * @param {import('mongoose').Document} [usuario] Quien consulta; sin sesión, un visitante.
+ */
+export async function puedeVerPerfil(perfil, usuario) {
+  if (estaPublicado(perfil)) return true
+  if (!usuario) return false
+  if (usuario.tipo === RolUsuario.ADMINISTRADOR) return true
+  if (String(perfil.estudiante?._id ?? perfil.estudiante) === String(usuario._id)) return true
+  return Boolean(await Sesion.exists({
+    tutor: perfil._id, solicitante: usuario._id, estado: { $in: ESTADOS_QUE_OCUPAN_FRANJA },
+  }))
+}
+
+/**
  * Devuelve el perfil público de un tutor con sus reseñas (RQF011).
- * Un perfil que no está publicado (sin verificar, o sin materias o franjas) solo lo
- * ven su dueño, el administrador y quien tiene una tutoría vigente con él; para los
- * demás no existe.
+ * Si el consultante no puede verlo (ver puedeVerPerfil), para él no existe.
  * @param {string} perfilId
  * @param {import('mongoose').Document} usuario Quien consulta.
  */
 export async function obtenerDetalle(perfilId, usuario) {
   const perfil = await PerfilTutor.findById(perfilId).populate(DATOS_DEL_PERFIL)
-  if (!perfil) throw new HttpError(404, 'El tutor no existe')
-
-  // Sin sesión (visitante) solo se ven perfiles verificados.
+  if (!perfil || !(await puedeVerPerfil(perfil, usuario))) throw new HttpError(404, 'El tutor no existe')
   const esDueno = Boolean(usuario) && perfil.estudiante._id.equals(usuario._id)
   const esAdministrador = usuario?.tipo === RolUsuario.ADMINISTRADOR
-  // Quien tiene una tutoría pendiente o confirmada con este tutor lo sigue viendo,
-  // para poder gestionarla aunque el tutor haya retirado su oferta pública.
-  const tieneSesionVigente = async () => Boolean(usuario) && Boolean(await Sesion.exists({
-    tutor: perfil._id, solicitante: usuario._id, estado: { $in: ESTADOS_QUE_OCUPAN_FRANJA },
-  }))
-  if (!estaPublicado(perfil) && !esDueno && !esAdministrador && !(await tieneSesionVigente())) {
-    throw new HttpError(404, 'El tutor no existe')
-  }
 
   const [estadisticas, calificadas] = await Promise.all([
     calcularEstadisticas([perfil._id]),

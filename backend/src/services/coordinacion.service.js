@@ -12,6 +12,7 @@ import { calcularEstadisticas, presentarPerfil } from './tutores.service.js'
 const DATOS_DEL_PERFIL = [
   { path: 'estudiante', populate: { path: 'programa' } },
   { path: 'materias', populate: { path: 'programa' } },
+  { path: 'materiasRechazadas', select: 'codigo nombre' },
 ]
 
 /** Lo que ve la coordinación de un perfil: lo del dueño más el correo para poder contactarlo. */
@@ -53,6 +54,7 @@ export async function verificarPerfil(id) {
   perfil.estadoVerificacion = EstadoVerificacion.VERIFICADO
   perfil.motivoRechazo = null
   perfil.materiasAprobadas = [...perfil.materias]
+  perfil.materiasRechazadas = []
   await perfil.save()
   return presentarParaCoordinacion(perfil)
 }
@@ -71,6 +73,7 @@ export async function rechazarPerfil(id, motivo) {
   const porVerificar = new Set(materiasSinAprobar(perfil).map(String))
   const aprobadas = perfil.materias.filter((materia) => !porVerificar.has(String(materia)))
   if (perfil.estadoVerificacion === EstadoVerificacion.PENDIENTE && aprobadas.length > 0) {
+    perfil.materiasRechazadas = perfil.materias.filter((materia) => porVerificar.has(String(materia)))
     perfil.materias = aprobadas
     perfil.estadoVerificacion = EstadoVerificacion.VERIFICADO
     perfil.motivoRechazo = motivo
@@ -79,6 +82,7 @@ export async function rechazarPerfil(id, motivo) {
   }
   perfil.estadoVerificacion = EstadoVerificacion.RECHAZADO
   perfil.materiasAprobadas = []
+  perfil.materiasRechazadas = []
   perfil.motivoRechazo = motivo
   await perfil.save()
   return presentarParaCoordinacion(perfil)

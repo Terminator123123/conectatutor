@@ -44,8 +44,9 @@ export const esquemasTutores = {
       {
         type: 'object',
         properties: {
-          motivoRechazo: { type: 'string', nullable: true, description: 'Motivo del rechazo, si la coordinación lo rechazó' },
+          motivoRechazo: { type: 'string', nullable: true, description: 'Motivo del último rechazo, del perfil o de las materias de materiasRechazadas' },
           materiasPorVerificar: { type: 'array', items: { type: 'string' }, description: 'Ids de las materias ofrecidas que Coordinación todavía no aprobó; el público no las ve' },
+          materiasRechazadas: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, codigo: { type: 'string' }, nombre: { type: 'string' } } }, description: 'Materias nuevas que Coordinación no aprobó en la última revisión; el motivo está en motivoRechazo y el perfil puede seguir verificado con las demás' },
         },
       },
     ],
@@ -58,6 +59,7 @@ export const esquemasTutores = {
         properties: {
           motivoRechazo: { type: 'string', nullable: true, description: 'Solo lo reciben el dueño del perfil y el administrador' },
           materiasPorVerificar: { type: 'array', items: { type: 'string' }, description: 'Solo lo reciben el dueño del perfil y el administrador' },
+          materiasRechazadas: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, codigo: { type: 'string' }, nombre: { type: 'string' } } }, description: 'Solo lo reciben el dueño del perfil y el administrador' },
           resenas: {
             type: 'array',
             items: {

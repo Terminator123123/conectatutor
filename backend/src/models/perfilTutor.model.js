@@ -42,7 +42,8 @@ const perfilTutorSchema = new mongoose.Schema(
       default: EstadoVerificacion.PENDIENTE,
       index: true,
     },
-    // Solo tiene valor cuando el estado es RECHAZADO.
+    // Motivo del último rechazo: del perfil entero (estado RECHAZADO) o de las materias
+    // de materiasRechazadas, si el perfil siguió verificado con las demás.
     motivoRechazo: { type: String, default: null, trim: true, maxlength: [300, 'El motivo admite hasta 300 caracteres'] },
     materias: {
       type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Materia' }],
@@ -57,6 +58,12 @@ const perfilTutorSchema = new mongoose.Schema(
     // Materias que Coordinación ya revisó. Una materia nueva queda por verificar hasta que
     // Coordinación la apruebe; solo las aprobadas aparecen en la oferta pública.
     materiasAprobadas: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Materia' }],
+      default: [],
+    },
+    // Materias nuevas que Coordinación no aprobó en la última revisión, para que el tutor
+    // sepa cuáles salieron de su oferta y por qué (motivoRechazo).
+    materiasRechazadas: {
       type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Materia' }],
       default: [],
     },

@@ -7,6 +7,7 @@ import { INSTITUCION } from '../config/institucion.js'
 import { useAutenticacion } from '../contexto/useAutenticacion.js'
 import { repositorio } from '../servicios/instancias.js'
 import { ETIQUETAS_DIA } from '../servicios/agenda.js'
+import { unirNombres } from '../servicios/nombres.js'
 import FranjaHoraria from '../modelo/FranjaHoraria.js'
 import { EstadoVerificacion } from '../modelo/enums.js'
 import CampoFormulario from '../componentes/ui/CampoFormulario.jsx'
@@ -393,10 +394,16 @@ export default function MiPerfil() {
         <Boton tipo="submit" cargando={guardando === 'activar'} deshabilitado={!!guardando}>Activar perfil de tutor</Boton>
       </form>
     </section> : <>
-      {estado !== EstadoVerificacion.VERIFICADO && <section className="ct-tutor-seccion"><h2>Estado de verificación</h2><ChipEstado estado={estado} />
+      {(estado !== EstadoVerificacion.VERIFICADO || perfil.getMateriasRechazadas().length > 0) && <section className="ct-tutor-seccion"><h2>Estado de verificación</h2><ChipEstado estado={estado} />
         <p className="mt-3">
-          {estado === EstadoVerificacion.PENDIENTE ? 'Coordinación está revisando tu perfil. Mientras tanto no apareces en la búsqueda.' : estado === EstadoVerificacion.VERIFICADO ? 'Tu perfil está verificado. Ya apareces en la búsqueda.' : `Coordinación no aprobó tu perfil. Motivo: ${perfil.getMotivoRechazo() ?? 'Consulta con Coordinación.'}`}
+          {estado === EstadoVerificacion.PENDIENTE
+            ? (perfil.tieneMateriasAprobadas()
+              ? `Coordinación está revisando ${unirNombres(perfil.getMateriasPorVerificar().map((materia) => materia.getNombre()))}. Mientras tanto sigues apareciendo en la búsqueda con tus materias ya aprobadas; cada materia nueva se publica cuando la aprueben.`
+              : 'Coordinación está revisando tu perfil. Mientras tanto no apareces en la búsqueda.')
+            : estado === EstadoVerificacion.VERIFICADO ? 'Tu perfil está verificado. Ya apareces en la búsqueda.' : `Coordinación no aprobó tu perfil. Motivo: ${perfil.getMotivoRechazo() ?? 'Consulta con Coordinación.'}`}
         </p>
+        {estado !== EstadoVerificacion.RECHAZADO && perfil.getMateriasRechazadas().length > 0 &&
+        <p>{`Coordinación no aprobó ${unirNombres(perfil.getMateriasRechazadas())}, así que salió de tu oferta. Motivo: ${perfil.getMotivoRechazo() ?? 'Consulta con Coordinación.'} Tus demás materias siguen publicadas; si vuelves a agregar alguna, pasará otra vez a revisión.`}</p>}
         {(!perfil.getMaterias().length || !perfil.getDisponibilidad().length) && <p>Agrega al menos una materia y un horario para que puedan solicitarte.</p>}
         {estado === EstadoVerificacion.RECHAZADO && 
         <Boton

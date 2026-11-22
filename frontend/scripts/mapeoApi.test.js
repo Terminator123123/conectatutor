@@ -110,6 +110,26 @@ test('un perfil rechazado conserva su motivo y una tarifa gratuita conserva null
   assert.equal(perfil.getTarifaHora(), null)
 })
 
+test('distingue materias por verificar, aprobadas y rechazadas de un perfil verificado', () => {
+  const nueva = { id: '6728f1a2b3c4d5e6f7a8b9c6', nombre: 'Bases de datos', codigo: 'SIS-02', programa: dtoPrograma() }
+  const otra = { id: '6728f1a2b3c4d5e6f7a8b9c7', nombre: 'Redes', codigo: 'SIS-03', programa: dtoPrograma() }
+  const perfil = perfilDesdeApi({
+    ...dtoPerfil(), estadoVerificacion: 'PENDIENTE', materias: [dtoMateria(), nueva, otra],
+    materiasPorVerificar: [nueva.id, otra.id], motivoRechazo: 'Sin soporte de Cálculo',
+    materiasRechazadas: [{ id: '6728f1a2b3c4d5e6f7a8b9c8', codigo: 'MAT-01', nombre: 'Cálculo' }],
+  })
+  assert.deepEqual(perfil.getMateriasPorVerificar().map((materia) => materia.getNombre()), ['Bases de datos', 'Redes'])
+  assert.equal(perfil.tieneMateriasAprobadas(), true)
+  assert.deepEqual(perfil.getMateriasRechazadas(), ['Cálculo'])
+  perfil.marcarVerificado()
+  assert.deepEqual(perfil.getMateriasPorVerificar(), [])
+  assert.deepEqual(perfil.getMateriasRechazadas(), [])
+  // Un perfil nuevo tiene todas sus materias por verificar y ninguna aprobada
+  const nuevo = perfilDesdeApi({ ...dtoPerfil(), estadoVerificacion: 'PENDIENTE', materiasPorVerificar: [ids.materia] })
+  assert.equal(nuevo.tieneMateriasAprobadas(), false)
+  assert.equal(nuevo.getMateriasPorVerificar().length, 1)
+})
+
 test('reconstruye sesión con hora de Bogotá, referencias y tutor mínimo sin inventar oferta', () => {
   const opciones = catalogo()
   const sesion = sesionDesdeApi(dtoSesion(), opciones)

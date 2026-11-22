@@ -156,6 +156,8 @@ function reconstruirPerfil(datos, contexto) {
     biografia: texto(datos.biografia, 'la biografía del tutor', { vacio: true }),
     estadoVerificacion: datos.estadoVerificacion, motivoRechazo: datos.motivoRechazo ?? null,
     tarifaHora: datos.tarifaHora, materiaIds: oferta.map((materia) => materia.getId()), disponibilidad,
+    materiasPorVerificarIds: (datos.materiasPorVerificar ?? []).map(String),
+    materiasRechazadas: (datos.materiasRechazadas ?? []).map((materia) => materia?.nombre).filter(Boolean),
   }, {
     buscarEstudiante: () => estudiante,
     buscarMateria: (id) => oferta.find((materia) => materia.getId() === id),

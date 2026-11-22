@@ -213,6 +213,38 @@ describe('E3 · Tutores', () => {
       assert.equal((await elena.get(`/tutores/${perfil.id}`)).status, 404)
     })
 
+    it('si Coordinación retira la verificación, quien tiene una tutoría vigente sigue viendo el perfil y la ocupación para gestionarla', async () => {
+      const perfil = await perfilDe(CORREOS.bruno)
+      const materia = await Materia.findOne({ codigo: 'ADM-02' })
+      const solicitud = await elena.post('/sesiones', {
+        tutor: perfil.id, materia: materia.id, fecha: proximoLunes(), tema: 'Resolver el taller de planeación',
+        franja: { dia: 'LUNES', horaInicio: '10:00', horaFin: '12:00' },
+      })
+      assert.equal(solicitud.status, 201)
+      const rechazo = await administrador.patch(`/coordinacion/perfiles/${perfil.id}/rechazar`, { motivo: 'Retiro de la verificación por revisión de documentos' })
+      assert.equal(rechazo.status, 200)
+      assert.equal(rechazo.body.estadoVerificacion, 'RECHAZADO')
+      assert.ok(!nombres(await elena.get('/tutores')).includes('Bruno Valdés'))
+      assert.equal((await elena.get(`/tutores/${perfil.id}`)).status, 200)
+      const ocupacion = await elena.get(`/tutores/${perfil.id}/ocupacion`)
+      assert.equal(ocupacion.status, 200)
+      assert.ok(ocupacion.body.some((reserva) => reserva.fecha === proximoLunes()))
+      // El dueño y Coordinación también; los demás no
+      const bruno = await clienteDe(CORREOS.bruno)
+      assert.equal((await bruno.get(`/tutores/${perfil.id}/ocupacion`)).status, 200)
+      assert.equal((await administrador.get(`/tutores/${perfil.id}/ocupacion`)).status, 200)
+      assert.equal((await diego.get(`/tutores/${perfil.id}/ocupacion`)).status, 404)
+      assert.equal((await anonimo.get(`/tutores/${perfil.id}/ocupacion`)).status, 404)
+      // No se le pueden pedir tutorías nuevas
+      const nueva = await diego.post('/sesiones', {
+        tutor: perfil.id, materia: materia.id, fecha: proximoLunes(), tema: 'Otra consulta sobre planeación',
+        franja: { dia: 'LUNES', horaInicio: '14:00', horaFin: '16:00' },
+      })
+      assert.notEqual(nueva.status, 201)
+      await Sesion.updateOne({ _id: solicitud.body.id }, { $set: { estado: 'CANCELADA' } })
+      assert.equal((await elena.get(`/tutores/${perfil.id}/ocupacion`)).status, 404)
+    })
+
     describe('Materias nuevas de un tutor verificado', () => {
       let perfil, adm02, felipe
       const buscarPor = async (materia) => nombres(await felipe.get(`/tutores?materia=${materia.id}`))
@@ -269,8 +301,25 @@ describe('E3 · Tutores', () => {
         const propio = await andrea.get('/tutores/mi-perfil')
         assert.ok(!propio.body.materias.some((materia) => materia.id === adm02.id))
         assert.equal(propio.body.motivoRechazo, 'No adjuntó la nota de esa materia')
+        // El tutor sabe cuál materia se rechazó; el público no recibe ese dato
+        assert.deepEqual(propio.body.materiasRechazadas.map((materia) => materia.id), [adm02.id])
+        assert.equal(propio.body.materiasRechazadas[0].nombre, adm02.nombre)
+        assert.equal((await felipe.get(`/tutores/${perfil.id}`)).body.materiasRechazadas, undefined)
         assert.ok(!(await buscarPor(adm02)).includes('Andrea Salcedo'))
         assert.ok((await buscarPor(materias[0])).includes('Andrea Salcedo'))
+      })
+
+      it('si el tutor vuelve a ofrecer la materia rechazada, el aviso se quita y la materia vuelve a revisión', async () => {
+        await administrador.patch(`/coordinacion/perfiles/${perfil.id}/rechazar`, { motivo: 'No adjuntó la nota de esa materia' })
+        const otra = await andrea.put('/tutores/mi-perfil', datosPerfil({ tarifaHora: 30000 }))
+        assert.equal(otra.body.materiasRechazadas.length, 1) // un cambio cualquiera no borra el aviso
+        const guardado = await andrea.put('/tutores/mi-perfil', datosPerfil({ materias: [...materias.map((m) => m.id), adm02.id] }))
+        assert.equal(guardado.status, 200)
+        assert.equal(guardado.body.estadoVerificacion, 'PENDIENTE')
+        assert.deepEqual(guardado.body.materiasRechazadas, [])
+        assert.equal(guardado.body.motivoRechazo, null)
+        assert.equal((await administrador.patch(`/coordinacion/perfiles/${perfil.id}/verificar`)).status, 200)
+        assert.deepEqual((await andrea.get('/tutores/mi-perfil')).body.materiasRechazadas, [])
       })
     })
 

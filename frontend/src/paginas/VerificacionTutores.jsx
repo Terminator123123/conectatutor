@@ -9,6 +9,7 @@ import { EstadoVerificacion } from '../modelo/enums.js'
 import { metricasACsv } from '../servicios/metricas.js'
 import { MOTIVOS_CANCELACION } from '../servicios/motivosCancelacion.js'
 import { fechaEnColombia } from '../servicios/agenda.js'
+import { unirNombres } from '../servicios/nombres.js'
 import Avatar from '../componentes/ui/Avatar.jsx'
 import CampoFormulario from '../componentes/ui/CampoFormulario.jsx'
 import Boton from '../componentes/ui/Boton.jsx'
@@ -26,6 +27,13 @@ const columnas = [
   ['estudiantesAtendidos', 'Estudiantes atendidos'], ['tutoresVerificados', 'Tutores verificados'],
   ['tutoresPendientes', 'Tutores pendientes'], ['calificacionPromedio', 'Calificación promedio'],
 ]
+/** Materias que se aprueban o rechazan en esta revisión: las nuevas, o todas si el perfil es nuevo. */
+const materiasEnRevision = (perfil) => {
+  const nuevas = perfil.getMateriasPorVerificar()
+  return (nuevas.length ? nuevas : perfil.getMaterias()).map((materia) => materia.getNombre())
+}
+/** El perfil ya está publicado con otras materias y solo se revisan las nuevas. */
+const soloMateriasNuevas = (perfil) => perfil.tieneMateriasAprobadas() && perfil.getMateriasPorVerificar().length > 0
 const presentarValor = (fila, clave) => clave === 'calificacionPromedio' ? (fila[clave] === null ? '—' : fila[clave].toFixed(1).replace('.', ',')) : fila[clave]
 
 /** @returns {import('react').ReactElement} Revisión institucional y panel sin datos individuales. */
@@ -69,10 +77,13 @@ export default function VerificacionTutores() {
         if (!perfil) { setSinReferencia(true); return }
         if (soporteId) setSoporteDetalle(perfil)
         else {
-          const rechazada = perfil.getEstadoVerificacion() === EstadoVerificacion.RECHAZADO
+          const rechazadas = perfil.getMateriasRechazadas()
+          const parcial = perfil.getEstadoVerificacion() === EstadoVerificacion.VERIFICADO && rechazadas.length > 0
+          const rechazada = parcial || perfil.getEstadoVerificacion() === EstadoVerificacion.RECHAZADO
           if (perfil.getEstadoVerificacion() !== EstadoVerificacion.VERIFICADO && !rechazada) throw new Error('La revisión de este perfil sigue pendiente.')
-          setRevision({ detallada:true, rechazada, nombre:perfil.getEstudiante().getNombre(), motivo:perfil.getMotivoRechazo() ?? '', perfil })
-          setAviso(rechazada ? 'Perfil rechazado.' : 'Perfil verificado.')
+          const materias = parcial ? rechazadas : perfil.getMaterias().map((materia) => materia.getNombre())
+          setRevision({ detallada:true, rechazada, parcial, materias, nombre:perfil.getEstudiante().getNombre(), motivo:perfil.getMotivoRechazo() ?? '', perfil })
+          setAviso(parcial ? 'Materia rechazada.' : rechazada ? 'Perfil rechazado.' : 'Perfil verificado.')
         }
       } catch (fallo) { if (activo) setErrorReferencia(fallo.message) }
     }
@@ -145,6 +156,9 @@ export default function VerificacionTutores() {
         if (soporte?.getId() === id) setSoporte(perfil)
         throw new Error('Otra persona ya revisó este perfil. Actualizamos la lista.')
       }
+      // Lo que se revisa se toma antes de guardar: al verificar, las materias dejan de estar por verificar
+      const materias = materiasEnRevision(perfil)
+      const parcial = rechazar && soloMateriasNuevas(perfil)
       if (rechazar) usuario.rechazarTutor(perfil, motivo)
       else usuario.verificarTutor(perfil)
       await repositorio.guardarPerfilTutor(perfil)
@@ -153,8 +167,8 @@ export default function VerificacionTutores() {
       catch { setPerfiles((anteriores) => anteriores.filter((item) => item.getId() !== id)) }
       setPerfilRechazo(null)
       setSoporte(null)
-      setAviso(rechazar ? 'Perfil rechazado.' : 'Perfil verificado.')
-      setRevision({ detallada, rechazada:rechazar, nombre:perfil.getEstudiante().getNombre(), motivo:rechazar ? motivo.trim() : '', perfil })
+      setAviso(parcial ? 'Materia rechazada.' : rechazar ? 'Perfil rechazado.' : 'Perfil verificado.')
+      setRevision({ detallada, rechazada:rechazar, parcial, materias, nombre:perfil.getEstudiante().getNombre(), motivo:rechazar ? motivo.trim() : '', perfil })
       if (detallada) setParametros({ vista:'perfiles', resultado:rechazar ? 'no-verificado' : 'verificado', perfil:id }, { replace:true })
       window.scrollTo(0, 0)
     } catch (error) {
@@ -176,11 +190,15 @@ export default function VerificacionTutores() {
     setTimeout(() => URL.revokeObjectURL(url), 0)
   }
   const filtrados = perfiles.filter((perfil) => !sede || perfil.getEstudiante().getSede() === sede)
+  const perfilEnRechazo = perfiles.find((perfil) => perfil.getId() === perfilRechazo)
+    ?? (soporteDetalle?.getId() === perfilRechazo ? soporteDetalle : null)
+  const rechazoParcial = Boolean(perfilEnRechazo) && soloMateriasNuevas(perfilEnRechazo)
+  const materiasRechazo = rechazoParcial ? materiasEnRevision(perfilEnRechazo) : []
   const modalRechazo = 
   <ModalMotivo
     abierto={perfilRechazo !== null}
-    titulo="Rechazar perfil"
-    etiquetaConfirmar="Rechazar perfil"
+    titulo={rechazoParcial ? `Rechazar ${unirNombres(materiasRechazo)}` : 'Rechazar perfil'}
+    etiquetaConfirmar={rechazoParcial ? (materiasRechazo.length > 1 ? 'Rechazar materias' : 'Rechazar materia') : 'Rechazar perfil'}
     motivo={motivo}
     alCambiarMotivo={setMotivo}
     errorMotivo=""
@@ -193,7 +211,9 @@ export default function VerificacionTutores() {
   if ((soporteId && soporteDetalle?.getId() !== soporteId) || (perfilResultadoId && (!revision?.detallada || revision.perfil.getId() !== perfilResultadoId))) return <Cargando texto="Cargando revisión…" />
   if (soporteId && soporteDetalle) {
     const estudiante = soporteDetalle.getEstudiante()
-    const materia = soporteDetalle.getMaterias()[0]?.getNombre() ?? 'Sin materia seleccionada'
+    const enRevision = materiasEnRevision(soporteDetalle)
+    const materia = enRevision.length ? unirNombres(enRevision) : 'Sin materia seleccionada'
+    const parcial = soloMateriasNuevas(soporteDetalle)
     const pendiente = soporteDetalle.getEstadoVerificacion() === EstadoVerificacion.PENDIENTE
     return <>
         <section className="ct-estado-formulario">
@@ -207,16 +227,25 @@ export default function VerificacionTutores() {
           {estudiante.getNombre()}, {estudiante.getPrograma().getNombre()}, {estudiante.getSemestre()}.º semestre
         </div>
             <div className="ct-dato">
-                <small>Materia por verificar
+                <small>{enRevision.length > 1 ? `Materias por verificar (${enRevision.length})` : 'Materia por verificar'}
           </small>
           {materia}
         </div>
+        {parcial &&
+        <div className="ct-dato">
+                <small>Materias ya aprobadas
+          </small>
+          {unirNombres(soporteDetalle.getMaterias().filter((item) => !soporteDetalle.getMateriasPorVerificar().includes(item)).map((item) => item.getNombre()))}
+        </div>}
             <div className="ct-dato">
                 <small>Documento adjunto
           </small>Constancia académica de {materia}
           <small>Documento de muestra.
           </small>
               </div>
+        {pendiente && enRevision.length > 1 &&
+        <p className="ct-texto-secundario">Al verificar se aprueban las {enRevision.length} materias. Revisa el soporte de cada una; si alguna no corresponde, rechaza y escribe cuál en el motivo.
+        </p>}
         {errorPerfil?.id === soporteDetalle.getId() && 
         <MensajeError mensaje={errorPerfil.mensaje} />}
         <div className="ct-estado-formulario-acciones">
@@ -224,7 +253,7 @@ export default function VerificacionTutores() {
           <>
                     <Boton anchoCompleto cargando={!!guardando} alHacerClic={() => revisar(soporteDetalle.getId(), false, true)}>Verificar a {estudiante.getNombre().split(' ')[0]}
             </Boton>
-                    <Boton variante="secundario" anchoCompleto deshabilitado={!!guardando} alHacerClic={() => abrirRechazo(soporteDetalle)}>Rechazar verificación
+                    <Boton variante="secundario" anchoCompleto deshabilitado={!!guardando} alHacerClic={() => abrirRechazo(soporteDetalle)}>{parcial ? (enRevision.length > 1 ? 'Rechazar materias nuevas' : 'Rechazar materia nueva') : 'Rechazar verificación'}
             </Boton>
                   </>}
           <Boton variante="secundario" anchoCompleto deshabilitado={!!guardando} alHacerClic={volverPendientes}>Volver a pendientes
@@ -236,13 +265,13 @@ export default function VerificacionTutores() {
   }
   if (vista === 'perfiles' && aviso && revision?.detallada) return <section className="ct-estado-formulario">
       <span className={revision.rechazada ? 'ct-paso' : 'ct-confirmacion-etiqueta'}>
-      {revision.rechazada ? 'Perfil no verificado' : 'Verificación completada'}
+      {revision.parcial ? 'Materia no aprobada' : revision.rechazada ? 'Perfil no verificado' : 'Verificación completada'}
     </span>
       <h1 ref={tituloResultadoRef} tabIndex={-1}>
       {revision.rechazada ? 'Se necesita un soporte actualizado' : revision.nombre.split(' ')[0] + ': perfil verificado'}
     </h1>
       <p className="ct-texto-secundario">
-      {revision.rechazada ? 'El soporte no permite confirmar la materia. El perfil no recibe la insignia.' : 'Su perfil ya muestra la insignia de tutor verificado.'}
+      {revision.parcial ? `El soporte no permite confirmar ${unirNombres(revision.materias)}. Sale de su oferta y el perfil sigue verificado con sus demás materias.` : revision.rechazada ? 'El soporte no permite confirmar la materia. El perfil no recibe la insignia.' : 'Su perfil ya muestra la insignia de tutor verificado.'}
     </p>
       <div className="ct-dato">
           <small>Tutor
@@ -251,9 +280,9 @@ export default function VerificacionTutores() {
     </div>
       <div className="ct-dato">
           <small>
-        {revision.rechazada ? 'Motivo' : 'Materia'}
+        {revision.rechazada ? 'Motivo' : revision.materias.length > 1 ? 'Materias aprobadas' : 'Materia'}
       </small>
-      {revision.rechazada ? revision.motivo : revision.perfil.getMaterias()[0]?.getNombre() ?? 'Sin materia seleccionada'}
+      {revision.rechazada ? revision.motivo : unirNombres(revision.materias) || 'Sin materia seleccionada'}
     </div>
       <div className="ct-estado-formulario-acciones">
           <Boton anchoCompleto alHacerClic={() => revision.rechazada ? mostrarDetalleSoporte(revision.perfil) : volverPendientes()}>
@@ -286,10 +315,10 @@ export default function VerificacionTutores() {
         {aviso && 
         <div role="status" className="ct-aviso">
             <strong>
-            {revision?.rechazada ? 'Perfil no verificado' : `${revision?.nombre.split(' ')[0]}: perfil verificado`}
+            {revision?.parcial ? `${revision.nombre.split(' ')[0]}: ${unirNombres(revision.materias)} no aprobada${revision.materias.length > 1 ? 's' : ''}` : revision?.rechazada ? 'Perfil no verificado' : `${revision?.nombre.split(' ')[0]}: perfil verificado`}
           </strong>
             <p>
-            {revision?.rechazada ? revision.motivo : 'Su perfil podrá mostrar la insignia de tutor verificado.'}
+            {revision?.rechazada ? revision.motivo : `Materias aprobadas: ${unirNombres(revision?.materias ?? [])}.`}
           </p>
           </div>}
         {!aviso && 
@@ -330,7 +359,7 @@ export default function VerificacionTutores() {
                   </div>
               </header>
             <p className="ct-materias-revision" title={perfil.getMaterias().map((materia) => materia.getNombre()).join(', ')}>
-              {perfil.getMaterias().map((materia) => materia.getNombre()).join(', ')}
+              {soloMateriasNuevas(perfil) ? `Por verificar: ${materiasEnRevision(perfil).join(', ')}` : perfil.getMaterias().map((materia) => materia.getNombre()).join(', ')}
             </p>
             {(!perfil.getMaterias().length || !perfil.getDisponibilidad().length) && <p>Este perfil todavía no tiene materias u horarios.</p>}
             <Boton variante="secundario" anchoCompleto alHacerClic={() => mostrarSoporte(perfil)}>Ver soporte académico</Boton>
@@ -420,13 +449,13 @@ export default function VerificacionTutores() {
               <i className="bi bi-journal-check" aria-hidden="true" />
               <h3>Constancia académica
           </h3>
-              <p>Asignatura: {soporte.getMaterias()[0]?.getNombre() ?? 'Sin materia seleccionada'}
+              <p>{materiasEnRevision(soporte).length > 1 ? 'Asignaturas por verificar' : 'Asignatura'}: {unirNombres(materiasEnRevision(soporte)) || 'Sin materia seleccionada'}
           </p>
               <p>Estado: documento recibido
           </p>
               <p>Validación: {soporte.getEstadoVerificacion() === EstadoVerificacion.PENDIENTE ? 'pendiente' : soporte.getEstadoVerificacion() === EstadoVerificacion.VERIFICADO ? 'verificada' : 'no verificada'}
           </p>
-              <p className="ct-texto-secundario">Revisa que el soporte corresponda a la materia antes de verificar al tutor.
+              <p className="ct-texto-secundario">{materiasEnRevision(soporte).length > 1 ? 'Al verificar se aprueban todas estas materias. Revisa que el soporte corresponda a cada una.' : 'Revisa que el soporte corresponda a la materia antes de verificar al tutor.'}
           </p>
               <small>Documento de muestra.
           </small>

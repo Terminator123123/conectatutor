@@ -335,7 +335,7 @@ export const rutasSesiones = {
     get: {
       tags: ['Tutores'],
       summary: 'Lista las franjas ya reservadas de un tutor desde hoy',
-      description: 'Para que el formulario de solicitud no ofrezca lo que ya está tomado. No dice quién reservó. Es pública.',
+      description: 'Para que la solicitud y la reprogramación no ofrezcan lo que ya está tomado. No dice quién reservó. Es pública si el perfil está publicado; si no, solo la ven su dueño, Coordinación y quien tiene una tutoría pendiente o confirmada con ese tutor.',
       parameters: [idPerfil],
       responses: {
         200: { description: 'Franjas ocupadas', content: json({ type: 'array', items: { $ref: '#/components/schemas/FranjaOcupada' } }) },

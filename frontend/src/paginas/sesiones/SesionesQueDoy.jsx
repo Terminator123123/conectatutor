@@ -180,7 +180,7 @@ export default function SesionesQueDoy({ perfil, alAnunciar }) {
     <EstadoVacio
       icono="bi-person-video3"
       titulo="Todavía no te han pedido tutorías"
-      texto={perfil.getEstadoVerificacion() !== EstadoVerificacion.VERIFICADO ? 'Aparecerás en la búsqueda cuando Coordinación verifique tu perfil.' : 'Revisa que tus materias y horarios estén al día.'}
+      texto={perfil.getEstadoVerificacion() !== EstadoVerificacion.VERIFICADO && !perfil.tieneMateriasAprobadas() ? 'Aparecerás en la búsqueda cuando Coordinación verifique tu perfil.' : 'Revisa que tus materias y horarios estén al día.'}
       accion={{ etiqueta: 'Ir a mi perfil', ruta: '/perfil' }} /> : grupos.map((grupo) => {
       const lista = sesiones.filter((sesion) => grupo.estados.includes(sesion.getEstado())).sort((a, b) => grupo.descendente ? b.getFecha() - a.getFecha() : a.getFecha() - b.getFecha())
       return lista.length ? 

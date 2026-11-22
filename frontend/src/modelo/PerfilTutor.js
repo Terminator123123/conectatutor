@@ -14,6 +14,10 @@ export default class PerfilTutor {
   #disponibilidad
   /** @type {string|null} Motivo del rechazo comunicado por Coordinación. */
   #motivoRechazo
+  /** @type {Set<string>} Ids de las materias ofrecidas que Coordinación todavía no aprobó. */
+  #materiasPorVerificar
+  /** @type {string[]} Nombres de las materias nuevas que Coordinación no aprobó en la última revisión. */
+  #materiasRechazadas
 
   /**
    * Crea el perfil desde la activación realizada por su estudiante.
@@ -30,6 +34,8 @@ export default class PerfilTutor {
     this.#materias = []
     this.#disponibilidad = []
     this.#motivoRechazo = null
+    this.#materiasPorVerificar = new Set()
+    this.#materiasRechazadas = []
   }
 
   /**
@@ -96,6 +102,30 @@ export default class PerfilTutor {
    */
   getMaterias() {
     return [...this.#materias]
+  }
+
+  /**
+   * Materias ofrecidas que Coordinación todavía no aprobó. Un perfil nuevo tiene todas por verificar.
+   * @returns {import('./Materia.js').default[]} Las que se aprueban al verificar el perfil.
+   */
+  getMateriasPorVerificar() {
+    return this.#materias.filter((materia) => this.#materiasPorVerificar.has(materia.getId()))
+  }
+
+  /**
+   * Indica si el perfil ya tiene materias aprobadas y solo espera la revisión de otras nuevas.
+   * @returns {boolean} Verdadero si sigue publicado con las aprobadas mientras revisan las nuevas.
+   */
+  tieneMateriasAprobadas() {
+    return this.#materias.some((materia) => !this.#materiasPorVerificar.has(materia.getId()))
+  }
+
+  /**
+   * Materias nuevas que Coordinación no aprobó en la última revisión; el motivo es getMotivoRechazo().
+   * @returns {string[]} Sus nombres.
+   */
+  getMateriasRechazadas() {
+    return [...this.#materiasRechazadas]
   }
 
   /**
@@ -213,6 +243,8 @@ export default class PerfilTutor {
   marcarVerificado() {
     this.#estadoVerificacion = EstadoVerificacion.VERIFICADO
     this.#motivoRechazo = null
+    this.#materiasPorVerificar = new Set()
+    this.#materiasRechazadas = []
   }
 
   /**
@@ -255,6 +287,8 @@ export default class PerfilTutor {
       estadoVerificacion: this.#estadoVerificacion,
       motivoRechazo: this.#motivoRechazo,
       materiaIds: this.#materias.map((materia) => materia.getId()),
+      materiasPorVerificarIds: [...this.#materiasPorVerificar],
+      materiasRechazadas: [...this.#materiasRechazadas],
       disponibilidad: this.#disponibilidad.map((franja) => franja.toJSON()),
     }
   }
@@ -300,6 +334,8 @@ export default class PerfilTutor {
     for (const materiaId of datos.materiaIds) {
       perfil.agregarMateria(contexto.buscarMateria(materiaId))
     }
+    perfil.#materiasPorVerificar = new Set(datos.materiasPorVerificarIds ?? [])
+    perfil.#materiasRechazadas = [...(datos.materiasRechazadas ?? [])]
 
     for (const franja of datos.disponibilidad) {
       perfil.agregarFranja(FranjaHoraria.desdeJSON(franja, contexto))
