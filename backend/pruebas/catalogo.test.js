@@ -55,6 +55,46 @@ describe('E3 · Catálogo: programas y materias', () => {
     })
   })
 
+  describe('Facultades: CRUD del administrador', () => {
+    it('lista las facultades de los programas cargados, sin repetir', async () => {
+      const respuesta = await anonimo.get('/facultades')
+      assert.equal(respuesta.status, 200)
+      assert.deepEqual(respuesta.body.map(({ nombre }) => nombre), [...new Set(PROGRAMAS.map(({ facultad }) => facultad))].sort())
+    })
+
+    it('crea una facultad y un programa solo puede usar una facultad existente', async () => {
+      const sinFacultad = await administrador.post('/programas', { nombre: 'Ingeniería Agroindustrial', facultad: 'Facultad Inventada' })
+      assert.equal(sinFacultad.status, 400)
+      const creada = await administrador.post('/facultades', { nombre: '  Facultad de   Ciencias Agrarias ' })
+      assert.equal(creada.status, 201)
+      assert.equal(creada.body.nombre, 'Facultad de Ciencias Agrarias')
+      assert.equal((await administrador.post('/facultades', { nombre: 'Facultad de Ciencias Agrarias' })).status, 409)
+      const programa = await administrador.post('/programas', { nombre: 'Ingeniería Agroindustrial', facultad: 'Facultad de Ciencias Agrarias' })
+      assert.equal(programa.status, 201)
+    })
+
+    it('al renombrar una facultad se actualizan sus programas', async () => {
+      const ingenieria = (await anonimo.get('/facultades')).body.find(({ nombre }) => nombre === 'Facultad de Ingeniería')
+      const respuesta = await administrador.put(`/facultades/${ingenieria.id}`, { nombre: 'Facultad de Ingenierías' })
+      assert.equal(respuesta.status, 200)
+      assert.equal((await Programa.findById(sistemas._id)).facultad, 'Facultad de Ingenierías')
+      assert.equal(await Programa.countDocuments({ facultad: 'Facultad de Ingeniería' }), 0)
+    })
+
+    it('no borra una facultad con programas y sí una vacía', async () => {
+      const ingenieria = (await anonimo.get('/facultades')).body.find(({ nombre }) => nombre === 'Facultad de Ingeniería')
+      assert.equal((await administrador.delete(`/facultades/${ingenieria.id}`)).status, 409)
+      const vacia = await administrador.post('/facultades', { nombre: 'Facultad Temporal' })
+      assert.equal((await administrador.delete(`/facultades/${vacia.body.id}`)).status, 200)
+      assert.equal((await anonimo.get(`/facultades/${vacia.body.id}`)).status, 404)
+    })
+
+    it('solo el administrador puede cambiar facultades', async () => {
+      assert.equal((await anonimo.post('/facultades', { nombre: 'Facultad Nueva' })).status, 401)
+      assert.equal((await estudiante.post('/facultades', { nombre: 'Facultad Nueva' })).status, 403)
+    })
+  })
+
   describe('Programas: CRUD del administrador', () => {
     const nuevo = () => ({ nombre: '  Ingeniería   Agroindustrial ', facultad: 'Facultad de Ingeniería' })
 

@@ -56,6 +56,35 @@ describe('E3 · Las respuestas reales cumplen lo que publica Swagger', () => {
     await afirmarContrato(await anonimo.delete(`/materias/${materia.id}`), '/materias/{id}', 'delete')
   })
 
+  it('catálogo: crear, consultar, editar y borrar facultades, con sus errores', async () => {
+    await afirmarContrato(await anonimo.get('/facultades'), '/facultades', 'get')
+    const nueva = { nombre: 'Facultad de Pruebas' }
+    const creada = await administrador.post('/facultades', nueva)
+    await afirmarContrato(creada, '/facultades', 'post') // 201
+    await afirmarContrato(await administrador.post('/facultades', nueva), '/facultades', 'post') // 409
+    await afirmarContrato(await administrador.post('/facultades', {}), '/facultades', 'post') // 400
+    await afirmarContrato(await elena.post('/facultades', nueva), '/facultades', 'post') // 403
+    await afirmarContrato(await anonimo.post('/facultades', nueva), '/facultades', 'post') // 401
+
+    const id = creada.body.id
+    await afirmarContrato(await anonimo.get(`/facultades/${id}`), '/facultades/{id}', 'get')
+    await afirmarContrato(await anonimo.get(`/facultades/${ID_INEXISTENTE}`), '/facultades/{id}', 'get')
+    await afirmarContrato(await anonimo.get('/facultades/abc'), '/facultades/{id}', 'get')
+    await afirmarContrato(await administrador.put(`/facultades/${id}`, { nombre: 'Facultad de Ensayos' }), '/facultades/{id}', 'put')
+    await afirmarContrato(await administrador.put(`/facultades/${id}`, {}), '/facultades/{id}', 'put') // 400
+    await afirmarContrato(await administrador.put(`/facultades/${id}`, { nombre: 'Facultad de Ingeniería' }), '/facultades/{id}', 'put') // 409
+    await afirmarContrato(await administrador.put(`/facultades/${ID_INEXISTENTE}`, { nombre: 'Otra facultad' }), '/facultades/{id}', 'put') // 404
+    await afirmarContrato(await elena.put(`/facultades/${id}`, { nombre: 'Otra facultad' }), '/facultades/{id}', 'put') // 403
+
+    const ingenieria = (await anonimo.get('/facultades')).body.find(({ nombre }) => nombre === 'Facultad de Ingeniería')
+    await afirmarContrato(await administrador.delete(`/facultades/${ingenieria.id}`), '/facultades/{id}', 'delete') // 409
+    await afirmarContrato(await elena.delete(`/facultades/${id}`), '/facultades/{id}', 'delete') // 403
+    await afirmarContrato(await anonimo.delete(`/facultades/${id}`), '/facultades/{id}', 'delete') // 401
+    await afirmarContrato(await administrador.delete(`/facultades/${id}`), '/facultades/{id}', 'delete') // 200
+    await afirmarContrato(await administrador.delete(`/facultades/${id}`), '/facultades/{id}', 'delete') // 404
+    await afirmarContrato(await administrador.delete('/facultades/abc'), '/facultades/{id}', 'delete') // 400
+  })
+
   it('catálogo: crear, consultar, editar y borrar programas, con sus errores', async () => {
     const nuevo = { nombre: 'Ingeniería Agroindustrial', facultad: 'Facultad de Ingeniería' }
     const creado = await administrador.post('/programas', nuevo)

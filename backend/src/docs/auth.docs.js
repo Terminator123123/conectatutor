@@ -116,10 +116,7 @@ export const rutasAuth = {
     post: {
       tags: ['Autenticación'],
       summary: 'Crea la cuenta de un estudiante',
-      description:
-        'Solo acepta correos del dominio institucional. Guarda la contraseña cifrada y la fecha en que se ' +
-        'aceptó el tratamiento de datos. Devuelve el token: la persona queda con la sesión iniciada. ' +
-        'Solo existe en desarrollo y pruebas; en producción responde 404.',
+      description: 'Crea la cuenta de un estudiante con correo institucional y devuelve el token. Solo existe en desarrollo y pruebas.',
       requestBody: {
         required: true,
         content: { 'application/json': { schema: { $ref: '#/components/schemas/DatosRegistro' } } },
@@ -140,9 +137,7 @@ export const rutasAuth = {
     post: {
       tags: ['Autenticación'],
       summary: 'Inicia sesión',
-      description:
-        'Devuelve un token JWT con caducidad. La respuesta es la misma si el correo no existe o si la ' +
-        'contraseña es incorrecta. Tras 5 intentos fallidos seguidos hay que esperar 15 minutos.',
+      description: 'Devuelve un token JWT. Después de 5 intentos fallidos bloquea el ingreso por 15 minutos.',
       requestBody: {
         required: true,
         content: { 'application/json': { schema: { $ref: '#/components/schemas/DatosIngreso' } } },
@@ -163,9 +158,7 @@ export const rutasAuth = {
     post: {
       tags: ['Autenticación'],
       summary: 'Cierra la sesión',
-      description:
-        'Invalida en el servidor la sesión del token: desde ese momento ese token y sus renovaciones responden 401. ' +
-        'Si la cuenta ya ingresó en otro lugar, no cierra esa sesión nueva.',
+      description: 'Invalida el token de la sesión actual.',
       security: [{ tokenJWT: [] }],
       responses: {
         204: { description: 'Sesión cerrada' },
@@ -178,10 +171,7 @@ export const rutasAuth = {
     post: {
       tags: ['Autenticación'],
       summary: 'Pide un enlace para crear una contraseña nueva',
-      description:
-        'Envía al correo institucional un enlace que vence en 30 minutos y sirve una sola vez. ' +
-        'La respuesta es la misma si el correo no está registrado, también si el envío falla. ' +
-        'Máximo 3 pedidos cada 15 minutos. En producción sin cuenta de correo configurada responde 503 y no genera enlaces.',
+      description: 'Envía al correo institucional un enlace para crear una contraseña nueva. Vence en 30 minutos.',
       requestBody: {
         required: true,
         content: { 'application/json': { schema: {
@@ -217,7 +207,7 @@ export const rutasAuth = {
     post: {
       tags: ['Autenticación'],
       summary: 'Cambia la contraseña con un enlace de recuperación vigente',
-      description: 'El enlace queda inutilizado después de usarlo.',
+      description: 'Cambia la contraseña con el enlace recibido. El enlace sirve una sola vez.',
       requestBody: {
         required: true,
         content: { 'application/json': { schema: {
@@ -236,10 +226,7 @@ export const rutasAuth = {
     post: {
       tags: ['Autenticación'],
       summary: 'Activa una cuenta creada por Coordinación',
-      description:
-        'Primer ingreso con el documento como contraseña: crea la contraseña propia, elige si también quiere ' +
-        'enseñar (RQF002) y acepta el tratamiento de datos (RQNF009). Mientras no se complete, la cuenta solo ' +
-        'puede consultar: cualquier otra ruta que cambie datos responde 403 con la regla PRIMER_ACCESO.',
+      description: 'Cambia la contraseña inicial, registra si quiere enseñar y el consentimiento de tratamiento de datos.',
       security: [{ tokenJWT: [] }],
       requestBody: {
         required: true,
@@ -265,7 +252,7 @@ export const rutasAuth = {
     put: {
       tags: ['Autenticación'],
       summary: 'Cambia la contraseña de la cuenta propia',
-      description: 'Pide la contraseña actual. Si no coincide responde 400: la sesión sigue activa.',
+      description: 'Cambia la contraseña. Pide la contraseña actual.',
       security: [{ tokenJWT: [] }],
       requestBody: {
         required: true,
@@ -287,7 +274,7 @@ export const rutasAuth = {
     put: {
       tags: ['Autenticación'],
       summary: 'Cambia la foto de perfil',
-      description: 'Imagen JPG, PNG o WebP en data URL, máximo 200 KB. El formato se comprueba por el contenido del archivo.',
+      description: 'Sube una imagen JPG, PNG o WebP de máximo 200 KB.',
       security: [{ tokenJWT: [] }],
       requestBody: {
         required: true,
@@ -315,7 +302,7 @@ export const rutasAuth = {
     get: {
       tags: ['Autenticación'],
       summary: 'Devuelve la foto de perfil de un usuario',
-      description: 'Pública. Responde 204 sin cuerpo si no tiene foto, para mostrar las iniciales.',
+      description: 'Devuelve la imagen, o 204 si el usuario no tiene foto.',
       parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', example: ID_EJEMPLO } }],
       responses: {
         200: { description: 'La imagen', content: { 'image/webp': {}, 'image/jpeg': {}, 'image/png': {} } },
@@ -350,8 +337,7 @@ export const rutasAuth = {
     patch: {
       tags: ['Autenticación'],
       summary: 'Edita los datos de la cuenta propia',
-      description: 'El estudiante no puede cambiar nombre, programa, semestre ni sede: los actualiza la Universidad (403). ' +
-        'El administrador puede cambiar su nombre y su dependencia.',
+      description: 'El estudiante no puede cambiar nombre, programa, semestre ni sede. El administrador puede cambiar su nombre y dependencia.',
       security: [{ tokenJWT: [] }],
       requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/CambiosCuenta' } } } },
       responses: {

@@ -19,25 +19,19 @@ export const documentacion = {
   info: {
     title: 'API de ConectaTutor Uniguajira',
     version: '1.0.0',
-    description:
-      'API REST de tutorías entre estudiantes de la Universidad de La Guajira. ' +
-      'Organizada por capas: rutas, controladores, servicios y modelos. ' +
-      'Todas las respuestas de error tienen la forma `{ mensaje, errores? }`. ' +
-      'La sesión expira tras 30 minutos sin uso (RQNF005). Una petición con token válido emitido hace al menos ' +
-      '60 segundos devuelve uno renovado en el encabezado `X-Token-Renovado`, que el cliente debe guardar; si la ' +
-      'cabecera no llega, el token actual sigue vigente. La renovación no pasa de un tope absoluto de 2 horas.',
+    description: 'API REST de tutorías entre estudiantes de la Universidad de La Guajira. Los errores responden `{ mensaje, errores? }`. La sesión vence tras 30 minutos sin uso; el token renovado llega en el encabezado `X-Token-Renovado`.',
   },
   // Ruta relativa: Swagger llama a la misma dirección desde la que se abrió, en local o en producción.
   servers: [{ url: '/api', description: 'Este servidor' }],
   tags: [
     { name: 'Notificaciones', description: 'Campana de avisos y recordatorios de las sesiones' },
-    { name: 'Estado', description: 'Comprobación de que la API y la base de datos responden' },
+    { name: 'Estado', description: 'Estado de la API y de la base de datos' },
     { name: 'Autenticación', description: 'Registro, ingreso y datos de la cuenta propia' },
-    { name: 'Catálogo', description: 'Programas académicos y materias. Leer es público; crearlos, editarlos y retirarlos es del administrador' },
+    { name: 'Catálogo', description: 'Facultades, programas académicos y materias' },
     { name: 'Tutores', description: 'Perfil de tutor propio, búsqueda de tutores verificados y perfil público' },
     { name: 'Sesiones', description: 'Solicitud, respuesta del tutor, cancelación, calificación y reprogramación' },
     { name: 'Favoritos', description: 'Tutores guardados por el estudiante' },
-    { name: 'Coordinación', description: 'Verificación de tutores y cifras de uso. Solo administrador' },
+    { name: 'Coordinación', description: 'Verificación de tutores, cuentas y métricas' },
   ],
 
   components: {
@@ -191,7 +185,7 @@ export const documentacion = {
       get: {
         tags: ['Estado'],
         summary: 'Comprueba que la API está encendida',
-        description: 'Responde siempre 200 si el servidor está arriba e indica si la base de datos está conectada.',
+        description: 'Indica si la API y la base de datos están funcionando.',
         responses: {
           200: {
             description: 'La API responde',

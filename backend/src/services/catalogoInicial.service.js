@@ -1,12 +1,13 @@
 import { MATERIAS, PROGRAMAS } from '../datos/catalogoUniguajira.js'
 // Solo estos dos modelos: importar models/index.js registraría todos, y al conectar Mongoose prepararía
 // sus colecciones e índices (incluida la migración de reservas de las sesiones). La carga solo toca el catálogo.
+import { Facultad, prepararFacultades } from '../models/facultad.model.js'
 import { Materia } from '../models/materia.model.js'
 import { Programa } from '../models/programa.model.js'
 
 /** Crea las colecciones y los índices únicos del catálogo (nombre del programa, código de la materia) y nada más. */
 export async function prepararIndicesDelCatalogo() {
-  await Promise.all([Programa.init(), Materia.init()])
+  await Promise.all([Facultad.init(), Programa.init(), Materia.init()])
 }
 
 /**
@@ -36,6 +37,7 @@ export async function cargarCatalogoInicial() {
     if (await crearSiFalta(Programa, datos)) programas.creados += 1
     else programas.existentes += 1
   }
+  await prepararFacultades()
 
   const materias = { creadas: 0, existentes: 0 }
   const idsDeProgramas = new Map()

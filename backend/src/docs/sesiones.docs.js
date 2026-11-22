@@ -211,7 +211,7 @@ export const rutasSesiones = {
     get: {
       tags: ['Sesiones'],
       summary: 'Lista mis sesiones',
-      description: 'Las que pedí y las que atiendo como tutor. El administrador recibe todas, sin datos de contacto.',
+      description: 'Lista las sesiones que el usuario pidió o atiende. El administrador ve todas.',
       ...conSesion,
       parameters: [
         { name: 'estado', in: 'query', schema: { type: 'string', enum: Object.values(EstadoSesion) } },
@@ -226,10 +226,7 @@ export const rutasSesiones = {
     post: {
       tags: ['Sesiones'],
       summary: 'Solicita una tutoría (estudiante)',
-      description:
-        'Crea la sesión en estado PENDIENTE. El servidor valida R1 (no a sí mismo), R2 (materia ofrecida), ' +
-        'R3 (franja disponible) y R4 (tutor verificado). Un índice único de la base de datos impide que la misma ' +
-        'franja del mismo día quede reservada dos veces, aunque las solicitudes lleguen a la vez.',
+      description: 'Crea la solicitud en estado PENDIENTE en una franja libre del tutor.',
       ...conSesion,
       requestBody: { required: true, content: json({ $ref: '#/components/schemas/NuevaSesion' }) },
       responses: {
@@ -245,7 +242,7 @@ export const rutasSesiones = {
     get: {
       tags: ['Sesiones'],
       summary: 'Consulta una sesión',
-      description: 'Solo para quienes participan en ella y para la coordinación.',
+      description: 'Solo la ven sus participantes y el administrador.',
       ...conSesion,
       parameters: [idSesion],
       responses: {
@@ -258,31 +255,29 @@ export const rutasSesiones = {
   },
   '/sesiones/{id}/confirmar': cambioDeEstado({
     resumen: 'El tutor acepta la solicitud',
-    descripcion: 'PENDIENTE -> CONFIRMADA. Solo el tutor de la sesión.',
+    descripcion: 'Pasa la sesión de PENDIENTE a CONFIRMADA. Solo el tutor.',
   }),
   '/sesiones/{id}/rechazar': cambioDeEstado({
     resumen: 'El tutor rechaza la solicitud',
-    descripcion: 'PENDIENTE -> RECHAZADA, con motivo. Solo el tutor de la sesión.',
+    descripcion: 'Pasa la sesión de PENDIENTE a RECHAZADA con un motivo. Solo el tutor.',
     conMotivo: true,
   }),
   '/sesiones/{id}/cancelar': {
     patch: {
       ...cambioDeEstado({ resumen: 'Cancela la sesión' }).patch,
-      description:
-        'PENDIENTE o CONFIRMADA -> CANCELADA. Cualquiera de las dos partes. La franja queda libre. ' +
-        'Pide la encuesta: una o varias razones y, con OTRO, una explicación. La otra parte recibe una notificación.',
+      description: 'Pasa la sesión a CANCELADA y libera la franja. Pide al menos una razón de cancelación.',
       requestBody: { required: true, content: json({ $ref: '#/components/schemas/EncuestaCancelacion' }) },
     },
   },
   '/sesiones/{id}/finalizar': cambioDeEstado({
     resumen: 'El tutor marca la tutoría como realizada',
-    descripcion: 'CONFIRMADA -> FINALIZADA. Solo el tutor de la sesión y desde la hora de inicio de la tutoría: antes responde 409 con regla R5.',
+    descripcion: 'Pasa la sesión de CONFIRMADA a FINALIZADA. Solo el tutor, desde la hora de inicio.',
   }),
   '/sesiones/{id}/calificacion': {
     post: {
       tags: ['Sesiones'],
       summary: 'El solicitante califica la tutoría',
-      description: 'R6: solo una sesión FINALIZADA y una sola vez. R7: puntaje entero de 1 a 5. Cambia el promedio del tutor.',
+      description: 'Registra un puntaje de 1 a 5 y una reseña opcional. Una sola vez por sesión finalizada.',
       ...conSesion,
       parameters: [idSesion],
       requestBody: { required: true, content: json({ $ref: '#/components/schemas/NuevaCalificacion' }) },
@@ -299,8 +294,7 @@ export const rutasSesiones = {
     put: {
       tags: ['Sesiones'],
       summary: 'Propone otra fecha y franja',
-      description:
-        'Cualquiera de las dos partes, sobre una sesión PENDIENTE o CONFIRMADA. La sesión no cambia hasta que la otra parte acepte.',
+      description: 'Propone otra fecha y franja para una sesión PENDIENTE o CONFIRMADA.',
       ...conSesion,
       parameters: [idSesion],
       requestBody: { required: true, content: json({ $ref: '#/components/schemas/PropuestaReprogramacion' }) },
@@ -315,7 +309,7 @@ export const rutasSesiones = {
     patch: {
       tags: ['Sesiones'],
       summary: 'Acepta o rechaza la propuesta de reprogramación',
-      description: 'La responde la parte que NO la propuso. Si acepta, la sesión pasa a la nueva fecha y franja.',
+      description: 'Acepta o rechaza la propuesta. Si se acepta, la sesión cambia de fecha y franja.',
       ...conSesion,
       parameters: [idSesion],
       requestBody: {
@@ -335,7 +329,7 @@ export const rutasSesiones = {
     get: {
       tags: ['Tutores'],
       summary: 'Lista las franjas ya reservadas de un tutor desde hoy',
-      description: 'Para que la solicitud y la reprogramación no ofrezcan lo que ya está tomado. No dice quién reservó. Es pública si el perfil está publicado; si no, solo la ven su dueño, Coordinación y quien tiene una tutoría pendiente o confirmada con ese tutor.',
+      description: 'Lista las franjas reservadas del tutor desde hoy.',
       parameters: [idPerfil],
       responses: {
         200: { description: 'Franjas ocupadas', content: json({ type: 'array', items: { $ref: '#/components/schemas/FranjaOcupada' } }) },
@@ -360,7 +354,6 @@ export const rutasSesiones = {
     put: {
       tags: ['Favoritos'],
       summary: 'Guarda un tutor como favorito (estudiante)',
-      description: 'Marcar dos veces el mismo tutor lo deja una sola vez.',
       ...conSesion,
       parameters: [idPerfil],
       responses: {
@@ -386,9 +379,7 @@ export const rutasSesiones = {
     get: {
       tags: ['Notificaciones'],
       summary: 'Notificaciones de la campana (estudiante)',
-      description:
-        'Avisos de cambios en sus sesiones (solicitud nueva, aceptada, rechazada, cancelada, finalizada, calificada, ' +
-        'reprogramación) y recordatorios que se crean al consultar: un día antes, una hora antes y al terminar el horario.',
+      description: 'Lista los avisos de cambios en las sesiones y los recordatorios.',
       ...conSesion,
       responses: {
         200: { description: 'Las 40 más recientes', content: json({ type: 'object', properties: {
@@ -411,10 +402,7 @@ export const rutasSesiones = {
     post: {
       tags: ['Coordinación'],
       summary: 'Crea la cuenta de un estudiante (administrador)',
-      description:
-        'Uniguajira entrega las credenciales: correo institucional y, como contraseña inicial, el documento de ' +
-        'identidad. Al primer ingreso el estudiante debe cambiarla, elegir si quiere enseñar y aceptar el ' +
-        'tratamiento de datos (POST /auth/yo/primer-acceso).',
+      description: 'Crea la cuenta de un estudiante. La contraseña inicial es su documento de identidad.',
       ...conSesion,
       requestBody: {
         required: true,
@@ -455,7 +443,7 @@ export const rutasSesiones = {
     patch: {
       tags: ['Coordinación'],
       summary: 'Verifica un perfil de tutor (administrador)',
-      description: 'Desde ese momento el tutor aparece en la búsqueda. El perfil debe tener al menos una materia y una franja.',
+      description: 'Publica el perfil en la búsqueda. Debe tener al menos una materia y una franja.',
       ...conSesion,
       parameters: [idPerfil],
       responses: {
@@ -487,7 +475,7 @@ export const rutasSesiones = {
     get: {
       tags: ['Coordinación'],
       summary: 'Cifras de uso por sede y en total (administrador)',
-      description: 'Solo agregados: no incluye nombres ni datos de ninguna persona.',
+      description: 'Devuelve solicitudes, sesiones, estudiantes atendidos y calificaciones por sede.',
       ...conSesion,
       responses: {
         200: { description: 'Métricas', content: json({ $ref: '#/components/schemas/Metricas' }) },

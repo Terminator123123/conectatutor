@@ -12,7 +12,7 @@ const { EJSON } = mongoose.mongo.BSON
  * modelos: importar los modelos y conectarse haría que Mongoose cree colecciones e índices en la base que se
  * respalda. Una prueba comprueba que coinciden con las de los modelos.
  */
-export const COLECCIONES_RESPALDADAS = Object.freeze(['programas', 'materias', 'usuarios', 'perfilesTutor', 'sesiones', 'notificaciones'])
+export const COLECCIONES_RESPALDADAS = Object.freeze(['facultades', 'programas', 'materias', 'usuarios', 'perfilesTutor', 'sesiones', 'notificaciones'])
 
 /**
  * Lectura sin convertir los números a tipos de JavaScript: así un entero de 64 bits, uno de 32 y un decimal

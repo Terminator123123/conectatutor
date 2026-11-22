@@ -10,7 +10,7 @@ import { ENCABEZADO_TOKEN_RENOVADO } from './middlewares/autenticar.js'
 import { manejarErrores, rutaNoEncontrada } from './middlewares/manejarErrores.js'
 import { registrarPeticiones } from './middlewares/registrarPeticiones.js'
 import { authRouter, usuariosRouter } from './routes/auth.routes.js'
-import { materiasRouter, programasRouter } from './routes/catalogo.routes.js'
+import { facultadesRouter, materiasRouter, programasRouter } from './routes/catalogo.routes.js'
 import { coordinacionRouter } from './routes/coordinacion.routes.js'
 import { favoritosRouter } from './routes/favoritos.routes.js'
 import { sesionesRouter } from './routes/sesiones.routes.js'
@@ -57,6 +57,7 @@ app.get('/api/salud', (_req, res) => {
 
 app.use('/api/auth', authRouter)
 app.use('/api/usuarios', usuariosRouter)
+app.use('/api/facultades', facultadesRouter)
 app.use('/api/programas', programasRouter)
 app.use('/api/materias', materiasRouter)
 app.use('/api/tutores', tutoresRouter)

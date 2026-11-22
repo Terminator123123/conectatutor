@@ -8,6 +8,31 @@ export async function listarProgramas(_req, res) {
   res.status(200).json(await servicioCatalogo.listarProgramas())
 }
 
+/** GET /api/facultades */
+export async function listarFacultades(_req, res) {
+  res.status(200).json(await servicioCatalogo.listarFacultades())
+}
+
+/** GET /api/facultades/:id */
+export async function obtenerFacultad(req, res) {
+  res.status(200).json(await servicioCatalogo.obtenerFacultad(req.params.id))
+}
+
+/** POST /api/facultades */
+export async function crearFacultad(req, res) {
+  res.status(201).json(await servicioCatalogo.crearFacultad(req.body))
+}
+
+/** PUT /api/facultades/:id */
+export async function editarFacultad(req, res) {
+  res.status(200).json(await servicioCatalogo.editarFacultad(req.params.id, req.body))
+}
+
+/** DELETE /api/facultades/:id */
+export async function eliminarFacultad(req, res) {
+  res.status(200).json(await servicioCatalogo.eliminarFacultad(req.params.id))
+}
+
 /** GET /api/programas/:id */
 export async function obtenerPrograma(req, res) {
   res.status(200).json(await servicioCatalogo.obtenerPrograma(req.params.id))

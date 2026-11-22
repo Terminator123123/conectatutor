@@ -9,7 +9,7 @@ import { after, afterEach, before, beforeEach, describe, it } from 'node:test'
 import request from 'supertest'
 import { app } from '../src/app.js'
 import { reiniciarIntentos } from '../src/middlewares/limitarIntentos.js'
-import { Materia, Notificacion, PerfilTutor, Programa, Sesion, Usuario } from '../src/models/index.js'
+import { Facultad, Materia, Notificacion, PerfilTutor, Programa, Sesion, Usuario } from '../src/models/index.js'
 import { COLECCIONES_RESPALDADAS, exportarRespaldo, FORMATO, leerRespaldo, MANIFIESTO } from '../src/services/respaldo.service.js'
 import { cargarSemilla } from '../src/services/semilla.service.js'
 import { ejecutar as respaldar } from '../src/scripts/respaldar.js'
@@ -91,7 +91,7 @@ describe('D04 · Respaldo de la base (RQNF010)', () => {
   })
 
   it('las colecciones respaldadas son las de los modelos de la aplicación', () => {
-    const deLosModelos = [Programa, Materia, Usuario, PerfilTutor, Sesion, Notificacion].map((modelo) => modelo.collection.collectionName)
+    const deLosModelos = [Facultad, Programa, Materia, Usuario, PerfilTutor, Sesion, Notificacion].map((modelo) => modelo.collection.collectionName)
     assert.deepEqual([...COLECCIONES_RESPALDADAS].sort(), deLosModelos.sort())
   })
 

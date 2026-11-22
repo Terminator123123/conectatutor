@@ -199,7 +199,7 @@ describe('D05 · Catálogo académico inicial', () => {
         assert.deepEqual(indices, ['_id_'], `${coleccion} conserva solo sus índices de antes`)
       }
       const colecciones = (await otraBase.listCollections().toArray()).map(({ name }) => name).sort()
-      assert.deepEqual(colecciones, ['materias', 'programas', 'sesiones', 'usuarios'])
+      assert.deepEqual(colecciones, ['facultades', 'materias', 'programas', 'sesiones', 'usuarios'])
       assert.equal(await otraBase.collection('materias').countDocuments(), MATERIAS.length)
     } finally {
       await otraBase.dropDatabase()

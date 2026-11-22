@@ -94,9 +94,7 @@ export const rutasTutores = {
     get: {
       tags: ['Tutores'],
       summary: 'Busca tutores verificados',
-      description:
-        'Solo devuelve perfiles VERIFICADOS. Todos los filtros son opcionales y se combinan. ' +
-        'Ordena por promedio de calificaciones, de mayor a menor. Es pública: no exige sesión.',
+      description: 'Lista los tutores verificados ordenados por promedio de calificaciones. Los filtros son opcionales.',
       parameters: [
         { name: 'materia', in: 'query', description: 'Id de una materia que el tutor ofrece', schema: { type: 'string' } },
         { name: 'programa', in: 'query', description: 'Id del programa del tutor', schema: { type: 'string' } },
@@ -128,9 +126,7 @@ export const rutasTutores = {
     put: {
       tags: ['Tutores'],
       summary: 'Activa el perfil de tutor propio o guarda sus cambios (estudiante)',
-      description:
-        'Reemplaza biografía, tarifa, materias y disponibilidad. El perfil nace PENDIENTE y solo el administrador ' +
-        'lo verifica. Si estaba RECHAZADO, al guardarlo vuelve a PENDIENTE. No lleva id: siempre es el perfil de quien tiene la sesión.',
+      description: 'Guarda biografía, tarifa, materias y disponibilidad. Un perfil nuevo o rechazado queda pendiente de verificación.',
       ...conSesion,
       requestBody: { required: true, content: json({ $ref: '#/components/schemas/DatosPerfilTutor' }) },
       responses: {
@@ -147,7 +143,7 @@ export const rutasTutores = {
     get: {
       tags: ['Tutores'],
       summary: 'Devuelve el perfil público de un tutor con sus reseñas',
-      description: 'Un perfil que no está verificado solo lo ven su dueño y el administrador; para los demás (también sin sesión) responde 404. Es pública.',
+      description: 'Devuelve el perfil del tutor con sus reseñas. Un perfil no verificado solo lo ven su dueño y el administrador.',
       parameters: [{ name: 'id', in: 'path', required: true, description: 'Id del perfil de tutor', schema: { type: 'string', example: ID_EJEMPLO } }],
       responses: {
         200: { description: 'Perfil del tutor', content: json({ $ref: '#/components/schemas/DetalleTutor' }) },

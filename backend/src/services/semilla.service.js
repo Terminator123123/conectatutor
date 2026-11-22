@@ -1,4 +1,5 @@
 import { Administrador, Estudiante, Materia, PerfilTutor, Programa, Sesion, Usuario } from '../models/index.js'
+import { prepararFacultades } from '../models/facultad.model.js'
 import { ADMINISTRADOR, ESTUDIANTES, MATERIAS, PERFILES_TUTOR, PROGRAMAS, SESIONES } from '../scripts/datosSemilla.js'
 import { cifrarClave, esClaveAceptable } from '../utils/claves.js'
 import { EstadoVerificacion } from '../utils/enums.js'
@@ -34,6 +35,7 @@ export async function cargarSemilla(claveDemo) {
   for (const datos of PROGRAMAS) {
     programas.set(datos.nombre, await guardar(Programa, { nombre: datos.nombre }, datos))
   }
+  await prepararFacultades()
 
   // 2. Materias
   const materias = new Map()

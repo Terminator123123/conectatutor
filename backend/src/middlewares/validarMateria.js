@@ -67,6 +67,16 @@ function revisarPrograma(cuerpo, todosObligatorios) {
   return { errores, datos }
 }
 
+/** Valida el cuerpo de POST /api/facultades y PUT /api/facultades/:id: solo el nombre. */
+export function validarFacultad(req, _res, next) {
+  const nombre = esTexto(req.body?.nombre) ? req.body.nombre.trim().replace(/\s+/g, ' ') : ''
+  if (nombre.length < 3 || nombre.length > 120) {
+    throw new HttpError(400, 'Los datos de la facultad no son válidos', ['El nombre de la facultad debe tener entre 3 y 120 caracteres'])
+  }
+  req.body = { nombre }
+  next()
+}
+
 /** Valida el cuerpo de POST /api/programas. */
 export function validarNuevoPrograma(req, _res, next) {
   const { errores, datos } = revisarPrograma(req.body ?? {}, true)
