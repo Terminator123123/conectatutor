@@ -142,7 +142,7 @@ describe('D05 · Catálogo académico inicial', () => {
         const sistemas = (programas.body ?? []).find(({ nombre }) => nombre === 'Ingeniería de Sistemas')
         const autorizacion = 'Bearer ' + ingreso.body.token
         const materia = await supertest(app).post('/api/materias').set('Authorization', autorizacion)
-          .send({ codigo: 'SIS-09', nombre: 'Bases de Datos I', programa: sistemas?.id })
+          .send({ codigo: 'SIS-99', nombre: 'Bases de Datos I', programa: sistemas?.id })
         const cuenta = await supertest(app).post('/api/coordinacion/cuentas').set('Authorization', autorizacion)
           .send({ nombre: 'Laura Pérez', correoInstitucional: 'laura.perez@uniguajira.edu.co', documento: '1122334455', semestre: 1, sede: 'Riohacha', programa: sistemas?.id })
         const registro = await supertest(app).post('/api/auth/registro').send({})
@@ -161,7 +161,7 @@ describe('D05 · Catálogo académico inicial', () => {
       ingreso: 200, programas: 200, totalProgramas: PROGRAMAS.length,
       materia: 201, cuenta: 201, registro: 404,
     })
-    assert.ok(await Materia.exists({ codigo: 'SIS-09' }))
+    assert.ok(await Materia.exists({ codigo: 'SIS-99' }))
     assert.equal((await Usuario.findOne({ correoInstitucional: 'laura.perez@uniguajira.edu.co' })).tipo, 'ESTUDIANTE')
 
     // Repetir la carga en producción no toca lo que ya existe, incluida la materia nueva

@@ -1,11 +1,64 @@
-import { Materia, PerfilTutor, Programa } from '../models/index.js'
+import { Estudiante, Materia, PerfilTutor, Programa } from '../models/index.js'
 import { HttpError } from '../utils/HttpError.js'
 
-// Catálogo académico: programas (solo lectura) y materias (RQF008, RQF027).
+// Catálogo académico: programas y materias (RQF008, RQF027).
 
 /** Lista los programas académicos en orden alfabético. */
 export function listarProgramas() {
   return Programa.find().sort({ nombre: 1 })
+}
+
+/** Busca un programa o responde 404. */
+export async function obtenerPrograma(id) {
+  const programa = await Programa.findById(id)
+  if (!programa) throw new HttpError(404, 'El programa no existe')
+  return programa
+}
+
+/** Convierte el error de índice único del nombre en un 409 con mensaje claro. */
+function traducirNombreRepetido(error, nombre) {
+  if (error?.code === 11000) return new HttpError(409, `Ya existe un programa llamado ${nombre}`)
+  return error
+}
+
+/** Agrega un programa académico. */
+export async function crearPrograma({ nombre, facultad }) {
+  try {
+    return await Programa.create({ nombre, facultad })
+  } catch (error) {
+    throw traducirNombreRepetido(error, nombre)
+  }
+}
+
+/** Cambia el nombre o la facultad de un programa. Solo se tocan los campos enviados. */
+export async function editarPrograma(id, cambios) {
+  const programa = await obtenerPrograma(id)
+  programa.set(cambios)
+  try {
+    await programa.save()
+  } catch (error) {
+    throw traducirNombreRepetido(error, cambios.nombre)
+  }
+  return programa
+}
+
+/**
+ * Borra un programa que nadie usa. Si tiene materias o estudiantes responde 409:
+ * borrarlo dejaría esas materias y cuentas apuntando a un programa que no existe.
+ */
+export async function eliminarPrograma(id) {
+  const programa = await obtenerPrograma(id)
+  const [materias, estudiantes] = await Promise.all([
+    Materia.countDocuments({ programa: programa._id }),
+    Estudiante.countDocuments({ programa: programa._id }),
+  ])
+  if (materias > 0 || estudiantes > 0) {
+    throw new HttpError(409, 'No se puede borrar un programa en uso', [
+      `Tiene ${materias} materia(s) y ${estudiantes} estudiante(s). Muévelos a otro programa antes de borrarlo`,
+    ])
+  }
+  await programa.deleteOne()
+  return programa
 }
 
 /**

@@ -50,6 +50,42 @@ export function validarNuevaMateria(req, _res, next) {
   next()
 }
 
+/**
+ * Revisa los campos de un programa académico y devuelve los que llegaron, ya limpios.
+ * @param {object} cuerpo Cuerpo de la petición.
+ * @param {boolean} todosObligatorios true al crear; false al editar (solo lo enviado).
+ */
+function revisarPrograma(cuerpo, todosObligatorios) {
+  const errores = []
+  const datos = {}
+  for (const [campo, etiqueta] of [['nombre', 'El nombre del programa'], ['facultad', 'El nombre de la facultad']]) {
+    if (cuerpo[campo] === undefined && !todosObligatorios) continue
+    const valor = esTexto(cuerpo[campo]) ? cuerpo[campo].trim().replace(/\s+/g, ' ') : ''
+    if (valor.length < 3 || valor.length > 120) errores.push(`${etiqueta} debe tener entre 3 y 120 caracteres`)
+    datos[campo] = valor
+  }
+  return { errores, datos }
+}
+
+/** Valida el cuerpo de POST /api/programas. */
+export function validarNuevoPrograma(req, _res, next) {
+  const { errores, datos } = revisarPrograma(req.body ?? {}, true)
+  if (errores.length > 0) throw new HttpError(400, 'Los datos del programa no son válidos', errores)
+  req.body = datos
+  next()
+}
+
+/** Valida el cuerpo de PUT /api/programas/:id: al menos un campo, y solo los conocidos. */
+export function validarCambiosPrograma(req, _res, next) {
+  const { errores, datos } = revisarPrograma(req.body ?? {}, false)
+  if (errores.length === 0 && Object.keys(datos).length === 0) {
+    errores.push('Envía al menos un campo para cambiar: nombre o facultad')
+  }
+  if (errores.length > 0) throw new HttpError(400, 'Los datos del programa no son válidos', errores)
+  req.body = datos
+  next()
+}
+
 /** Valida el cuerpo de PUT /api/materias/:id: al menos un campo, y solo los conocidos. */
 export function validarCambiosMateria(req, _res, next) {
   const { errores, datos } = revisarMateria(req.body ?? {}, false)

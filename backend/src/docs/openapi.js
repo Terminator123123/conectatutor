@@ -33,7 +33,7 @@ export const documentacion = {
     { name: 'Notificaciones', description: 'Campana de avisos y recordatorios de las sesiones' },
     { name: 'Estado', description: 'Comprobación de que la API y la base de datos responden' },
     { name: 'Autenticación', description: 'Registro, ingreso y datos de la cuenta propia' },
-    { name: 'Catálogo', description: 'Programas académicos y materias. Leer es público; cambiar materias es del administrador' },
+    { name: 'Catálogo', description: 'Programas académicos y materias. Leer es público; crearlos, editarlos y retirarlos es del administrador' },
     { name: 'Tutores', description: 'Perfil de tutor propio, búsqueda de tutores verificados y perfil público' },
     { name: 'Sesiones', description: 'Solicitud, respuesta del tutor, cancelación, calificación y reprogramación' },
     { name: 'Favoritos', description: 'Tutores guardados por el estudiante' },

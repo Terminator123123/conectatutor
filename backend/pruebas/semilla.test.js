@@ -5,6 +5,7 @@ import { after, before, beforeEach, describe, it } from 'node:test'
 import bcrypt from 'bcryptjs'
 import { MongoClient } from 'mongodb'
 import { Administrador, Materia, PerfilTutor, Sesion, Usuario } from '../src/models/index.js'
+import { MATERIAS } from '../src/datos/catalogoUniguajira.js'
 import { cargarSemilla } from '../src/services/semilla.service.js'
 import { ejecutarAislado } from './ayudas/procesoAislado.js'
 
@@ -15,7 +16,7 @@ describe('E1 · Datos de demostración (seed)', () => {
 
   it('carga programas, materias, cuentas, perfiles y sesiones', async () => {
     const totales = await cargarSemilla(CLAVE_DE_PRUEBA)
-    assert.deepEqual(totales, { programas: 36, materias: 32, usuarios: 7, perfilesTutor: 4, sesiones: 5 })
+    assert.deepEqual(totales, { programas: 36, materias: MATERIAS.length, usuarios: 7, perfilesTutor: 4, sesiones: 5 })
   })
 
   it('se puede correr dos veces sin duplicar nada', async () => {

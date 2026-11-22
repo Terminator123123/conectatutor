@@ -63,12 +63,13 @@ export async function cargarSemilla(claveDemo) {
     consentimientoDatos,
   })
 
-  // 4. Perfiles de tutor: cada uno ofrece las materias de su programa
+  // 4. Perfiles de tutor: cada uno ofrece las ocho primeras materias de su programa (códigos 01 a 08).
+  // El plan completo tiene unas 55 por programa, más de las que admite un perfil.
   const perfiles = new Map()
   for (const datos of PERFILES_TUTOR) {
     const estudiante = usuarios.get(datos.estudiante)
     const materiasDelPrograma = [...materias.values()]
-      .filter((materia) => materia.programa.equals(estudiante.programa))
+      .filter((materia) => materia.programa.equals(estudiante.programa) && Number(materia.codigo.split('-')[1]) <= 8)
       .map((materia) => materia._id)
     const perfil = await guardar(PerfilTutor, { estudiante: estudiante._id }, {
       ...datos,

@@ -10,6 +10,7 @@ const idMateria = {
   description: 'Id de la materia (24 caracteres hexadecimales)',
   schema: { type: 'string', example: ID_EJEMPLO },
 }
+const idPrograma = { ...idMateria, description: 'Id del programa (24 caracteres hexadecimales)' }
 const soloAdministrador = {
   security: [{ tokenJWT: [] }],
 }
@@ -20,6 +21,22 @@ const respuestasPrivadas = {
 }
 
 export const esquemasCatalogo = {
+  NuevoPrograma: {
+    type: 'object',
+    required: ['nombre', 'facultad'],
+    properties: {
+      nombre: { type: 'string', minLength: 3, maxLength: 120, description: 'Único', example: 'Ingeniería Agroindustrial' },
+      facultad: { type: 'string', minLength: 3, maxLength: 120, example: 'Facultad de Ingeniería' },
+    },
+  },
+  CambiosPrograma: {
+    type: 'object',
+    description: 'Se envían solo los campos que cambian (al menos uno)',
+    properties: {
+      nombre: { type: 'string', example: 'Ingeniería Agroindustrial' },
+      facultad: { type: 'string', example: 'Facultad de Ingeniería' },
+    },
+  },
   // Se describe completa: en Materia `programa` es un id y aquí llega el programa entero.
   MateriaConPrograma: {
     type: 'object',
@@ -63,6 +80,64 @@ export const rutasCatalogo = {
       responses: {
         200: { description: 'Programas en orden alfabético', content: json({ type: 'array', items: { $ref: '#/components/schemas/Programa' } }) },
         500: { $ref: '#/components/responses/ErrorInterno' },
+      },
+    },
+    post: {
+      tags: ['Catálogo'],
+      summary: 'Agrega un programa académico (administrador)',
+      description:
+        'Solo por la API: la aplicación web no tiene pantalla para esto. Sirve para registrar un programa nuevo ' +
+        'que abra Uniguajira sin tocar el código. Exige el token de Coordinación y el nombre no se puede repetir.',
+      ...soloAdministrador,
+      requestBody: { required: true, content: json({ $ref: '#/components/schemas/NuevoPrograma' }) },
+      responses: {
+        201: { description: 'Programa creado', content: json({ $ref: '#/components/schemas/Programa' }) },
+        400: error('Datos no válidos'),
+        409: error('Ya existe un programa con ese nombre'),
+        ...respuestasPrivadas,
+      },
+    },
+  },
+  '/programas/{id}': {
+    get: {
+      tags: ['Catálogo'],
+      summary: 'Consulta un programa académico',
+      parameters: [idPrograma],
+      responses: {
+        200: { description: 'El programa', content: json({ $ref: '#/components/schemas/Programa' }) },
+        400: error('El id no es válido'),
+        404: { $ref: '#/components/responses/NoEncontrado' },
+        500: { $ref: '#/components/responses/ErrorInterno' },
+      },
+    },
+    put: {
+      tags: ['Catálogo'],
+      summary: 'Edita un programa académico (administrador)',
+      ...soloAdministrador,
+      parameters: [idPrograma],
+      requestBody: { required: true, content: json({ $ref: '#/components/schemas/CambiosPrograma' }) },
+      responses: {
+        200: { description: 'Programa actualizado', content: json({ $ref: '#/components/schemas/Programa' }) },
+        400: error('Datos no válidos o id mal formado'),
+        404: { $ref: '#/components/responses/NoEncontrado' },
+        409: error('Ya existe un programa con ese nombre'),
+        ...respuestasPrivadas,
+      },
+    },
+    delete: {
+      tags: ['Catálogo'],
+      summary: 'Borra un programa académico sin uso (administrador)',
+      description:
+        'Solo se puede borrar un programa sin materias ni estudiantes. Si los tiene responde 409: ' +
+        'primero hay que mover esas materias y cuentas a otro programa.',
+      ...soloAdministrador,
+      parameters: [idPrograma],
+      responses: {
+        200: { description: 'Programa borrado', content: json({ $ref: '#/components/schemas/Programa' }) },
+        400: error('El id no es válido'),
+        404: { $ref: '#/components/responses/NoEncontrado' },
+        409: error('El programa tiene materias o estudiantes'),
+        ...respuestasPrivadas,
       },
     },
   },

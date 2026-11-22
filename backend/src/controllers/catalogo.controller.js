@@ -8,6 +8,26 @@ export async function listarProgramas(_req, res) {
   res.status(200).json(await servicioCatalogo.listarProgramas())
 }
 
+/** GET /api/programas/:id */
+export async function obtenerPrograma(req, res) {
+  res.status(200).json(await servicioCatalogo.obtenerPrograma(req.params.id))
+}
+
+/** POST /api/programas */
+export async function crearPrograma(req, res) {
+  res.status(201).json(await servicioCatalogo.crearPrograma(req.body))
+}
+
+/** PUT /api/programas/:id */
+export async function editarPrograma(req, res) {
+  res.status(200).json(await servicioCatalogo.editarPrograma(req.params.id, req.body))
+}
+
+/** DELETE /api/programas/:id */
+export async function eliminarPrograma(req, res) {
+  res.status(200).json(await servicioCatalogo.eliminarPrograma(req.params.id))
+}
+
 /** GET /api/materias?programa=&incluirInactivas=true */
 export async function listarMaterias(req, res) {
   const { programa, incluirInactivas } = req.query

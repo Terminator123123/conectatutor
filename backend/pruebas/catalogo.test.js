@@ -2,12 +2,13 @@ import { CLAVE_DE_PRUEBA, detenerBaseDePrueba, iniciarBaseDePrueba, vaciarBaseDe
 
 import assert from 'node:assert/strict'
 import { after, before, beforeEach, describe, it } from 'node:test'
-import { PROGRAMAS } from '../src/datos/catalogoUniguajira.js'
+import { MATERIAS, PROGRAMAS } from '../src/datos/catalogoUniguajira.js'
 import { Materia, PerfilTutor, Programa } from '../src/models/index.js'
 import { cargarSemilla } from '../src/services/semilla.service.js'
 import { clienteDe, CORREOS } from './ayudas/sesion.js'
 
 const ID_INEXISTENTE = '6728f1a2b3c4d5e6f7a8b9c0'
+const DE_SISTEMAS = MATERIAS.filter(({ programa }) => programa === 'Ingeniería de Sistemas').length
 
 describe('E3 · Catálogo: programas y materias', () => {
   let anonimo, estudiante, administrador, sistemas
@@ -35,13 +36,13 @@ describe('E3 · Catálogo: programas y materias', () => {
     it('GET /api/materias lista las materias activas con su programa', async () => {
       const respuesta = await anonimo.get('/materias')
       assert.equal(respuesta.status, 200)
-      assert.equal(respuesta.body.length, 32)
+      assert.equal(respuesta.body.length, MATERIAS.length)
       assert.equal(respuesta.body[0].programa.nombre, 'Administración de Empresas')
     })
 
     it('filtra las materias por programa', async () => {
       const respuesta = await anonimo.get(`/materias?programa=${sistemas.id}`)
-      assert.equal(respuesta.body.length, 8)
+      assert.equal(respuesta.body.length, DE_SISTEMAS)
       assert.ok(respuesta.body.every((materia) => materia.codigo.startsWith('SIS-')))
       assert.equal((await anonimo.get('/materias?programa=abc')).status, 400)
     })
@@ -54,17 +55,64 @@ describe('E3 · Catálogo: programas y materias', () => {
     })
   })
 
+  describe('Programas: CRUD del administrador', () => {
+    const nuevo = () => ({ nombre: '  Ingeniería   Agroindustrial ', facultad: 'Facultad de Ingeniería' })
+
+    it('crea un programa con el nombre limpio y aparece en la lista pública', async () => {
+      const respuesta = await administrador.post('/programas', nuevo())
+      assert.equal(respuesta.status, 201)
+      assert.equal(respuesta.body.nombre, 'Ingeniería Agroindustrial')
+      assert.equal(respuesta.body.facultad, 'Facultad de Ingeniería')
+      assert.equal((await anonimo.get('/programas')).body.length, PROGRAMAS.length + 1)
+      assert.equal((await anonimo.get(`/programas/${respuesta.body.id}`)).body.nombre, 'Ingeniería Agroindustrial')
+    })
+
+    it('rechaza datos incompletos y un nombre repetido', async () => {
+      const vacio = await administrador.post('/programas', { nombre: 'ab' })
+      assert.equal(vacio.status, 400)
+      assert.equal(vacio.body.errores.length, 2)
+      const repetido = await administrador.post('/programas', { nombre: 'Ingeniería de Sistemas', facultad: 'Facultad de Ingeniería' })
+      assert.equal(repetido.status, 409)
+      assert.match(repetido.body.mensaje, /Ingeniería de Sistemas/)
+    })
+
+    it('edita solo los campos enviados', async () => {
+      const { body } = await administrador.post('/programas', nuevo())
+      const editado = await administrador.put(`/programas/${body.id}`, { facultad: 'Facultad de Ciencias Básicas y Aplicadas' })
+      assert.equal(editado.status, 200)
+      assert.equal(editado.body.nombre, 'Ingeniería Agroindustrial')
+      assert.equal(editado.body.facultad, 'Facultad de Ciencias Básicas y Aplicadas')
+      assert.equal((await administrador.put(`/programas/${body.id}`, { nombre: 'Ingeniería de Sistemas' })).status, 409)
+    })
+
+    it('borra un programa sin uso, pero no uno con materias o estudiantes', async () => {
+      const { body } = await administrador.post('/programas', nuevo())
+      const enUso = await administrador.delete(`/programas/${sistemas.id}`)
+      assert.equal(enUso.status, 409)
+      assert.ok(await Programa.exists({ _id: sistemas._id }))
+      assert.equal((await administrador.delete(`/programas/${body.id}`)).status, 200)
+      assert.equal((await anonimo.get(`/programas/${body.id}`)).status, 404)
+    })
+
+    it('solo el administrador puede cambiar programas', async () => {
+      assert.equal((await anonimo.post('/programas', nuevo())).status, 401)
+      assert.equal((await estudiante.post('/programas', nuevo())).status, 403)
+      assert.equal((await estudiante.put(`/programas/${sistemas.id}`, { nombre: 'Otro nombre' })).status, 403)
+      assert.equal((await estudiante.delete(`/programas/${sistemas.id}`)).status, 403)
+    })
+  })
+
   describe('CRUD del administrador (RQF027)', () => {
-    const nueva = () => ({ codigo: 'sis-09', nombre: '  Bases de   Datos I ', programa: sistemas.id })
+    const nueva = () => ({ codigo: 'sis-99', nombre: '  Bases de   Datos I ', programa: sistemas.id })
 
     it('crea una materia: código en mayúsculas, nombre limpio y activa', async () => {
       const respuesta = await administrador.post('/materias', nueva())
       assert.equal(respuesta.status, 201)
-      assert.equal(respuesta.body.codigo, 'SIS-09')
+      assert.equal(respuesta.body.codigo, 'SIS-99')
       assert.equal(respuesta.body.nombre, 'Bases de Datos I')
       assert.equal(respuesta.body.activa, true)
       assert.equal(respuesta.body.programa.nombre, 'Ingeniería de Sistemas')
-      assert.equal((await anonimo.get('/materias')).body.length, 33)
+      assert.equal((await anonimo.get('/materias')).body.length, MATERIAS.length + 1)
     })
 
     it('rechaza con 409 un código repetido', async () => {
@@ -101,7 +149,7 @@ describe('E3 · Catálogo: programas y materias', () => {
       assert.equal(respuesta.status, 200)
       assert.equal(respuesta.body.activa, false)
 
-      assert.equal((await anonimo.get('/materias')).body.length, 31)
+      assert.equal((await anonimo.get('/materias')).body.length, MATERIAS.length - 1)
       assert.equal(await PerfilTutor.countDocuments({ materias: materia._id }), 0)
       assert.equal((await Materia.findById(materia.id)).activa, false)
     })
@@ -110,13 +158,13 @@ describe('E3 · Catálogo: programas y materias', () => {
       const materia = await Materia.findOne({ codigo: 'SIS-04' })
       await administrador.delete(`/materias/${materia.id}`)
 
-      assert.equal((await administrador.get('/materias?incluirInactivas=true')).body.length, 32)
-      assert.equal((await estudiante.get('/materias?incluirInactivas=true')).body.length, 31)
-      assert.equal((await anonimo.get('/materias?incluirInactivas=true')).body.length, 31)
+      assert.equal((await administrador.get('/materias?incluirInactivas=true')).body.length, MATERIAS.length)
+      assert.equal((await estudiante.get('/materias?incluirInactivas=true')).body.length, MATERIAS.length - 1)
+      assert.equal((await anonimo.get('/materias?incluirInactivas=true')).body.length, MATERIAS.length - 1)
 
       const reactivada = await administrador.put(`/materias/${materia.id}`, { activa: true })
       assert.equal(reactivada.body.activa, true)
-      assert.equal((await anonimo.get('/materias')).body.length, 32)
+      assert.equal((await anonimo.get('/materias')).body.length, MATERIAS.length)
     })
   })
 
