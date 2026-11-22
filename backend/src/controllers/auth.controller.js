@@ -1,3 +1,4 @@
+import jwt from 'jsonwebtoken'
 import { anotarIngresoFallido, olvidarIngresosFallidos } from '../middlewares/limitarIntentos.js'
 import * as servicioAuth from '../services/auth.service.js'
 import * as servicioRecuperacion from '../services/recuperacion.service.js'
@@ -15,6 +16,8 @@ export async function registrar(req, res) {
 export async function ingresar(req, res) {
   try {
     const resultado = await servicioAuth.ingresar(req.body)
+    // Para el registro de peticiones: qué sesión se abrió (el token ya va firmado, aquí solo se lee)
+    res.locals.sesionNueva = jwt.decode(resultado.token)?.sid
     olvidarIngresosFallidos(req)
     res.status(200).json(resultado)
   } catch (error) {

@@ -39,22 +39,29 @@ async function usuarioDelToken(req, res) {
     contenido = jwt.verify(token, env.jwtSecreto, { algorithms: [ALGORITMO_TOKEN] })
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
+      // Para el registro: de quién era el token vencido (la firma ya se comprobó al decodificar el vencimiento)
+      const vencido = jwt.decode(token)
+      req.rechazo = { motivo: 'sesión vencida por inactividad', sub: vencido?.sub, sesion: vencido?.sid }
       throw new HttpError(401, 'Tu sesión expiró. Inicia sesión de nuevo')
     }
+    req.rechazo = { motivo: 'token no válido' }
     throw new HttpError(401, 'La sesión no es válida. Inicia sesión de nuevo')
   }
 
   // Se consulta la base en cada petición: si la cuenta ya no existe, el token deja de servir.
   const usuario = await Usuario.findById(contenido.sub).select('+sesionActiva')
   if (!usuario) {
+    req.rechazo = { motivo: 'la cuenta ya no existe', sub: contenido.sub, sesion: contenido.sid }
     throw new HttpError(401, 'La sesión no es válida. Inicia sesión de nuevo')
   }
   // La persona pulsó Salir: el token de esa sesión ya no sirve aunque alguien guarde una copia.
   if (usuario.sesionActiva?.startsWith(PREFIJO_SESION_CERRADA)) {
+    req.rechazo = { motivo: 'la sesión ya se había cerrado con Salir', cuenta: usuario, sesion: contenido.sid }
     throw new HttpError(401, 'Tu sesión se cerró. Inicia sesión de nuevo')
   }
   // Solo una sesión a la vez: si la cuenta ingresó en otro lado, este token ya no sirve.
   if (usuario.sesionActiva && contenido.sid !== usuario.sesionActiva) {
+    req.rechazo = { motivo: 'sesión reemplazada por un ingreso posterior', cuenta: usuario, sesion: contenido.sid, activa: usuario.sesionActiva }
     throw new HttpError(401, 'Tu cuenta se abrió en otro navegador o dispositivo. Inicia sesión de nuevo', undefined, SESION_REEMPLAZADA)
   }
 
