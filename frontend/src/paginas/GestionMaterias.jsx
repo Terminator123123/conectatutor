@@ -26,7 +26,7 @@ export default function GestionMaterias() {
   const [errorCarga, setErrorCarga] = useState('')
   const [intento, setIntento] = useState(0)
   const [edicion, setEdicion] = useState(null)
-  const [campos, setCampos] = useState({ nombre:'', codigo:'', programa:'', descripcion:'' })
+  const [campos, setCampos] = useState({ nombre:'', codigo:'', programa:'' })
   const [materiaElegida, setMateriaElegida] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [aviso, setAviso] = useState('')
@@ -50,7 +50,7 @@ export default function GestionMaterias() {
     setError(''); setAviso('')
     setDesactivada('')
     setEdicion(materia?.getId() ?? 'nueva')
-    setCampos({ nombre:materia?.getNombre() ?? '', codigo:materia?.getCodigo() ?? '', programa:materia?.getPrograma().getId() ?? filtro, descripcion:'' })
+    setCampos({ nombre:materia?.getNombre() ?? '', codigo:materia?.getCodigo() ?? '', programa:materia?.getPrograma().getId() ?? filtro })
   }
   async function guardar(evento) {
     evento.preventDefault()
@@ -127,14 +127,6 @@ export default function GestionMaterias() {
           valor={campos.nombre}
           alCambiar={(valor) => setCampos({ ...campos, nombre:valor })} obligatorio
           deshabilitado={guardando} />
-        <CampoFormulario
-          etiqueta="Descripción breve (no disponible)"
-          nombre="descripcion"
-          tipo="textarea"
-          valor={campos.descripcion}
-          alCambiar={(valor) => setCampos({ ...campos, descripcion:valor })}
-          placeholder="La descripción no se guarda"
-          deshabilitado />
         <CampoFormulario
           etiqueta="Programa académico"
           nombre="programa"
