@@ -1,6 +1,7 @@
 import { Administrador, Estudiante, Materia, PerfilTutor, Programa, Sesion, Usuario } from '../models/index.js'
 import { ADMINISTRADOR, ESTUDIANTES, MATERIAS, PERFILES_TUTOR, PROGRAMAS, SESIONES } from '../scripts/datosSemilla.js'
 import { cifrarClave, esClaveAceptable } from '../utils/claves.js'
+import { EstadoVerificacion } from '../utils/enums.js'
 
 /**
  * Crea el documento si no existe o lo actualiza si ya está, buscándolo por su
@@ -73,6 +74,7 @@ export async function cargarSemilla(claveDemo) {
       ...datos,
       estudiante: estudiante._id,
       materias: materiasDelPrograma,
+      materiasAprobadas: datos.estadoVerificacion === EstadoVerificacion.VERIFICADO ? materiasDelPrograma : [],
       motivoRechazo: null,
     })
     perfiles.set(datos.estudiante, perfil)

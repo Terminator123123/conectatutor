@@ -36,8 +36,8 @@ describe('Campana de notificaciones y encuesta de cancelación (RQF022, RQF016)'
   })
   after(detenerBaseDePrueba)
 
-  const solicitar = () => elena.post('/sesiones', {
-    tutor: perfilAndrea.id, materia: materia.id, fecha: lunes(4), franja: FRANJA, tema: 'Repasar ciclos para el parcial',
+  const solicitar = (cambios = {}) => elena.post('/sesiones', {
+    tutor: perfilAndrea.id, materia: materia.id, fecha: lunes(4), franja: FRANJA, tema: 'Repasar ciclos para el parcial', ...cambios,
   })
   const titulos = async (cliente) => (await cliente.get('/notificaciones')).body.notificaciones.map((n) => n.titulo)
 
@@ -81,6 +81,22 @@ describe('Campana de notificaciones y encuesta de cancelación (RQF022, RQF016)'
     assert.equal(await tipos(inicio - 30 * 60000), 2, 'una hora antes')
     assert.equal(await tipos(inicio + 3 * 3600000), 3, 'al terminar el horario')
     assert.equal(sesion.fecha.getTime(), aFechaGuardada(lunes(4)).getTime())
+  })
+
+  it('el recordatorio del día antes dice Hoy o Mañana según el día calendario en Colombia', async () => {
+    const usuarioElena = await Usuario.findOne({ correoInstitucional: CORREOS.elena })
+    const recordatorio = async (sesionId, momento) => {
+      await listar(usuarioElena, new Date(momento))
+      return (await Notificacion.findOne({ usuario: usuarioElena._id, sesion: sesionId, tipo: 'RECORDATORIO' }))?.titulo
+    }
+    // A las 00:00 del mismo día, para una tutoría de esa mañana
+    const { body: deHoy } = await solicitar()
+    await andrea.patch(`/sesiones/${deHoy.id}/confirmar`)
+    assert.equal(await recordatorio(deHoy.id, momentoDeInicio(lunes(4), '00:00')), 'Hoy tienes tutoría con Andrea')
+    // La tarde anterior, para la misma hora del día siguiente
+    const { body: deManana } = await solicitar({ fecha: lunes(5) })
+    await andrea.patch(`/sesiones/${deManana.id}/confirmar`)
+    assert.equal(await recordatorio(deManana.id, momentoDeInicio(lunes(5), FRANJA.horaInicio).getTime() - 20 * 3600000), 'Mañana tienes tutoría con Andrea')
   })
 
   it('cancela con la encuesta, avisa a la otra parte y Coordinación cuenta las razones', async () => {

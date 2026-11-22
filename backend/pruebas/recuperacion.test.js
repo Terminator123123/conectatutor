@@ -144,6 +144,38 @@ describe('Recuperación de acceso por correo', () => {
     assert.equal(conCambio.status, 401)
   })
 
+  it('un ingreso con la contraseña vieja que quedó a medias no abre sesión después de restablecerla', async () => {
+    await request(app).post('/api/auth/recuperacion').send({ correoInstitucional: CORREO })
+    const token = tokenDelCorreo()
+    const retencion = crearRetencion()
+    const compararOriginal = bcrypt.compare
+    // Retiene el ingreso justo después de comparar la contraseña, antes de abrir la sesión
+    bcrypt.compare = async function (...argumentos) {
+      const coincide = await compararOriginal.apply(this, argumentos)
+      if (argumentos[0] === CLAVE_DE_PRUEBA) await retencion.detener()
+      return coincide
+    }
+    let ingresoPendiente
+    try {
+      ingresoPendiente = request(app).post('/api/auth/ingreso').send({ correoInstitucional: CORREO, clave: CLAVE_DE_PRUEBA })
+        .then((respuesta) => respuesta)
+      await retencion.esperarLlegada(ingresoPendiente)
+      const restablecer = await request(app).post('/api/auth/recuperacion/restablecer').send({ token, clave: 'ClaveRecuperada9' })
+      assert.equal(restablecer.status, 200)
+      retencion.soltar()
+      const ingreso = await ingresoPendiente
+      assert.equal(ingreso.status, 401)
+      assert.equal(ingreso.body.token, undefined)
+      await afirmarContrato(ingreso, '/auth/ingreso', 'post')
+    } finally {
+      retencion.soltar()
+      bcrypt.compare = compararOriginal
+      await ingresoPendiente?.catch(() => {})
+    }
+    reiniciarIntentos()
+    assert.equal((await request(app).post('/api/auth/ingreso').send({ correoInstitucional: CORREO, clave: 'ClaveRecuperada9' })).status, 200)
+  })
+
   it('si una recuperación termina mientras se activa la cuenta, el 409 lo dice y la cuenta sigue sin activar', async () => {
     const coordinacion = await clienteDe(CORREOS.administrador)
     const NUEVA = 'cuenta.recuperada@uniguajira.edu.co'

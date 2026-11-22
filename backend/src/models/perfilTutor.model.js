@@ -54,6 +54,12 @@ const perfilTutorSchema = new mongoose.Schema(
         message: 'Una materia no puede repetirse en el perfil',
       },
     },
+    // Materias que Coordinación ya revisó. Una materia nueva queda por verificar hasta que
+    // Coordinación la apruebe; solo las aprobadas aparecen en la oferta pública.
+    materiasAprobadas: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Materia' }],
+      default: [],
+    },
     disponibilidad: {
       type: [franjaSchema],
       default: [],
@@ -76,3 +82,23 @@ perfilTutorSchema.index({ materias: 1 })
 aplicarSalidaJson(perfilTutorSchema)
 
 export const PerfilTutor = mongoose.model('PerfilTutor', perfilTutorSchema)
+
+/** Ids de las materias ofrecidas que Coordinación todavía no aprobó. */
+export function materiasSinAprobar(perfil) {
+  const aprobadas = new Set((perfil.materiasAprobadas ?? []).map((materia) => String(materia._id ?? materia)))
+  return perfil.materias.filter((materia) => !aprobadas.has(String(materia._id ?? materia)))
+}
+
+/**
+ * Perfiles verificados antes de guardar las materias aprobadas: se toman como aprobadas
+ * las que ofrecían en ese momento, una sola vez.
+ */
+export async function prepararAprobaciones() {
+  for await (const perfil of PerfilTutor.find({ estadoVerificacion: EstadoVerificacion.VERIFICADO, materiasAprobadas: { $exists: false } }).select('materias').cursor()) {
+    await PerfilTutor.updateOne(
+      { _id: perfil._id, materiasAprobadas: { $exists: false } },
+      { $set: { materiasAprobadas: perfil.materias } },
+      { timestamps: false },
+    )
+  }
+}

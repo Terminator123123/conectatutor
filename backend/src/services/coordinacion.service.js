@@ -1,5 +1,6 @@
 import { INSTITUCION } from '../config/institucion.js'
 import { Estudiante, PerfilTutor, Programa, Sesion } from '../models/index.js'
+import { materiasSinAprobar } from '../models/perfilTutor.model.js'
 import { cifrarClave } from '../utils/claves.js'
 import { presentarUsuario } from './auth.service.js'
 import { EstadoSesion, EstadoVerificacion, MotivoCancelacion } from '../utils/enums.js'
@@ -19,6 +20,10 @@ async function presentarParaCoordinacion(perfil) {
   const estadisticas = await calcularEstadisticas([perfil._id])
   const salida = presentarPerfil(perfil, estadisticas.get(perfil.id), { propio: true })
   salida.estudiante.correoInstitucional = perfil.estudiante.correoInstitucional
+  // Las materias por verificar van primero: son las que Coordinación tiene que revisar
+  const porVerificar = new Set(salida.materiasPorVerificar)
+  const nueva = (materia) => Number(porVerificar.has(String(materia._id)))
+  salida.materias = [...salida.materias].sort((a, b) => nueva(b) - nueva(a))
   return salida
 }
 
@@ -47,18 +52,33 @@ export async function verificarPerfil(id) {
   }
   perfil.estadoVerificacion = EstadoVerificacion.VERIFICADO
   perfil.motivoRechazo = null
+  perfil.materiasAprobadas = [...perfil.materias]
   await perfil.save()
   return presentarParaCoordinacion(perfil)
 }
 
-/** Rechaza un perfil (o retira una verificación) dejando el motivo para el estudiante. */
+/**
+ * Rechaza un perfil (o retira una verificación) dejando el motivo para el estudiante.
+ * Si el perfil ya tenía materias aprobadas y solo esperaba la revisión de otras nuevas,
+ * se rechazan solo las nuevas: salen de su oferta y el perfil sigue verificado.
+ */
 export async function rechazarPerfil(id, motivo) {
   const perfil = await PerfilTutor.findById(id)
   if (!perfil) throw new HttpError(404, 'El perfil de tutor no existe')
   if (perfil.estadoVerificacion === EstadoVerificacion.RECHAZADO) {
     throw new HttpError(409, 'El perfil ya está rechazado')
   }
+  const porVerificar = new Set(materiasSinAprobar(perfil).map(String))
+  const aprobadas = perfil.materias.filter((materia) => !porVerificar.has(String(materia)))
+  if (perfil.estadoVerificacion === EstadoVerificacion.PENDIENTE && aprobadas.length > 0) {
+    perfil.materias = aprobadas
+    perfil.estadoVerificacion = EstadoVerificacion.VERIFICADO
+    perfil.motivoRechazo = motivo
+    await perfil.save()
+    return presentarParaCoordinacion(perfil)
+  }
   perfil.estadoVerificacion = EstadoVerificacion.RECHAZADO
+  perfil.materiasAprobadas = []
   perfil.motivoRechazo = motivo
   await perfil.save()
   return presentarParaCoordinacion(perfil)

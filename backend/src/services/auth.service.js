@@ -44,11 +44,17 @@ export function firmarToken(usuario, inicio = Math.floor(Date.now() / 1000), ses
 /**
  * Abre la única sesión activa de la cuenta: un ingreso nuevo invalida los tokens de
  * cualquier otro navegador o dispositivo (ver middlewares/autenticar.js).
+ * Con `claveHash`, la sesión solo se abre si la contraseña sigue siendo la que se
+ * comparó: si se cambió o se recuperó entre la comparación y este paso, responde 401.
+ * @param {import('mongoose').Document} usuario
+ * @param {string} [claveHash] Hash de la contraseña con que se validó el ingreso.
  * @returns {Promise<string>} Token de la sesión nueva.
  */
-export async function abrirSesionUnica(usuario) {
+export async function abrirSesionUnica(usuario, claveHash) {
   const sesion = randomBytes(16).toString('hex')
-  await Usuario.updateOne({ _id: usuario._id }, { $set: { sesionActiva: sesion } })
+  const filtro = claveHash === undefined ? { _id: usuario._id } : { _id: usuario._id, claveHash }
+  const { matchedCount } = await Usuario.updateOne(filtro, { $set: { sesionActiva: sesion } })
+  if (matchedCount !== 1) throw new HttpError(401, MENSAJE_CREDENCIALES)
   return firmarToken(usuario, undefined, sesion)
 }
 
@@ -128,7 +134,7 @@ export async function ingresar({ correoInstitucional, clave }) {
   if (!usuario || !coincide) {
     throw new HttpError(401, MENSAJE_CREDENCIALES)
   }
-  return { token: await abrirSesionUnica(usuario), usuario: await presentarUsuario(usuario) }
+  return { token: await abrirSesionUnica(usuario, usuario.claveHash), usuario: await presentarUsuario(usuario) }
 }
 
 /**

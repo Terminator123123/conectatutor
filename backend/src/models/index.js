@@ -1,6 +1,6 @@
 import { Materia } from './materia.model.js'
 import { Notificacion } from './notificacion.model.js'
-import { PerfilTutor } from './perfilTutor.model.js'
+import { PerfilTutor, prepararAprobaciones } from './perfilTutor.model.js'
 import { Programa } from './programa.model.js'
 import { prepararReservas, Sesion } from './sesion.model.js'
 import { Administrador, Estudiante, Usuario } from './usuario.model.js'
@@ -15,4 +15,5 @@ export { Administrador, Estudiante, Materia, Notificacion, PerfilTutor, Programa
 export async function asegurarIndices() {
   await Promise.all([Usuario, Programa, Materia, PerfilTutor, Sesion, Notificacion].map((modelo) => modelo.init()))
   await prepararReservas()
+  await prepararAprobaciones()
 }

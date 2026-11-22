@@ -1,5 +1,6 @@
 import { Estudiante, Materia, PerfilTutor, Sesion } from '../models/index.js'
-import { EstadoSesion, EstadoVerificacion, RolUsuario } from '../utils/enums.js'
+import { materiasSinAprobar } from '../models/perfilTutor.model.js'
+import { ESTADOS_QUE_OCUPAN_FRANJA, EstadoSesion, EstadoVerificacion, RolUsuario } from '../utils/enums.js'
 import { HttpError } from '../utils/HttpError.js'
 
 // Perfiles de tutor: el propio (RQF006, RQF007, RQF026) y la búsqueda pública
@@ -65,13 +66,17 @@ export function presentarPerfil(perfil, estadisticas = SIN_ESTADISTICAS, { propi
     },
     biografia: perfil.biografia,
     tarifaHora: perfil.tarifaHora,
-    estadoVerificacion: perfil.estadoVerificacion,
-    // Las materias retiradas del catálogo no se muestran.
-    materias: perfil.materias.filter((materia) => materia.activa),
+    // Para el público, un perfil con materias aprobadas es verificado aunque tenga otra por revisar
+    estadoVerificacion: !propio && estaPublicado(perfil) ? EstadoVerificacion.VERIFICADO : perfil.estadoVerificacion,
+    // Las materias retiradas del catálogo no se muestran; el público solo ve las aprobadas.
+    materias: (propio ? perfil.materias : materiasPublicas(perfil)).filter((materia) => materia.activa),
     disponibilidad: perfil.disponibilidad,
     ...estadisticas,
   }
-  if (propio) salida.motivoRechazo = perfil.motivoRechazo
+  if (propio) {
+    salida.motivoRechazo = perfil.motivoRechazo
+    salida.materiasPorVerificar = materiasSinAprobar(perfil).map((materia) => String(materia._id ?? materia))
+  }
   return salida
 }
 
@@ -103,6 +108,12 @@ export async function guardarMiPerfil(estudianteId, { biografia, tarifaHora, mat
 
   perfil.set({ biografia, tarifaHora, materias, disponibilidad })
 
+  // Una materia que Coordinación no aprobó manda el perfil a revisión. Mientras tanto,
+  // las materias ya aprobadas siguen publicadas (ver FILTRO_PUBLICADO).
+  if (perfil.estadoVerificacion === EstadoVerificacion.VERIFICADO && materiasSinAprobar(perfil).length > 0) {
+    perfil.estadoVerificacion = EstadoVerificacion.PENDIENTE
+  }
+
   // Un perfil rechazado que se corrige vuelve a la cola de revisión.
   if (perfil.estadoVerificacion === EstadoVerificacion.RECHAZADO) {
     perfil.estadoVerificacion = EstadoVerificacion.PENDIENTE
@@ -132,19 +143,27 @@ export async function guardarMiPerfil(estudianteId, { biografia, tarifaHora, mat
  * @param {number} [filtros.calificacionMinima] Promedio mínimo de 1 a 5.
  */
 /**
- * Perfiles publicados: verificados y con algo que ofrecer (al menos una materia y una franja).
- * Coordinación no verifica un perfil vacío; si uno ya verificado se vacía al editarlo, sale
- * de la búsqueda, del detalle público y de favoritos hasta que vuelva a tener oferta.
+ * Perfiles publicados: ofrecen al menos una materia que Coordinación aprobó y una franja.
+ * Un perfil verificado que agrega otra materia vuelve a PENDIENTE para que la revisen, pero
+ * sigue publicado con las que ya tenía aprobadas. Si se queda sin oferta aprobada al
+ * editarlo, sale de la búsqueda, del detalle público y de favoritos hasta que vuelva a tenerla.
  */
 export const FILTRO_PUBLICADO = Object.freeze({
-  estadoVerificacion: EstadoVerificacion.VERIFICADO,
-  'materias.0': { $exists: true },
+  estadoVerificacion: { $in: [EstadoVerificacion.VERIFICADO, EstadoVerificacion.PENDIENTE] },
   'disponibilidad.0': { $exists: true },
+  $expr: { $gt: [{ $size: { $setIntersection: ['$materias', { $ifNull: ['$materiasAprobadas', []] }] } }, 0] },
 })
+
+/** Materias ofrecidas que Coordinación aprobó: las únicas que ve el público. */
+function materiasPublicas(perfil) {
+  const porVerificar = new Set(materiasSinAprobar(perfil).map((materia) => String(materia._id ?? materia)))
+  return perfil.materias.filter((materia) => !porVerificar.has(String(materia._id ?? materia)))
+}
 
 /** Lo mismo que FILTRO_PUBLICADO para un perfil ya cargado. */
 export function estaPublicado(perfil) {
-  return perfil.estadoVerificacion === EstadoVerificacion.VERIFICADO && perfil.materias.length > 0 && perfil.disponibilidad.length > 0
+  return [EstadoVerificacion.VERIFICADO, EstadoVerificacion.PENDIENTE].includes(perfil.estadoVerificacion)
+    && materiasPublicas(perfil).length > 0 && perfil.disponibilidad.length > 0
 }
 
 export async function buscarTutores({ materia, programa, sede, dia, precioMaximo, soloGratuitas, calificacionMinima } = {}) {
@@ -155,6 +174,7 @@ export async function buscarTutores({ materia, programa, sede, dia, precioMaximo
     // Una materia retirada del catálogo no produce resultados.
     if (!(await Materia.exists({ _id: materia, activa: true }))) return []
     filtro.materias = materia
+    filtro.materiasAprobadas = materia
   }
   if (dia) filtro['disponibilidad.dia'] = dia
   if (soloGratuitas) {
@@ -188,7 +208,8 @@ function abreviarNombre(nombre) {
 /**
  * Devuelve el perfil público de un tutor con sus reseñas (RQF011).
  * Un perfil que no está publicado (sin verificar, o sin materias o franjas) solo lo
- * ven su dueño y el administrador; para los demás no existe.
+ * ven su dueño, el administrador y quien tiene una tutoría vigente con él; para los
+ * demás no existe.
  * @param {string} perfilId
  * @param {import('mongoose').Document} usuario Quien consulta.
  */
@@ -199,7 +220,12 @@ export async function obtenerDetalle(perfilId, usuario) {
   // Sin sesión (visitante) solo se ven perfiles verificados.
   const esDueno = Boolean(usuario) && perfil.estudiante._id.equals(usuario._id)
   const esAdministrador = usuario?.tipo === RolUsuario.ADMINISTRADOR
-  if (!estaPublicado(perfil) && !esDueno && !esAdministrador) {
+  // Quien tiene una tutoría pendiente o confirmada con este tutor lo sigue viendo,
+  // para poder gestionarla aunque el tutor haya retirado su oferta pública.
+  const tieneSesionVigente = async () => Boolean(usuario) && Boolean(await Sesion.exists({
+    tutor: perfil._id, solicitante: usuario._id, estado: { $in: ESTADOS_QUE_OCUPAN_FRANJA },
+  }))
+  if (!estaPublicado(perfil) && !esDueno && !esAdministrador && !(await tieneSesionVigente())) {
     throw new HttpError(404, 'El tutor no existe')
   }
 

@@ -43,7 +43,10 @@ export const esquemasTutores = {
       { $ref: '#/components/schemas/TutorPublico' },
       {
         type: 'object',
-        properties: { motivoRechazo: { type: 'string', nullable: true, description: 'Motivo del rechazo, si la coordinación lo rechazó' } },
+        properties: {
+          motivoRechazo: { type: 'string', nullable: true, description: 'Motivo del rechazo, si la coordinación lo rechazó' },
+          materiasPorVerificar: { type: 'array', items: { type: 'string' }, description: 'Ids de las materias ofrecidas que Coordinación todavía no aprobó; el público no las ve' },
+        },
       },
     ],
   },
@@ -54,6 +57,7 @@ export const esquemasTutores = {
         type: 'object',
         properties: {
           motivoRechazo: { type: 'string', nullable: true, description: 'Solo lo reciben el dueño del perfil y el administrador' },
+          materiasPorVerificar: { type: 'array', items: { type: 'string' }, description: 'Solo lo reciben el dueño del perfil y el administrador' },
           resenas: {
             type: 'array',
             items: {

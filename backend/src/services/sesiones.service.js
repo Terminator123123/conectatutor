@@ -159,10 +159,14 @@ export async function solicitar(usuario, { tutor, materia, fecha, franja, tema }
   if (perfil.estudiante.equals(usuario._id)) {
     throw errorDeRegla('R1', 'No puedes pedirte una tutoría a ti mismo')
   }
-  if (perfil.estadoVerificacion !== EstadoVerificacion.VERIFICADO) {
+  // Un perfil en revisión por una materia nueva sigue atendiendo las que ya tenía aprobadas
+  const aprobadas = perfil.materiasAprobadas ?? []
+  if (perfil.estadoVerificacion === EstadoVerificacion.RECHAZADO
+    || (perfil.estadoVerificacion === EstadoVerificacion.PENDIENTE && aprobadas.length === 0)) {
     throw errorDeRegla('R4', 'Solo puedes solicitar tutorías a tutores verificados')
   }
   const ofreceLaMateria = perfil.materias.some((ofrecida) => ofrecida.equals(materia))
+    && aprobadas.some((aprobada) => aprobada.equals(materia))
   if (!ofreceLaMateria || !(await Materia.exists({ _id: materia, activa: true }))) {
     throw errorDeRegla('R2', 'El tutor no ofrece la materia solicitada')
   }
@@ -345,8 +349,8 @@ export async function responderReprogramacion(id, usuario, acepta) {
  * de solicitud no las ofrezca. Solo fecha y hora: nada sobre quién reservó.
  */
 export async function listarOcupacion(perfilId) {
-  const perfil = await PerfilTutor.findById(perfilId).select('estadoVerificacion')
-  if (!perfil || perfil.estadoVerificacion !== EstadoVerificacion.VERIFICADO) {
+  const perfil = await PerfilTutor.findById(perfilId).select('estadoVerificacion materiasAprobadas')
+  if (!perfil || (perfil.estadoVerificacion !== EstadoVerificacion.VERIFICADO && !perfil.materiasAprobadas?.length)) {
     throw new HttpError(404, 'El tutor no existe')
   }
   const sesiones = await Sesion.find({

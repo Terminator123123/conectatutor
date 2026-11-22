@@ -4,10 +4,18 @@ import assert from 'node:assert/strict'
 import { after, before, beforeEach, describe, it } from 'node:test'
 import { Materia, PerfilTutor, Programa, Sesion, Usuario } from '../src/models/index.js'
 import { cargarSemilla } from '../src/services/semilla.service.js'
+import { hoyEnColombia } from '../src/utils/fechas.js'
 import { clienteDe, CORREOS } from './ayudas/sesion.js'
 
 const ID_INEXISTENTE = '6728f1a2b3c4d5e6f7a8b9c0'
 const nombres = (respuesta) => respuesta.body.map((tutor) => tutor.estudiante.nombre)
+
+function proximoLunes() {
+  const dia = new Date(`${hoyEnColombia()}T00:00:00.000Z`)
+  do dia.setUTCDate(dia.getUTCDate() + 1)
+  while (dia.getUTCDay() !== 1)
+  return dia.toISOString().slice(0, 10)
+}
 
 async function perfilDe(correo) {
   const usuario = await Usuario.findOne({ correoInstitucional: correo })
@@ -166,10 +174,12 @@ describe('E3 · Tutores', () => {
 
     it('un perfil verificado que se queda sin materias o sin franjas sale de la oferta pública y vuelve al completarlo', async () => {
       const perfil = await perfilDe(CORREOS.andrea)
+      // Felipe no tiene tutorías vigentes con Andrea (la de la semilla está cancelada)
+      const felipe = await clienteDe(CORREOS.felipe)
       const publico = async () => ({
-        busqueda: nombres(await elena.get('/tutores')).includes('Andrea Salcedo'),
-        detalle: (await elena.get(`/tutores/${perfil.id}`)).status,
-        favorito: (await elena.put(`/favoritos/${perfil.id}`)).status,
+        busqueda: nombres(await felipe.get('/tutores')).includes('Andrea Salcedo'),
+        detalle: (await felipe.get(`/tutores/${perfil.id}`)).status,
+        favorito: (await felipe.put(`/favoritos/${perfil.id}`)).status,
       })
       for (const vacio of [{ materias: [] }, { disponibilidad: [] }, { materias: [], disponibilidad: [] }]) {
         const guardado = await andrea.put('/tutores/mi-perfil', datosPerfil(vacio))
@@ -182,7 +192,86 @@ describe('E3 · Tutores', () => {
       await andrea.put('/tutores/mi-perfil', datosPerfil())
       assert.deepEqual(await publico(), { busqueda: true, detalle: 200, favorito: 200 })
       await andrea.put('/tutores/mi-perfil', datosPerfil({ materias: [] }))
-      assert.deepEqual((await elena.get('/favoritos')).body, [])
+      assert.deepEqual((await felipe.get('/favoritos')).body, [])
+    })
+
+    it('quien tiene una tutoría vigente con un tutor que retiró su oferta sigue viendo su perfil para gestionarla', async () => {
+      const perfil = await perfilDe(CORREOS.bruno)
+      const materia = await Materia.findOne({ codigo: 'ADM-02' })
+      const solicitud = await elena.post('/sesiones', {
+        tutor: perfil.id, materia: materia.id, fecha: proximoLunes(), tema: 'Resolver el taller de planeación',
+        franja: { dia: 'LUNES', horaInicio: '10:00', horaFin: '12:00' },
+      })
+      assert.equal(solicitud.status, 201)
+      await PerfilTutor.updateOne({ _id: perfil._id }, { $set: { materias: [] } })
+      assert.ok(!nombres(await elena.get('/tutores')).includes('Bruno Valdés'))
+      assert.equal((await elena.get(`/tutores/${perfil.id}`)).status, 200)
+      // Quien no tiene tutoría con él no lo ve; Elena tampoco cuando su tutoría deja de estar vigente
+      assert.equal((await diego.get(`/tutores/${perfil.id}`)).status, 404)
+      assert.equal((await anonimo.get(`/tutores/${perfil.id}`)).status, 404)
+      await Sesion.updateOne({ _id: solicitud.body.id }, { $set: { estado: 'CANCELADA' } })
+      assert.equal((await elena.get(`/tutores/${perfil.id}`)).status, 404)
+    })
+
+    describe('Materias nuevas de un tutor verificado', () => {
+      let perfil, adm02, felipe
+      const buscarPor = async (materia) => nombres(await felipe.get(`/tutores?materia=${materia.id}`))
+      const proximoMartes = () => {
+        const dia = new Date(`${hoyEnColombia()}T00:00:00.000Z`)
+        do dia.setUTCDate(dia.getUTCDate() + 1)
+        while (dia.getUTCDay() !== 2)
+        return dia.toISOString().slice(0, 10)
+      }
+
+      beforeEach(async () => {
+        perfil = await perfilDe(CORREOS.andrea)
+        adm02 = await Materia.findOne({ codigo: 'ADM-02' })
+        felipe = await clienteDe(CORREOS.felipe)
+        const guardado = await andrea.put('/tutores/mi-perfil', datosPerfil({ materias: [...materias.map((m) => m.id), adm02.id] }))
+        assert.equal(guardado.status, 200)
+        assert.equal(guardado.body.estadoVerificacion, 'PENDIENTE')
+        assert.deepEqual(guardado.body.materiasPorVerificar, [adm02.id])
+      })
+
+      it('queda por verificar: no se publica ni se puede pedir, y las materias ya aprobadas siguen publicadas', async () => {
+        assert.ok(!(await buscarPor(adm02)).includes('Andrea Salcedo'))
+        assert.ok((await buscarPor(materias[0])).includes('Andrea Salcedo'))
+        const detalle = await felipe.get(`/tutores/${perfil.id}`)
+        assert.equal(detalle.status, 200)
+        assert.equal(detalle.body.estadoVerificacion, 'VERIFICADO')
+        assert.ok(!detalle.body.materias.some((materia) => materia.id === adm02.id))
+        assert.equal(detalle.body.materiasPorVerificar, undefined)
+        const pedida = await felipe.post('/sesiones', {
+          tutor: perfil.id, materia: adm02.id, fecha: proximoMartes(), tema: 'Repasar el taller de la semana',
+          franja: { dia: 'MARTES', horaInicio: '08:00', horaFin: '10:00' },
+        })
+        assert.equal(pedida.status, 409)
+        assert.equal(pedida.body.regla, 'R2')
+        // Coordinación la ve en la cola, con la materia nueva primero
+        const cola = await administrador.get('/coordinacion/perfiles')
+        const enCola = cola.body.find((item) => item.id === perfil.id)
+        assert.ok(enCola)
+        assert.equal(enCola.materias[0].id, adm02.id)
+      })
+
+      it('Coordinación la aprueba y desde ese momento se publica', async () => {
+        assert.equal((await administrador.patch(`/coordinacion/perfiles/${perfil.id}/verificar`)).status, 200)
+        assert.ok((await buscarPor(adm02)).includes('Andrea Salcedo'))
+        const propio = await andrea.get('/tutores/mi-perfil')
+        assert.equal(propio.body.estadoVerificacion, 'VERIFICADO')
+        assert.deepEqual(propio.body.materiasPorVerificar, [])
+      })
+
+      it('si Coordinación la rechaza, sale de la oferta y el perfil sigue verificado con las demás', async () => {
+        const rechazo = await administrador.patch(`/coordinacion/perfiles/${perfil.id}/rechazar`, { motivo: 'No adjuntó la nota de esa materia' })
+        assert.equal(rechazo.status, 200)
+        assert.equal(rechazo.body.estadoVerificacion, 'VERIFICADO')
+        const propio = await andrea.get('/tutores/mi-perfil')
+        assert.ok(!propio.body.materias.some((materia) => materia.id === adm02.id))
+        assert.equal(propio.body.motivoRechazo, 'No adjuntó la nota de esa materia')
+        assert.ok(!(await buscarPor(adm02)).includes('Andrea Salcedo'))
+        assert.ok((await buscarPor(materias[0])).includes('Andrea Salcedo'))
+      })
     })
 
     it('PUT guarda cambios del perfil existente sin perder la verificación (RQF026)', async () => {

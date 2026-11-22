@@ -192,6 +192,8 @@ export default function DetalleSesion() {
     {confirmada && <strong className="ct-tarifa ct-tarifa-confirmada">{tarifa === null ? 'Tutoría gratuita' : 'Tarifa informativa: ' + formatearMoneda(tarifa * horas)}</strong>}
     <p>{sesion.getTema()}</p>
     {!confirmada && <strong className="ct-tarifa">{horas} horas, {tarifa === null ? 'Tutoría gratuita' : 'Tarifa informativa: ' + formatearMoneda(tarifa * horas)}</strong>}
+    {confirmada && persona.getCorreo() && <div className="ct-dato"><small>Correo para acordar el lugar o el enlace</small>
+      <a href={`mailto:${persona.getCorreo()}`}>{persona.getCorreo()}</a></div>}
     {sesion.getMotivo() && <div className="ct-dato"><small>Motivo</small>{sesion.getMotivo()}</div>}
     {sesion.getCalificacion() && <p>Calificaste con {sesion.getCalificacion().getPuntaje()} de 5</p>}
     {confirmada && <a className="ct-boton btn-ct-primario" target="_blank" rel="noreferrer" href={enlaceGoogleCalendar({

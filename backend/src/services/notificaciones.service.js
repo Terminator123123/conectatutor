@@ -1,6 +1,6 @@
 import { Notificacion, PerfilTutor, Sesion } from '../models/index.js'
 import { EstadoSesion, TipoNotificacion } from '../utils/enums.js'
-import { aTextoDia, momentoDeInicio } from '../utils/fechas.js'
+import { aTextoDia, hoyEnColombia, momentoDeInicio } from '../utils/fechas.js'
 
 // Campana de notificaciones (RQF022). Los avisos de cambios se guardan cuando ocurren;
 // los recordatorios se crean al consultar la campana, una sola vez cada uno (campo `clave`).
@@ -120,7 +120,8 @@ async function crearRecordatorios(usuario, ahora = new Date()) {
     } else if (falta > HORA && falta <= 24 * HORA) {
       await crear({
         ...base, tipo: TipoNotificacion.RECORDATORIO, clave: `24h:${sesion._id}:${dia}:${sesion.franja.horaInicio}`,
-        titulo: `Mañana tienes tutoría con ${conQuien}`, texto: resumen(sesion),
+        // Hoy o mañana según el día calendario de Colombia, no según las horas que faltan
+        titulo: `${dia === hoyEnColombia(ahora) ? 'Hoy' : 'Mañana'} tienes tutoría con ${conQuien}`, texto: resumen(sesion),
       })
     }
   }
