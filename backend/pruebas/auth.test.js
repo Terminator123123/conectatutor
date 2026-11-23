@@ -189,6 +189,16 @@ describe('E2 · Autenticación', () => {
   })
 
   describe('GET /api/auth/yo', () => {
+    it('una respuesta con sesión no se guarda en caché ni se revalida con ETag', async () => {
+      const { body } = await ingresar('andrea.salcedo@uniguajira.edu.co')
+      const respuesta = await request(app).get('/api/auth/yo').set('Authorization', `Bearer ${body.token}`)
+      assert.equal(respuesta.status, 200)
+      assert.equal(respuesta.headers['cache-control'], 'no-store')
+      assert.equal(respuesta.headers.etag, undefined)
+      const publica = await request(app).get('/api/programas')
+      assert.equal(publica.headers.etag, undefined, 'tampoco las consultas públicas responden 304')
+    })
+
     it('devuelve la cuenta del token, con programa y resumen del perfil de tutor', async () => {
       const { body } = await ingresar('andrea.salcedo@uniguajira.edu.co')
       const respuesta = await request(app).get('/api/auth/yo').set('Authorization', `Bearer ${body.token}`)

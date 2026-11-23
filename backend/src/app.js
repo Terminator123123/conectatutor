@@ -24,6 +24,8 @@ import { tutoresRouter } from './routes/tutores.routes.js'
 export const app = express()
 
 app.disable('x-powered-by')
+// Sin ETag: un 304 haría que el navegador reutilice encabezados guardados, como un X-Token-Renovado viejo
+app.set('etag', false)
 
 // En producción la API está detrás del proxy de la plataforma: así req.ip es la dirección real del cliente.
 if (env.esProduccion) app.set('trust proxy', 1)

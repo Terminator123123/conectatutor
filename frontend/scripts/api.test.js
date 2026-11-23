@@ -322,3 +322,57 @@ test('una petición que no recibe respuesta termina como falta de conexión en v
     assert.ok(relojes.length >= 1)
   } finally { globalThis.setTimeout = original }
 })
+
+// Token sin firma válida: el cliente solo lee sub, sid, ini y exp.
+function tokenFalso({ sub = 'cuenta', sid, ini = 1000, exp }) {
+  const parte = (datos) => Buffer.from(JSON.stringify(datos)).toString('base64url')
+  return `${parte({ alg: 'HS256', typ: 'JWT' })}.${parte({ sub, sid, ini, exp })}.firma`
+}
+
+test('pide a la API sin caché del navegador', async () => {
+  const { cliente } = preparar(async (_url, opciones) => {
+    assert.equal(opciones.cache, 'no-store')
+    return json({ ok: true })
+  })
+  await cliente.peticion('/auth/yo')
+})
+
+test('un token renovado de otra sesión o ya vencido no reemplaza la sesión (respuesta vieja en caché)', async () => {
+  const ahora = Date.UTC(2026, 10, 23, 0, 12, 43)
+  const segundos = Math.floor(ahora / 1000)
+  const actual = tokenFalso({ sid: 'f72c02', ini: segundos - 10, exp: segundos + 1790 })
+  // Lo que traía la respuesta guardada por el navegador desde el 21 de noviembre
+  const viejo = tokenFalso({ sid: 'ee79d3', ini: segundos - 165_000, exp: segundos - 163_000 })
+  let expiraciones = 0
+  const alarmas = []
+  const { cliente } = preparar(async () => new Response('{}', {
+    status: 200, headers: { 'Content-Type': 'application/json', 'X-Token-Renovado': viejo },
+  }), {
+    reloj: () => ahora,
+    alExpirarSesion: () => { expiraciones += 1 },
+    temporizador: { programar: (fn, ms) => { alarmas.push({ fn, ms }); return alarmas.length }, cancelar: () => {} },
+  })
+  cliente.guardarToken(actual)
+  await cliente.peticion('/notificaciones')
+  assert.equal(cliente.obtenerToken(), actual, 'la sesión nueva sigue guardada')
+  assert.equal(alarmas.at(-1).ms, 1_790_000, 'la alarma sigue siendo la de la sesión nueva')
+  assert.equal(expiraciones, 0)
+
+  // Misma sesión pero ya vencido: tampoco se acepta
+  const vencido = tokenFalso({ sid: 'f72c02', ini: segundos - 10, exp: segundos - 1 })
+  const otro = preparar(async () => new Response('{}', { status: 200, headers: { 'X-Token-Renovado': vencido } }), { reloj: () => ahora })
+  otro.cliente.guardarToken(actual)
+  await otro.cliente.peticion('/notificaciones')
+  assert.equal(otro.cliente.obtenerToken(), actual)
+})
+
+test('un token renovado de la misma sesión que vence más tarde sí se guarda', async () => {
+  const ahora = Date.UTC(2026, 10, 23, 0, 12, 43)
+  const segundos = Math.floor(ahora / 1000)
+  const actual = tokenFalso({ sid: 'f72c02', ini: segundos - 600, exp: segundos + 1200 })
+  const renovado = tokenFalso({ sid: 'f72c02', ini: segundos - 600, exp: segundos + 1800 })
+  const { cliente } = preparar(async () => new Response('{}', { status: 200, headers: { 'X-Token-Renovado': renovado } }), { reloj: () => ahora })
+  cliente.guardarToken(actual)
+  await cliente.peticion('/auth/yo')
+  assert.equal(cliente.obtenerToken(), renovado)
+})

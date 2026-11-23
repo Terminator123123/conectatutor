@@ -28,6 +28,9 @@ const SEGUNDOS_ENTRE_RENOVACIONES = 60
  * @returns {Promise<import('mongoose').Document>}
  */
 async function usuarioDelToken(req, res) {
+  // Una respuesta con sesión es personal y puede traer un token renovado: el navegador no la debe guardar,
+  // porque al reutilizarla entregaría a la aplicación un token de otra sesión o ya vencido.
+  res.set('Cache-Control', 'no-store')
   const encabezado = req.get('authorization') ?? ''
   const [esquema, token] = encabezado.split(' ')
   if (esquema !== 'Bearer' || !token) {

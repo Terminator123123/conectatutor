@@ -151,6 +151,18 @@ export function crearClienteApi({
     if (accesoVigente(turno)) almacen.removeItem(CLAVE_ACCESO)
   }
 
+  /**
+   * Un token renovado solo se acepta si es de la misma sesión que el enviado y vence más tarde y en el futuro.
+   * Así una respuesta vieja (por ejemplo, servida desde la caché del navegador) no puede poner un token de
+   * otra sesión ni uno vencido, que cerraría la sesión al instante.
+   */
+  function renovacionValida(enviado, renovado) {
+    const sesion = sesionDelToken(renovado)
+    const vence = vencimientoDelToken(renovado)
+    return sesion !== null && sesion === sesionDelToken(enviado) && vence !== null && vence > reloj()
+      && vence >= (vencimientoDelToken(enviado) ?? 0)
+  }
+
   programarVencimiento(obtenerToken())
 
   /**
@@ -201,7 +213,8 @@ export function crearClienteApi({
         const alAbortar = () => tope.abort()
         signal?.addEventListener?.('abort', alAbortar, { once: true })
         try {
-          respuesta = await fetchImpl(url.href, { method: metodo, headers, body, signal: tope.signal })
+          // Sin caché del navegador: una respuesta guardada traería el encabezado X-Token-Renovado de otra sesión
+          respuesta = await fetchImpl(url.href, { method: metodo, headers, body, signal: tope.signal, cache: 'no-store' })
         } catch (error) {
           if (!vencio) throw error // cancelación pedida por quien llama
           throw Object.assign(new Error('Sin respuesta'), { cause: error, name: 'SinRespuesta' })
@@ -232,7 +245,7 @@ export function crearClienteApi({
     }
     // Cada uso renueva el token: la sesión sigue mientras haya actividad (las consultas automáticas no lo renuevan)
     const renovado = respuesta.headers?.get?.(ENCABEZADO_TOKEN_RENOVADO)
-    if (renovado && respuesta.ok && token && revisionSesion === revisionAlEnviar && obtenerToken() === token) {
+    if (renovado && respuesta.ok && token && revisionSesion === revisionAlEnviar && obtenerToken() === token && renovacionValida(token, renovado)) {
       almacen.setItem(CLAVE_TOKEN, renovado)
       programarVencimiento(renovado)
     }
