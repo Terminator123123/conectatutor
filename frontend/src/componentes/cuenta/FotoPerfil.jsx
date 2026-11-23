@@ -1,5 +1,5 @@
 // Cambia la foto de perfil: la reduce en el navegador a 320 × 320 y advierte qué imágenes no se permiten.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { repositorio } from '../../servicios/instancias.js'
 import { avisarFotoCambiada } from '../../servicios/fotos.js'
 import Avatar from '../ui/Avatar.jsx'
@@ -32,7 +32,16 @@ export default function FotoPerfil({ usuario }) {
   const [estado, setEstado] = useState('')
   const [error, setError] = useState('')
   const [aviso, setAviso] = useState('')
+  const [saliendo, setSaliendo] = useState(false)
   const idEntrada = `foto-${usuario.getId()}`
+
+  // El aviso se ve unos segundos y se cierra solo con una animación.
+  useEffect(() => {
+    if (!aviso) return
+    const salir = setTimeout(() => setSaliendo(true), 2600)
+    const cerrar = setTimeout(() => { setAviso(''); setSaliendo(false) }, 3000)
+    return () => { clearTimeout(salir); clearTimeout(cerrar) }
+  }, [aviso])
 
   async function elegir(evento) {
     const archivo = evento.target.files?.[0]
@@ -44,13 +53,13 @@ export default function FotoPerfil({ usuario }) {
     try { setVista(await prepararImagen(archivo)) } catch { setError('No pudimos leer esa imagen. Prueba con otra.') }
   }
   async function guardar() {
-    setEstado('guardando'); setError('')
+    setEstado('guardando'); setError(''); setSaliendo(false)
     try { await repositorio.guardarFoto(vista); setVista(''); avisarFotoCambiada(); setAviso('Foto actualizada.') }
     catch (fallo) { setError(fallo.message) }
     finally { setEstado('') }
   }
   async function quitar() {
-    setEstado('quitando'); setError('')
+    setEstado('quitando'); setError(''); setSaliendo(false)
     try { await repositorio.quitarFoto(); avisarFotoCambiada(); setAviso('Quitamos tu foto. Se mostrarán tus iniciales.') }
     catch (fallo) { setError(fallo.message) }
     finally { setEstado('') }
@@ -77,6 +86,8 @@ export default function FotoPerfil({ usuario }) {
       <p><strong>Cuida lo que subes.</strong> Tu foto la ven otros estudiantes. Usa una imagen tuya y apropiada para un espacio académico. No subas desnudos ni contenido sexual, violencia, armas o drogas, símbolos de odio, documentos con datos personales ni fotos de otras personas sin su permiso. Cualquier estudiante puede reportar un perfil con una foto inapropiada.</p>
     </div>
     {error && <MensajeError mensaje={error} />}
-    <p role="status" className={aviso ? 'ct-aviso' : 'visually-hidden'}>{aviso}</p>
+    <p role="status" className={aviso ? `ct-aviso-foto${saliendo ? ' ct-aviso-foto-saliendo' : ''}` : 'visually-hidden'}>
+      {aviso && <><i className="bi bi-check-circle-fill" aria-hidden="true" /> {aviso}</>}
+    </p>
   </section>
 }

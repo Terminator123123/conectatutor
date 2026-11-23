@@ -25,7 +25,7 @@ export default function Reportes() {
     <EstadoVacio
       icono="bi-shield-check"
       titulo={vista === 'pendientes' ? 'No hay reportes pendientes' : 'No hay reportes resueltos'}
-      texto="Aquí aparecerán los reportes de la comunidad." />}
+      texto="Reportes de la comunidad." />}
     <Link className="ct-boton btn-ct-secundario" to="/admin/verificacion">Volver a Coordinación</Link>
   </section>
 }

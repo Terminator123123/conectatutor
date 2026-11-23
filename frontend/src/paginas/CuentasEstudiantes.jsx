@@ -63,8 +63,8 @@ export default function CuentasEstudiantes() {
   return <section className="ct-cuentas-estudiantes" aria-labelledby="titulo-cuentas">
     <h1 id="titulo-cuentas">Cuentas de estudiantes</h1>
     <p className="ct-texto-secundario">
-      Crea la cuenta con los datos de matrícula. El estudiante ingresa con su correo institucional y su documento de identidad
-      como contraseña inicial; en su primer ingreso debe crear una contraseña propia y aceptar el tratamiento de datos.
+      Registra a cada estudiante con sus datos de matrícula. Ingresa con su correo institucional y su documento de identidad;
+      en el primer ingreso crea su propia contraseña y acepta el tratamiento de datos.
     </p>
     {creada && <p className="ct-aviso" role="status">
       Cuenta creada para {creada.nombre}. Ya puede ingresar con {creada.correo} y su documento.
@@ -74,7 +74,7 @@ export default function CuentasEstudiantes() {
       : <form noValidate onSubmit={enviar} className="ct-cuenta-seccion">
         <CampoFormulario etiqueta="Nombre completo" nombre="nombre" valor={campos.nombre} alCambiar={cambiar('nombre')} deshabilitado={enviando} autoComplete="off" />
         <CampoFormulario etiqueta="Correo institucional" nombre="correoInstitucional" tipo="email" valor={campos.correoInstitucional}
-          alCambiar={cambiar('correoInstitucional')} deshabilitado={enviando} autoComplete="off" placeholder={`nombre.apellido@${INSTITUCION.dominioCorreo}`} />
+          alCambiar={cambiar('correoInstitucional')} deshabilitado={enviando} autoComplete="off" placeholder={`nombre@${INSTITUCION.dominioCorreo}`} />
         <CampoFormulario etiqueta="Documento de identidad" nombre="documento" valor={campos.documento} alCambiar={cambiar('documento')}
           deshabilitado={enviando} autoComplete="off" ayuda="Será la contraseña inicial. No se guarda en claro." />
         <CampoFormulario etiqueta="Programa" tipo="select" valor={campos.programa} alCambiar={cambiar('programa')} deshabilitado={enviando}

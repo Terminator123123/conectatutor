@@ -292,7 +292,7 @@ export default function VerificacionTutores() {
     </section>
 
   return <section className="ct-solicitante ct-tutor">
-    <span className="ct-etiqueta-admin">SOLO ADMINISTRACIÓN</span>
+    <span className="ct-etiqueta-admin">ADMINISTRACIÓN</span>
     <h1 className="ct-solo-escritorio">Coordinación</h1>
     <div role="tablist" aria-label="Vistas de Coordinación" className="ct-pestanas" onKeyDown={usarFlechas}>
       {[['perfiles', 'Perfiles por verificar'], ['panel', 'Panel de permanencia']].map(([valor, etiqueta]) => <button

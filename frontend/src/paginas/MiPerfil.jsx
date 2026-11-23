@@ -376,7 +376,7 @@ export default function MiPerfil() {
     </header>
     <Boton variante="secundario" anchoCompleto alHacerClic={() => setEditando(!editando)}>{editando ? 'Volver a mi perfil' : 'Editar datos del perfil'}</Boton>
     {!perfil && <Link className="ct-boton btn-ct-secundario ct-boton-completo" to="/perfil?completar=1">Completar perfil</Link>}
-    {!perfil ? <section className="ct-tutor-seccion">
+    {!perfil ? <section className="ct-tutor-seccion ct-quiero-ser-tutor">
       <h2>Quiero ser tutor</h2>
       <p>Comparte lo que sabes con estudiantes de tu sede. Coordinación revisa cada perfil antes de que aparezca en la búsqueda.</p>
       <form noValidate onSubmit={(evento) => guardarBiografia(evento, true)} className="ct-tutor-formulario">
@@ -534,9 +534,11 @@ export default function MiPerfil() {
       <Link className="ct-boton btn-ct-secundario ct-boton-completo" to="/sesiones?vista=resumen-tutor">Mis sesiones</Link>
     </>}
     <p className="ct-apoyo">Permanencia {estudiante.getSede()}: <a href={`mailto:${correo}`}>{correo}</a></p>
-    <Link className="ct-enlace-texto" to="/favoritos">Tutores favoritos</Link>
-    <Link className="ct-enlace-texto" to="/notificaciones">Notificaciones</Link>
-    <a className="ct-enlace-texto" href={INSTITUCION.urlTratamientoDatos} target="_blank" rel="noreferrer">Aviso de privacidad</a>
+    <nav className="ct-enlaces-perfil" aria-label="Más opciones">
+      <Link className="ct-enlace-texto" to="/favoritos">Tutores favoritos</Link>
+      <Link className="ct-enlace-texto" to="/notificaciones">Notificaciones</Link>
+      <a className="ct-enlace-texto" href={INSTITUCION.urlTratamientoDatos} target="_blank" rel="noreferrer">Aviso de privacidad</a>
+    </nav>
     <Link className="ct-boton btn-ct-secundario ct-boton-completo" to="/perfil?editar=1"><i className="bi bi-gear" aria-hidden="true" /> Configuración de la cuenta</Link>
     <Boton variante="secundario" anchoCompleto alHacerClic={() => { cerrarSesion(); navigate('/') }}>Salir</Boton>
   </section>

@@ -1,4 +1,4 @@
-// Explica el aporte de una calificación al promedio calculado con sesiones reales.
+// Confirma que la reseña quedó publicada y muestra el nuevo promedio del tutor.
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAutenticacion } from '../contexto/useAutenticacion.js'
@@ -41,22 +41,11 @@ export default function PromedioSesion() {
   const estaIncluida = resenas.some((resena) => resena.puntaje === nota.getPuntaje()
     && resena.resena === nota.getResena() && new Date(resena.fecha).getTime() === nota.getFecha().getTime())
   if (!estaIncluida) return <EstadoVacio titulo="La valoración ya no está disponible" accion={{ etiqueta:'Volver a mis sesiones', ruta:'/sesiones' }} />
-  const cantidadAntes = resenas.length - 1
-  const sumaDespues = resenas.reduce((total, resena) => total + resena.puntaje, 0)
-  const sumaAntes = sumaDespues - nota.getPuntaje()
-  const promedio = sumaDespues / resenas.length
-  const numero = (valor, decimales = 1) => valor.toFixed(decimales).replace('.', ',')
+  const promedio = resenas.reduce((total, resena) => total + resena.puntaje, 0) / resenas.length
+  const cantidad = `${resenas.length} ${resenas.length === 1 ? 'reseña' : 'reseñas'}`
   return <section className="ct-estado-formulario">
-    <h1>Tu reseña ya forma parte del promedio
-    </h1>
-    <div className="ct-dato">
-        <small>Antes
-      </small>
-      {cantidadAntes ? `${numero(sumaAntes / cantidadAntes)} de 5, ${cantidadAntes} ${cantidadAntes === 1 ? 'reseña' : 'reseñas'}, suma: ${sumaAntes}` : 'Sin reseñas anteriores, suma: 0'}
-    </div>
-    <div className="ct-dato"><small>Nueva calificación</small>{sesion.getCalificacion().getPuntaje()} de 5, 1 reseña nueva</div>
-    <div className="ct-dato"><small>Después</small>{sumaDespues} ÷ {resenas.length} = {numero(promedio, 2)}, mostrado: {numero(promedio)} de 5</div>
-    <p className="ct-promedio-aclaracion">La comparación «Antes» excluye esta reseña del cálculo actual.</p>
+    <h1>¡Gracias!</h1>
+    <p>Tu reseña quedó publicada. El tutor ahora tiene ★ {promedio.toFixed(1).replace('.', ',')} con {cantidad}.</p>
     <div className="ct-estado-formulario-acciones"><Link className="ct-boton btn-ct-primario" to="/sesiones?estado=finalizadas">Volver a mis sesiones</Link></div>
   </section>
 }

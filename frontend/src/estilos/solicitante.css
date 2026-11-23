@@ -349,7 +349,6 @@
 .ct-filtros-rapidos { padding:0; }
 .ct-conteo { margin:16px 0; }
 
-.ct-estado-formulario > .ct-promedio-aclaracion { font-size:12px; line-height:16px; color:var(--ct-texto-secundario); }
 @media(min-width:768px) and (max-width:1099px) { .ct-enlace-promedio { max-width:343px; } }
 
 @media(min-width:1100px) {

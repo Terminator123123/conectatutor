@@ -699,3 +699,17 @@ font[style] { background: transparent !important; box-shadow: none !important; }
   font-weight: 600;
 }
 .ct-pestana-cerrada button:focus-visible { outline: 3px solid var(--ug-flamenco); outline-offset: 3px; }
+
+/* Aviso de foto actualizada: contraste alto, se cierra solo */
+.ct-layout .ct-aviso-foto {
+  display: flex; align-items: center; gap: 0.5rem; margin: 16px 0 0; padding: 12px 16px;
+  border-radius: 12px; background: #1e6b3a; color: #fff; font-weight: 600; font-size: 14px; line-height: 20px;
+  box-shadow: var(--ug-sombra-sm); animation: ug-aviso-entrar 0.25s var(--ug-salida) both;
+}
+.ct-layout .ct-aviso-foto-saliendo { animation: ug-aviso-salir 0.4s ease-in both; }
+@keyframes ug-aviso-entrar { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes ug-aviso-salir { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-6px); } }
+
+/* Perfil: enlaces separados y más aire antes de «Quiero ser tutor» */
+.ct-layout .ct-enlaces-perfil { display: flex; flex-wrap: wrap; gap: 4px 24px; margin-top: 16px; }
+.ct-layout .ct-tutor .ct-quiero-ser-tutor { margin-top: 40px; }
